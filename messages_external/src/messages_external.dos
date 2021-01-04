@@ -1,0 +1,81 @@
+module messages_external
+
+def weChat_group_chat(corp_id, corp_secret, chatId, message){
+	
+	//get the ACCESS_TOKEN
+	url = 'https://qyapi.weixin.qq.com/cgi-bin/gettoken';
+	param=dict(string, string);
+	ID=corp_id;
+	SECRET=corp_secret;
+	param['corpid']=ID;
+	param['corpsecret']=SECRET;
+	ret=httpClient::httpGet(url, param, 1000);
+	body = parseExpr(ret.text).eval();
+	ERRCODE=body.errcode;
+	if(ERRCODE!=0)return body;
+	ACCESS_TOKEN=body.access_token;
+	
+	//set massege to the chat
+	url = 'https://qyapi.weixin.qq.com/cgi-bin/appchat/send?';
+	url+='access_token='+ACCESS_TOKEN;
+	//param='{"chatid" : "CHATID","msgtype" : "text","text" : {"content" : "This is a test message"}}';
+	param='{"chatid" : "'+chatId+'","msgtype" : "text","text" : {"content" : "'+message+'" } }';
+	ret=httpClient::httpPost(url, param, 1000);
+	body = parseExpr(ret.text).eval();
+	ERRCODE=body.errcode;
+	if(ERRCODE!=0)return body;
+	return true;
+}
+
+def weChat_application(corp_id, corp_secret, agentId, message){
+	
+	//get the ACCESS_TOKEN
+	url = 'https://qyapi.weixin.qq.com/cgi-bin/gettoken';
+	param=dict(string, string);
+	ID=corp_id;
+	SECRET=corp_secret;
+	param['corpid']=ID;
+	param['corpsecret']=SECRET;
+	ret=httpClient::httpGet(url, param, 1000);
+	body = parseExpr(ret.text).eval();
+	ERRCODE=body.errcode;
+	if(ERRCODE!=0)return body;
+	ACCESS_TOKEN=body.access_token;
+	
+	//set massege to the application
+	url = 'https://qyapi.weixin.qq.com/cgi-bin/message/send?';
+	url+='access_token='+ACCESS_TOKEN;
+	//param='{"touser" : "@all","agentid" : "AGENTID","msgtype" : "text","text" : {"content" : "This is a test message"}}';
+	param='{"touser" : "@all","agentid" : "'+agentId+'","msgtype" : "text","text" : {"content" : "'+message+'" } }';
+	ret=httpClient::httpPost(url, param, 1000);
+	body = parseExpr(ret.text).eval();
+	ERRCODE=body.errcode;
+	if(ERRCODE!=0)return body;
+	return true;
+}
+
+def dingding_group_chat(app_key, app_secret, chatId, message){
+	//get the ACCESS_TOKEN
+	url = 'https://oapi.dingtalk.com/gettoken';
+	param=dict(string, string);
+	param['appkey']=app_key;
+	param['appsecret']=app_secret;
+	ret=httpClient::httpGet(url, param, 1000);
+	body = parseExpr(ret.text).eval();
+	ERRCODE=body.errcode;
+	if(ERRCODE!=0)return body;
+	ACCESS_TOKEN=body.access_token;
+
+	//set massege to the chat
+	url = "https://oapi.dingtalk.com/chat/send?";
+	url+='access_token='+ACCESS_TOKEN;
+	headers=dict(string,string);
+	headers['Content-Type']='application/json';
+	//param='{"chatid" : "xxx","msg" : {"msgtype" : "text","text" : {"content" : "This is a test message"}}}';
+	param='{"chatid" : "'+chatId+'","msg" : {"msgtype" : "text","text" : {"content" : "'+message+'" } } }';
+	ret=httpClient::httpPost(url, param, 1000, headers);
+	body = parseExpr(ret.text).eval();
+	ERRCODE=body.errcode;
+	if(ERRCODE!=0)return body;
+	return true;
+}

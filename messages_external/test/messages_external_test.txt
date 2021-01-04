@@ -1,0 +1,28 @@
+#include "setup/settings.txt"
+//set you httpClient Plugin here
+pluginPath='/home/zmx/worker/DolphinDBPlugin/httpClient/PluginHttpClient.txt';
+try{
+loadPlugin("plugins/httpClient/PluginHttpClient.txt")
+}catch(ex)
+{
+   try{loadPlugin(pluginPath)}catch(ex){print ex};  
+    print ex
+}
+go 
+
+use messages_external;
+
+@testing:case="test_weChat_messages_group_chat"
+message='This is a test message';
+ret=messages_external::weChat_group_chat(corp_id, corp_secret, chatId, message);
+assert 1,typestr(ret)==BOOL;
+
+@testing:case="test_weChat_messages_application"
+message='This is a test message';
+ret=messages_external::weChat_application(corp_id, corp_secret, agentId, message);
+assert 1,typestr(ret)==BOOL;
+
+@testing:case="test_dingding_messages_group_chat"
+message='This is a test message';
+ret=messages_external::dingding_group_chat(app_key,app_secret,DchatId,message);
+assert 1,typestr(ret)==BOOL;

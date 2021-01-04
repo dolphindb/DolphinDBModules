@@ -1,0 +1,102 @@
+#include "setup/settings.txt"
+use ta
+
+//ma(close,timePeriod)
+
+precision=5
+nan=double()
+
+/*note that ma is exactly calling moving functions of specified type by giving the value of maType*/
+@testing:case="test_ta_function_ma_param_maType"
+close=[0.738943,54.656038,68.600639,48.727166,29.061742,80.547883,88.441286,53.563787,84.333949,86.184134,79.958874,80.857146,16.09588,70.020608,46.971058,5.667949,35.074464,50.96734,13.780723,12.020372,60.611425,17.038672,93.005266,21.724079,78.437219,17.679625,78.095357,68.494213,78.234003,24.844407,81.324836,89.290484,29.122386,47.330442,32.111762,59.484709,24.228521,55.667259,42.17003,42.415287]
+assert 1, eqObj(ta::ma(close,30,0),ta::sma(close,30),precision)
+assert 2, eqObj(ta::ma(close,30,1),ta::ema(close,30),precision)
+assert 3, eqObj(ta::ma(close,30,2),ta::wma(close,30),precision)
+assert 4, eqObj(ta::ma(close,30,3),ta::dema(close,30),precision)
+assert 5, eqObj(ta::ma(close,30,4),ta::tema(close,30),precision)
+assert 6, eqObj(ta::ma(close,30,5),ta::trima(close,30),precision)
+assert 7, eqObj(ta::ma(close,30,6),ta::kama(close,30),precision)
+//assert 8, eqObj(ta::ma(close,30,7),ta::mama(close,30),precision)
+assert 9, eqObj(ta::ma(close,30,8),ta::t3(close,30,0),precision)
+
+
+@testing:case="test_ta_function_ma_use_ticks_specify_timeperiod=10_contextby"
+timePeriod=10
+tickTB=loadText(DATA_DIR+"/ticks1.csv")
+
+tick1=exec ta::ma(close, timePeriod, 0) from tickTB where sym=`tick1
+rs1=[nan, nan, nan, nan, nan, nan, nan, nan]
+assert 1, eqObj(tick1, rs1, precision)
+
+tick2=exec ta::ma(close, timePeriod, 0) from tickTB where sym=`tick2
+tk2=array(DOUBLE,15,15,nan).append!(tick2.subarray(15:))   //note that there is a difference
+rs2=[   nan,    nan,    nan,    nan,    nan,    nan,    nan,    nan,
+          nan,    nan,    nan,    nan,    nan,    nan,    nan, 13.146,
+       13.37 , 13.442, 13.44 , 13.406, 13.899, 14.509, 15.07 , 15.557,
+       15.553, 15.549, 15.478, 15.453, 15.43 , 15.583, 15.68 , 15.53 ,
+       15.478, 15.404, 15.292, 14.977, 14.633, 14.303, 14.001, 13.662,
+       13.399, 13.252, 12.979, 12.733, 12.534, 12.385, 12.22 , 12.079,
+       11.884, 11.7  , 11.449, 11.309, 11.29 , 11.362, 11.434, 11.551,
+       11.727, 11.877, 12.053, 12.174, 12.477, 12.74 , 12.972, 13.214,
+       13.453, 13.672, 13.857, 14.048, 14.204, 14.395, 14.425, 14.414,
+       14.491, 14.579, 14.588, 14.6  , 14.676, 14.743, 14.805, 14.689,
+       14.525, 14.42 , 14.265, 14.034, 13.852, 13.631, 13.379, 13.085,
+       12.792, 12.584, 12.455, 12.255, 12.107, 12.056, 11.946, 11.88 ,
+       11.792, 11.772, 11.767, 11.81 ]
+assert 2, eqObj(tk2, rs2, precision)
+
+tick3=exec ta::ma(close, timePeriod, 0) from tickTB where sym=`tick3
+rs3=[nan, nan, nan, nan, nan]
+assert 3, eqObj(tick3, rs3,precision)
+
+tick4=exec ta::ma(close, timePeriod, 0) from tickTB where sym=`tick4
+rs4=[   nan,    nan,    nan,    nan,    nan,    nan,    nan,    nan,
+          nan, 11.681, 11.745, 11.674, 11.628, 11.463, 11.271, 11.152,
+       11.039, 10.835, 10.572, 10.393, 10.122,  9.863,  9.688,  9.641,
+        9.745,  9.757,  9.767,  9.909, 10.05 , 10.117, 10.278, 10.453,
+       10.5  , 10.523, 10.519, 10.501, 10.512, 10.537, 10.557, 10.596,
+       10.636, 10.668, 10.691, 10.726, 10.729, 10.679, 10.622, 10.423,
+       10.139,  9.876,  9.677,  9.518,  9.394,  9.238,  9.185,  9.098,
+        9.031,  9.047,  9.072,  8.959,  8.755,  8.594,  8.46 ,  8.277,
+        8.017,  7.874,  7.635,  7.432,  7.276,  7.172,  7.037,  6.86 ,
+        6.667,  6.564,  6.51 ,  6.434,  6.418,  6.39 ,  6.418,  6.498,
+        6.621,  6.722,  6.88 ,  7.041,  7.121,  7.176,  7.266,  7.343,
+        7.363,  7.353,  7.294,  7.267,  7.187,  7.08 ,  7.001,  7.019,
+        7.01 ,  6.968,  6.922,  6.887]
+assert 4, eqObj(tick4, rs4, precision)
+
+tick5=exec ta::ma(close, timePeriod, 0) from tickTB where sym=`tick5
+rs5=[   nan,    nan,    nan,    nan,    nan,    nan,    nan,    nan,
+          nan, 10.043,  9.994,  9.938,  9.925,  9.82 ,  9.687,  9.569,
+        9.463,  9.382,  9.215,  9.034,  8.887,  8.724,  8.478,  8.373,
+        8.369,  8.331,  8.308,  8.263,  8.333,  8.397,  8.434,  8.518,
+        8.663,  8.671,  8.675,  8.694,  8.705,  8.737,  8.775,  8.807,
+        8.864,  8.897,  8.906,  8.962,  9.059,  9.101,  9.099,  9.078,
+        8.941,  8.732,  8.555,  8.406,  8.275,  8.135,  7.978,  7.849,
+        7.709,  7.602,  7.547,  7.528,  7.469,  7.39 ,  7.345,  7.339,
+        7.241,  7.168,  7.166,  7.088,  7.057,  7.035,  6.957,  6.815,
+        6.638,  6.418,  6.284,  6.189,  6.068,  5.992,  5.911,  5.871,
+        5.91 ,  6.011,  6.078,  6.183,  6.25 ,  6.266,  6.349,  6.511,
+        6.64 ,  6.721,  6.854,  7.006,  7.177,  7.277,  7.393,  7.478,
+        7.507,  7.471,  7.435,  7.44 ]
+assert 5, eqObj(tick5, rs5, precision)
+
+maBySym=(exec ta::ma(close, timePeriod, 0) from tickTB context by sym).values()[0]
+mbs=array(DOUBLE,23,23,nan).append!(maBySym.subarray(23:))   
+rs=rs1.join(rs2).join(rs3).join(rs4).join(rs5)
+assert 6, eqObj(mbs, rs, precision)
+
+@testing:case="test_ta_function_ma_close_take40"
+close=1..40
+assert 1, eqObj(ta::ma(close,30,0),take(double(),29).append!([15.5, 16.5, 17.5, 18.5, 19.5, 20.5, 21.5, 22.5, 23.5, 24.5, 25.5]),precision)
+assert 2, eqObj(ta::ma(close,5,0),take(double(),4).append!([3.,  4.,  5.,  6.,  7.,  8.,  9., 10., 11., 12., 13., 14., 15., 16., 17., 18., 19., 20., 21., 22., 23., 24., 25., 26., 27., 28., 29., 30., 31., 32., 33., 34., 35., 36., 37., 38.]),precision)
+
+@testing:case="test_ta_function_ma_close_rand40"
+close=[0.738943,54.656038,68.600639,48.727166,29.061742,80.547883,88.441286,53.563787,84.333949,86.184134,79.958874,80.857146,16.09588,70.020608,46.971058,5.667949,35.074464,50.96734,13.780723,12.020372,60.611425,17.038672,93.005266,21.724079,78.437219,17.679625,78.095357,68.494213,78.234003,24.844407,81.324836,89.290484,29.122386,47.330442,32.111762,59.484709,24.228521,55.667259,42.17003,42.415287]
+assert 1, eqObj(ta::ma(close,30,0),take(double(),29).append!([51.48114157, 54.167338  , 55.32181953, 54.00587777, 53.9593203 , 54.06098763, 53.35888183, 51.21845633, 51.28857207, 49.8831081 , 48.42414653]),precision)
+assert 2, eqObj(ta::ma(close,5,0),take(double(),4).append!([40.3569056,56.3186936, 63.0757432, 60.0683728, 67.1897294, 78.6142078,78.496406 , 76.979578 , 69.4859966, 66.6233284, 58.7807132,43.9225282, 34.7659918, 41.7402838, 30.4923068, 23.5021696,34.4908648, 30.8837064, 39.2912916, 40.8799628, 54.1633322,45.5769722, 57.7883092, 52.8860986, 64.1880834, 53.469521 ,66.1985632, 68.4375886, 60.5632232, 54.382511 , 55.835982 ,51.4679566, 38.455564 , 43.7645386, 42.7324562, 44.7931612]),precision)
+
+@testing:case="test_ta_function_ma_close_bigarray"
+close=bigarray(DOUBLE,0,2000000).append!(1..2000000)
+assert 1, eqObj(ta::ma(close,30,0),take(double(),29).append!(15.5+0..1999970),precision)
+assert 2, eqObj(ta::ma(close,5,0),take(double(),4).append!(3+0..1999995),precision)

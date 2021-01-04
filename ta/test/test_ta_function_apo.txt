@@ -1,0 +1,139 @@
+#include "setup/settings.txt"
+use ta
+//apo(close,fastPeriod,slowPeriod,maType)
+precision=5
+
+@testing:case="test_ta_function_adx_table"
+tickTB=loadText(DATA_DIR+"/ticks1.csv")
+t = select apo(close,12,26,1) as a,sym from tickTB context by sym 
+
+tick1=exec a from t where sym=`tick1
+tick3=exec a from t where sym=`tick3
+tick2=exec a from t where sym=`tick2
+tick2v=[NULL,         NULL,         NULL,         NULL,         NULL,
+        NULL,         NULL,         NULL,         NULL,         NULL,
+        NULL,         NULL,         NULL,         NULL,         NULL,
+        NULL,         NULL,         NULL,         NULL,         NULL,
+        NULL,         NULL,         NULL,         NULL,         NULL,
+        NULL,         NULL,         NULL,         NULL,         NULL,
+        NULL,  		 0.75975131,  0.63194386,  0.43127484,  0.27472475,
+        0.1034707 , -0.06379069, -0.19490669, -0.24914395, -0.2592826 ,
+       -0.25390084, -0.28348605, -0.40474529, -0.56693135, -0.64446252,
+       -0.70344606, -0.78631412, -0.82393082, -0.84082218, -0.80618353,
+       -0.81293464, -0.7571079 , -0.70952732, -0.66336559, -0.57656234,
+       -0.4716702 , -0.38172142, -0.3092918 , -0.22508862, -0.16213641,
+       -0.0088589 ,  0.13127429,  0.21005358,  0.2781564 ,  0.3690272 ,
+        0.4503758 ,  0.48424863,  0.50766184,  0.51623159,  0.53939898,
+        0.52507829,  0.49511105,  0.50667391,  0.52750892,  0.51548497,
+        0.51694216,  0.53851754,  0.54449805,  0.53500133,  0.40180587,
+        0.22825609,  0.12398482,  0.04167559, -0.06636355, -0.13350119,
+       -0.19893949, -0.24634626, -0.31897155, -0.37941619, -0.47430112,
+       -0.54483147, -0.61621756, -0.62284521, -0.58663787, -0.58189836,
+       -0.550813  , -0.53613572, -0.5025722 , -0.46576236, -0.44517615]
+assert 1,eqObj(tick1,array(DOUBLE,8,8,NULL),precision) 
+assert 2,eqObj(tick3,array(DOUBLE,5,5,NULL),precision) 
+assert 3,eqObj(tick2,tick2v,precision) 
+
+
+@testing:case="test_ta_function_apo_matype0"
+close=[0.94731921, 0.43572665, 0.07656605, 0.33488318, 0.40079769,
+       0.00175826, 0.69817883, 0.15807453, 0.90517378, 0.75035587,
+       0.21647424, 0.23375606, 0.76984727, 0.80868257, 0.50217099,
+       0.18211387, 0.38785658, 0.4864811 , 0.90992806, 0.45834063,
+       0.68423368, 0.32413519, 0.26255584, 0.02338056, 0.83931331,
+       0.58800215, 0.30404965, 0.09116468, 0.4584079 , 0.87246705,
+       0.93451506, 0.08213413, 0.24654235, 0.23316717, 0.49711159,
+       0.13725455, 0.30984129, 0.83723846, 0.43898086, 0.9860704 ,
+       0.69258021, 0.90014178, 0.12004848, 0.94671812, 0.23572374,
+       0.13770305, 0.77612299, 0.70198845, 0.55572407, 0.90326155]
+
+real=[        NULL,         NULL,         NULL,         NULL,         NULL,
+               NULL,         NULL,         NULL,         NULL,         NULL,
+               NULL,         NULL,         NULL,         NULL,         NULL,
+               NULL,         NULL,         NULL,         NULL,         NULL,
+               NULL,         NULL,         NULL,         NULL,         NULL,
+       -0.00567937,  0.00255166,  0.00822494, -0.00058201,  0.01090719,
+       -0.00757149, -0.04201341, -0.06111705, -0.0715859 , -0.03634489,
+       -0.00327457, -0.05098828, -0.05342945, -0.02945955,  0.03829332,
+        0.05048425,  0.02517402, -0.03239789,  0.02194936,  0.04697874,
+        0.05135561,  0.07107236,  0.1036007 ,  0.11281523,  0.08447558]
+assert 1,eqObj(apo(close,12,26,0),real,precision)        
+        
+@testing:case="test_ta_function_apo_matype1"
+real=[        NULL,         NULL,         NULL,         NULL,         NULL,
+               NULL,         NULL,         NULL,         NULL,         NULL,
+               NULL,         NULL,         NULL,         NULL,         NULL,
+               NULL,         NULL,         NULL,         NULL,         NULL,
+               NULL,         NULL,         NULL,         NULL,         NULL,
+        0.01318812, -0.00258867, -0.03190217, -0.02520928,  0.01335208,
+        0.04836151,  0.00724323, -0.01193931, -0.02789927, -0.01903018,
+       -0.04057114, -0.043218  , -0.00272767, -0.00274323,  0.04091831,
+        0.05124744,  0.07531366,  0.03108103,  0.06201678,  0.02882996,
+       -0.00531898,  0.01891486,  0.03177206,  0.02981548,  0.05566656]
+assert 1,eqObj(apo(close,12,26,1),real,precision)  
+    
+@testing:case="test_ta_function_apo_matype2"
+real=[        NULL,         NULL,         NULL,         NULL,         NULL,
+               NULL,         NULL,         NULL,         NULL,         NULL,
+               NULL,         NULL,         NULL,         NULL,         NULL,
+               NULL,         NULL,         NULL,         NULL,         NULL,
+               NULL,         NULL,         NULL,         NULL,         NULL,
+       -0.00398014, -0.01685423, -0.04600327, -0.04567218, -0.01212738,
+        0.02295016, -0.00876315, -0.02230912, -0.03259735, -0.02044998,
+       -0.04117886, -0.05134678, -0.01238903, -0.00667713,  0.04000472,
+        0.05230647,  0.0787061 ,  0.04456693,  0.08605181,  0.061046  ,
+        0.02643876,  0.04307001,  0.05047212,  0.04004274,  0.05502004]
+assert 1,eqObj(apo(close,12,26,2),real,precision)  
+
+@testing:case="test_ta_function_apo_matype3"
+real= array(DOUBLE,50,50,NULL)
+assert 1,eqObj(apo(close,12,26,3),real,precision)  
+
+@testing:case="test_ta_function_apo_matype4"
+real=array(DOUBLE,50,50,NULL)
+assert 1,eqObj(apo(close,12,26,4),real,precision)  
+
+@testing:case="test_ta_function_apo_matype5"
+real= [        NULL,         NULL,         NULL,         NULL,         NULL,
+               NULL,         NULL,         NULL,         NULL,         NULL,
+               NULL,         NULL,         NULL,         NULL,         NULL,
+               NULL,         NULL,         NULL,         NULL,         NULL,
+               NULL,         NULL,         NULL,         NULL,         NULL,
+       -0.00246131, -0.01653065, -0.0389852 , -0.06131108, -0.06252002,
+       -0.05260672, -0.04803749, -0.04177098, -0.02191087,  0.00635825,
+        0.0099551 , -0.02579175, -0.04687619, -0.04718825, -0.03295134,
+       -0.02351861, -0.0015288 ,  0.03909946,  0.0998032 ,  0.13930664,
+        0.15007869,  0.14076659,  0.11847845,  0.08705069,  0.05515811]
+assert 1,eqObj(apo(close,12,26,5).subarray(25:),real.subarray(25:),precision)  
+
+/*
+@testing:case="test_ta_function_apo_matype6"
+real=[        NULL,         NULL,         NULL,         NULL,         NULL,
+               NULL,         NULL,         NULL,         NULL,         NULL,
+               NULL,         NULL,         NULL,         NULL,         NULL,
+               NULL,         NULL,         NULL,         NULL,         NULL,
+               NULL,         NULL,         NULL,         NULL,         NULL,
+               NULL, -0.31233557, -0.30960681, -0.30751505, -0.30172382,
+       -0.30226169, -0.30267494, -0.30015476, -0.29874615, -0.29579914,
+       -0.29129112, -0.28922495, -0.28629218, -0.28408883, -0.26017439,
+       -0.25718217, -0.25884059, -0.26164076, -0.24470688, -0.24128451,
+       -0.23925528, -0.23628852, -0.23123323, -0.22928123, -0.23095513]
+assert 1,eqObj(apo(close,12,26,6),real,precision)  
+
+@testing:case="test_ta_function_apo_matype7"
+real=[NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+       NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+       NULL, NULL, NULL, NULL, NULL, NULL,  0.,  0.,  0.,  0.,  0.,  0.,  0.,
+        0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.]
+assert 1,eqObj(apo(close,12,26,7),real,precision)  
+*/
+
+@testing:case="test_ta_function_apo_bigarray"
+close=bigarray(DOUBLE,0,2000000).append!(1..2000000)
+assert 1,eqObj(apo(close,12,26,0),array(DOUBLE,25,25,NULL).append!(take(7,2000000-25)),precision) 
+
+@testing:case="test_ta_function_apo_null"
+close=array(DOUBLE,50,50,NULL)
+assert 1,eqObj(apo(close,12,26,7),close,precision)  
+
+      
