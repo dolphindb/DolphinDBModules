@@ -1,0 +1,216 @@
+/**
+DolphinDBRunTime.txt
+Script to test DolphinDB mytt operating efficiency
+DolphinDB Inc.
+DolphinDB server version: 1.30.18 2022.05.09 / 2.00.6 2022.05.09
+Last modification time: 2022.05.18
+*/
+
+/**
+Attention:
+1. The developer need to download mytt.dos and put in [home]/modules in advance
+2. The developer need to download test data in advance
+3. There one place in the script that need to be modified according to the environment
+*/
+
+//login account and clean up the environment
+login("admin", "123456")
+clearAllCache()
+undef(all)
+go
+
+//load module
+use mytt
+
+/**
+modified location 1: dataPath
+*/
+dataPath = "G:/mytt/test/testData.csv"
+schema = table(`tradedate`symbol`high`low`open`close`vol`bs as `name, `DATE`SYMBOL`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`BOOL as type)
+data = loadText(dataPath, schema=schema)
+
+print("RD")
+timer(1){ RD = select symbol, mytt::RD(close, D=3) as `RD from data context by symbol }
+
+print("RET")
+timer(1){ RET = select symbol, mytt::RET(close, N=1) as `RET from data group by symbol }
+
+print("ABS")
+timer(1){ ABS = select symbol, mytt::ABS(close) as `ABS from data context by symbol }
+
+print("LN")
+timer(1){ LN = select symbol, mytt::LN(close) as `LN from data context by symbol }
+
+print("POW")
+timer(1){ POW = select symbol, mytt::POW(close, N=2) as `POW from data context by symbol }
+
+print("SQRT")
+timer(1){ SQRT = select symbol, mytt::SQRT(close) as `SQRT from data context by symbol }
+
+print("MAX")
+timer(1){ MAX = select symbol, mytt::MAX(close, open) as `MAX from data context by symbol }
+
+print("MIN")
+timer(1){ MIN = select symbol, mytt::MIN(close, open) as `MIN from data context by symbol }
+
+print("IF")
+timer(1){ IF = select symbol, mytt::IF(bs, A=2, B=4) as `IF from data context by symbol }
+
+print("REF")
+timer(1){ REF = select symbol, mytt::REF(close, N=1) as `REF from data context by symbol }
+
+print("DIFF")
+timer(1){ DIFF=select symbol, mytt::DIFF(close, N=1) as `DIFF from data context by symbol }
+
+print("STD")
+timer(1){ STD = select symbol, mytt::STD(close, N=5) as `STD from data context by symbol }
+
+print("SUM")
+timer(1){ SUM = select symbol, mytt::SUM(vol, N=5) as `SUM from data context by symbol }
+
+print("CONST")
+timer(1){ CONST = select symbol, mytt::CONST(vol) as `CONST from data context by symbol }
+
+print("HHV")
+timer(1){ HHV = select symbol, mytt::HHV(close, N=10) as `HHV from data context by symbol }
+
+print("LLV")
+timer(1){ LLV = select symbol, mytt::LLV(close, N=10) as `LLV from data context by symbol }
+
+print("HHVBARS")
+timer(1){ HHVBARS = select symbol, mytt::HHVBARS(close, N=10) as `HHVBARS from data context by symbol }
+
+print("LLVBARS")
+timer(1){ LLVBARS = select symbol, mytt::LLVBARS(close, N=10) as `LLVBARS from data context by symbol }
+
+print("MA")
+timer(1){ MA = select symbol, mytt::MA(close, N=10) as `MA from data context by symbol }
+
+print("EMA")
+timer(1){ EMA = select symbol, mytt::EMA(close, N=10) as `EMA from data context by symbol }
+
+print("SMA")
+timer(1){ SMA = select symbol, mytt::SMA(close, N=10, M=1) as `SMA from data context by symbol }
+
+print("WMA")
+timer(1){ WMA = select symbol, mytt::WMA(close, N=10) as `WMA from data context by symbol }
+
+print("DMA")
+timer(1){ DMA = select symbol, mytt::DMA(close, A=0.5) as `DMA from data context by symbol }
+
+print("AVEDEV")
+timer(1){ AVEDEV = select symbol, mytt::AVEDEV(close, N=10) as `AVEDEV from data context by symbol }
+
+print("SLOPE")
+timer(1){ SLOPE = select symbol, mytt::SLOPE(close, N=11) as `SLOPE from data context by symbol }
+
+print("FORCAST")
+timer(1){ FORCAST = select symbol, mytt::FORCAST(close, N=12) as `FORCAST from data context by symbol }
+
+print("LAST_")
+timer(1){ LAST_ = select symbol, mytt::LAST_(bs, A=10, B=5) as `LAST_ from data context by symbol }
+
+print("COUNT")
+timer(1){ COUNT = select symbol, mytt::COUNT(bs, N=10) as `COUNT from data context by symbol }
+
+print("EVERY")
+timer(1){ EVERY = select symbol, mytt::EVERY(bs, N=10) as `EVERY from data context by symbol }
+
+print("EXIST")
+timer(1){ EXIST = select symbol, mytt::EXIST(bs, N=10) as `EXIST from data context by symbol }
+
+print("BARSLAST")
+timer(1){ BARSLAST = select symbol, mytt::BARSLAST(bs) as `BARSLAST from data context by symbol }
+
+print("BARSLASTCOUNT")
+timer(1){ BARSLASTCOUNT = select symbol, mytt::BARSLASTCOUNT(bs) as `BARSLASTCOUNT from data context by symbol }
+
+print("CROSS")
+timer(1){ CROSS = select symbol, mytt::CROSS(MA(close,5),MA(close,10)) as `CROSS from data context by symbol }
+
+print("LONGCROSS")
+timer(1){ LONGCROSS = select symbol, mytt::LONGCROSS(MA(close,5),MA(close,10), N=10) as `LONGCROSS from data context by symbol }
+
+print("VALUEWHEN")
+timer(1){ VALUEWHEN = select symbol,mytt::VALUEWHEN(bs, close) as `VALUEWHEN from data context by symbol }
+
+print("BETWEEN")
+timer(1){ BETWEEN = select symbol, mytt::BETWEEN(close, open, high) as `BETWEEN from data context by symbol }
+
+print("MACD")
+timer(1){ MACD = select symbol, mytt::MACD(close, SHORT_=12, LONG_=26, M=9) as `DIF`DEA`MACD from data context by symbol }
+
+print("KDJ")
+timer(1){KDJ = select symbol, mytt::KDJ(close, high, low, N=9, M1=3, M2=3) as `K`D`J from data context by symbol }
+
+print("RSI")
+timer(1){ RSI = select symbol, tradedate, mytt::RSI(close, N=24) as `RSI from data context by symbol }
+
+print("WR")
+timer(1){ WR = select symbol, mytt::WR(close, high, low, N=10, N1=6) as `WR`WR1 from data context by symbol }
+
+print("BIAS")
+timer(1){ BIAS = select symbol, mytt::BIAS(close, L1=6, L2=12, L3=24) as `BIAS1`BIAS2`BIAS3 from data context by symbol }
+
+print("BOLL")
+timer(1){ BOLL = select symbol, mytt::BOLL(close, N=20, P=2) as `UPPER`MID`LOWER from data context by symbol }
+
+print("PSY")
+timer(1){ PSY = select symbol, mytt::PSY(close, N=12, M=6) as `PSY`PSYMA from data context by symbol }
+
+print("CCI")
+timer(1){ CCI = select symbol, mytt::CCI(close, high, low, N=14) as `CCI from data context by symbol }
+
+print("ATR")
+timer(1){ ATR = select symbol, mytt::ATR(close, high, low, N=20) as `ATR from data context by symbol }
+
+print("BBI")
+timer(1){ BBI = select symbol, mytt::BBI(close, M1=3, M2=6, M3=12, M4=20) as `BBI from data context by symbol }
+
+print("DMI")
+timer(1){ DMI = select symbol, mytt::DMI(close, high, low, M1=14, M2=6) as `PDI`MDI`ADX`ADXR from data context by symbol }
+
+print("TAQ")
+timer(1){ TAQ = select symbol, mytt::TAQ(high, low, N=10) as `UP`MID`DOWN from data context by symbol }
+
+print("KTN")
+timer(1){ KTN = select symbol, mytt::KTN(close, high, low, N=20, M=10) as `UPPER`MID`LOWER from data context by symbol }
+
+print("TRIX")
+timer(1){ TRIX = select symbol, mytt::TRIX(close, M1=12, M2=20) as `TRIX`TRMA from data context by symbol }
+
+print("VR")
+timer(1){ VR = select symbol, mytt::VR(close, vol, M1=26) as `VR from data context by symbol }
+
+print("EMV")
+timer(1){ EMV = select symbol, mytt::EMV(high, low, vol, N=14, M=9) as `EMV`MAEMV from data context by symbol }
+
+print("DPO")
+timer(1){ DPO = select symbol, mytt::DPO(close, M1=20, M2=10, M3=6) as `DPO`MADPO from data context by symbol }
+
+print("BRAR")
+timer(1){ BRAR = select symbol, mytt::BRAR(open, close, high, low, M1=26) as `AR`BR from data context by symbol }
+
+print("DFMA")
+timer(1){ DFMA = select symbol, mytt::DFMA(close, N1=10, N2=50, M=10) as `DIF`DIFMA from data context by symbol }
+
+print("MTM")
+timer(1){ MTM = select symbol, mytt::MTM(close, N=12, M=6) as `MTM`MTMMA from data context by symbol }
+
+print("MASS")
+timer(1){ MASS = select symbol, mytt::MASS(high, low, N1=9, N2=25, M=6) as `MASS`MAMASS from data context by symbol }
+
+print("ROC")
+timer(1){ ROC = select symbol, mytt::ROC(close, N=12, M=6) as `ROC`MAROC from data context by symbol }
+
+print("EXPMA")
+timer(1){ EXPMA = select symbol, mytt::EXPMA(close, N1=12, N2=50) as `EXMPAN1`EXMPAN2 from data context by symbol }
+
+print("OBV")
+timer(1){ OBV = select symbol, mytt::OBV(close, vol) as `OBV from data context by symbol }
+
+print("MFI")
+timer(1){ MFI = select symbol, mytt::MFI(close, high, low, vol, N=14) as `MFI from data context by symbol }
+
+print("ASI")
+timer(1){ ASI=select symbol, mytt::ASI(open, close, high, low, M1=26, M2=10) as `ASI`ASIT from data context by symbol }
