@@ -11,7 +11,7 @@
 * 模块文件第一行只能使用 module 后接模块名以声明模块，例如 ```module fileLog``` 。 
 * 模块文件除第一行外的内容仅可包含函数定义。
 
-关于模块的更多细节，请参考[DolphinDB模块教程](https://github.com/dolphindb/Tutorials_CN/blob/master/module_tutorial.md)。
+关于模块的更多细节，请参考[DolphinDB模块教程](https://gitee.com/dolphindb/Tutorials_CN/blob/master/module_tutorial.md)。
 
 ## 目录结构
 

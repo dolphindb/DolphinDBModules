@@ -1,6 +1,26 @@
 # 技术分析（Technical Analysis）指标库
 
-[TA-Lib](https://github.com/mrjbq7/ta-lib)是一个Python库，封装了用C语言实现的金融交易技术分析的诸多常用指标。为了方便用户在DolphinDB中计算这些技术指标，我们使用DolphinDB脚本实现了TA-Lib中包含的指标函数，并封装在DolphinDB ta module (ta.dos)中。 使用ta模块需要DolphinDB Database Server 1.10.3 或以上版本。
+[TA-Lib](https://github.com/mrjbq7/ta-lib)是一个Python库，封装了用C语言实现的金融交易技术分析的诸多常用指标。为了方便用户在DolphinDB中计算这些技术指标，我们使用DolphinDB脚本实现了TA-Lib中包含的指标函数，并封装在DolphinDB ta module中。 因为DolphinDB ta module是基于DolphinDB V1.10.3开发的，所以使用ta模块需要DolphinDB  V1.10.3 或以上版本。
+
+为了更好地支持ta module中的函数可以直接在DolphinDB的流式增量计算引擎中使用，我们基于DolphinDB V1.30.19和DolphinDB V2.00.7对ta module进行了修订。
+
+匹配不同DolphinDB版本的ta module：
+
+- V1.10.3: [ta.dos](./src/1.10.3/ta.dos)
+- V1.30.19, V2.00.7: [ta.dos](./src/1.30.19or2.00.7/ta.dos)
+
+> 如果DolpinDB版本大于V1.30.19或V2.00.7，选择支持V1.30.19, V2.00.7版本的ta.dos。
+
+本教程包含内容：
+
+- [1. 函数及参数的命名与用法规范](#1-函数及参数的命名与用法规范)
+- [2. 使用范例](#2-使用范例)
+- [3. 性能说明](#3-性能说明)
+- [4. 向量化实现](#4-向量化实现)
+- [5. 实时流计算案例](#5-实时流计算案例)
+- [6. DolphinDB ta 指标列表](#6-dolphindb-ta-指标列表)
+- [7. 路线图(Roadmap)](#7-路线图roadmap)
+
 
 ## 1. 函数及参数的命名与用法规范
 
@@ -164,14 +184,14 @@ array([nan, nan, nan, nan, nan, nan, nan, nan])
 技术分析的很多指标计算会用到迭代，即当前值为前一个值和当前输入的线性函数： r[n] = coeff * r[n-1] + input[n]。对于这一类型的计算，DolphinDB引入了函数`iterate`进行向量化处理，以避免使用循环。
 ```
 def ema(close, timePeriod) {
-1 	n = close.size()
-2	b = ifirstNot(close)
-3	start = b + timePeriod
-4	if(b < 0 || start > n) return array(DOUBLE, n, n, NULL)
-5	init = close.subarray(:start).avg()
-6	coeff = 1 - 2.0/(timePeriod+1)
-7	ret = iterate(init, coeff, close.subarray(start:)*(1 - coeff))
-8	return array(DOUBLE, start - 1, n, NULL).append!(init).append!(ret)
+  	n = close.size()
+	b = ifirstNot(close)
+	start = b + timePeriod
+	if(b < 0 || start > n) return array(DOUBLE, n, n, NULL)
+	init = close.subarray(:start).avg()
+	coeff = 1 - 2.0/(timePeriod+1)
+	ret = iterate(init, coeff, close.subarray(start:)*(1 - coeff))
+	return array(DOUBLE, start - 1, n, NULL).append!(init).append!(ret)
 }
 ```
 以`ema`函数实现为例，第5行代码计算第一个窗口的均值作为迭代序列的初始值。第6行代码定义了迭代参数。第7行代码使用`iterate`函数计算ema序列。内置函数`iterate`有非常高的运行效率，计算长度为1,000,000的向量的ema序列，窗口长度为10时，TA-Lib耗时7.4ms，ta模块仅耗时5.0ms，比TA-Lib更快。
@@ -183,29 +203,29 @@ def ema(close, timePeriod) {
 某些TA-Lib函数可以通过叠加或变换上述滑动窗口函数来实现。例如，TA-Lib中的VAR函数是总体方差，而DolphinDB内置的`mvar`函数是样本方差。ta模块中的`var`函数可由以下代码实现：
 ```
 def var(close, timePeriod, nddev){
-1	n = close.size()
-2	b = close.ifirstNot()
-3	if(b < 0 || b + timePeriod > n) return array(DOUBLE, n, n, NULL)
-4	mobs =  mcount(close, timePeriod)
-5	return (mvar(close, timePeriod) * (mobs - 1) \ mobs).fill!(timePeriod - 1 + 0:b, NULL)
+	n = close.size()
+	b = close.ifirstNot()
+	if(b < 0 || b + timePeriod > n) return array(DOUBLE, n, n, NULL)
+	mobs =  mcount(close, timePeriod)
+	return (mvar(close, timePeriod) * (mobs - 1) \ mobs).fill!(timePeriod - 1 + 0:b, NULL)
 }
 ```
 下面的例子更为复杂，为ta模块中`linearreg_slope`函数的实现。`linearreg_slope`计算给定向量相对于序列 0..(timePeriod - 1)的beta。这个指标看上去无法实现向量化，必须取出每个窗口的数据，循环计算beta。但由于序列0..(timePeriod - 1)是一个固定的等差序列，所以仍然可以实现向量化计算。由于beta(A,B) = (sum(A\*B) - sum(A)\*sum(B)/n)/n/var(B)，而且var(B)和sum(B)是固定的（因为B是固定的向量），我们只需要优化滑动窗口时sum(A\*B)和sum(A)的计算。代码第10行通过向量化实现了sum(A\*B)在两个相邻窗口之间的变化。第12行计算第一个窗口的sum(A\*B)。第13行中的sumABDelta.cumsum()向量化计算所有窗口的sum(A\*B)值。
 ```
 def linearreg_slope(close, timePeriod){
-1	n = close.size()
-2	b = close.ifirstNot()
-3	start = b + timePeriod
-4	if(b < 0 || start > n) return array(DOUBLE, n, n, NULL)
-5	x = 0 .. (timePeriod - 1)
-6	sumB = sum(x).double()
-7	varB = sum2(x) - sumB*sumB/timePeriod
-8	obs = mcount(close, timePeriod)
-9	msumA = msum(close, timePeriod)
-10	sumABDelta = (timePeriod - 1) * close + close.move(timePeriod) - msumA.prev() 
-11	sumABDelta[timePeriod - 1 + 0:b] = NULL
-12	sumABDelta[start - 1] =  wsum(close.subarray(b:start), x)
-13	return (sumABDelta.cumsum() - msumA * sumB/obs)/varB
+	n = close.size()
+	b = close.ifirstNot()
+	start = b + timePeriod
+	if(b < 0 || start > n) return array(DOUBLE, n, n, NULL)
+	x = 0 .. (timePeriod - 1)
+	sumB = sum(x).double()
+	varB = sum2(x) - sumB*sumB/timePeriod
+	obs = mcount(close, timePeriod)
+	msumA = msum(close, timePeriod)
+	sumABDelta = (timePeriod - 1) * close + close.move(timePeriod) - msumA.prev() 
+	sumABDelta[timePeriod - 1 + 0:b] = NULL
+	sumABDelta[start - 1] =  wsum(close.subarray(b:start), x)
+	return (sumABDelta.cumsum() - msumA * sumB/obs)/varB
 }
 ```
 计算长度为1,000,000的向量的linearreg_slope序列，窗口长度为10时，TA-Lib耗时13ms，ta模块耗时14ms，两者几乎相等。这对于用脚本实现的ta来说，已属不易。当窗口增加到20时，TA-Lib的耗时增加到22ms，而ta的耗时仍为14ms。这说明TA-Lib的实现采用了循环，对每一个窗口分别计算，而ta则实现了向量化计算，与窗口长度无关。
@@ -229,108 +249,142 @@ Time elapsed: 62 ms
 #### 4.4.2 为向量指定容量(capacity)避免扩容
 在DolphinDB中，每一个向量都会被预分配一个内存容量。当我们向一个向量追加数据时，如果容量不够，那么系统会分配一个更大的内存空间，并把将旧的数据复制到新的内存空间，最后释放旧的内存空间。当向量比较大的时候，这个操作可能比较耗时。如果明确知道一个向量可能的最大的长度，那么事先指定这个长度为该向量的内存容量可以避免内存扩容的发生。向量的内存容量可通过DolphinDB内置函数`array`的capacity参数在创建向量时指定。譬如4.2小节中`ema`函数的第8行中先创建一个容量为n的向量，然后添加计算结果。
 
-## 5. DolphinDB ta 指标列表
+## 5. 实时流计算案例
+
+在DolphinDB V1.30.3中发布的响应式状态引擎（[Reactive State Engine](https://www.dolphindb.cn/cn/help/200/FunctionsandCommands/FunctionReferences/c/createReactiveStateEngine.html)）是许多金融场景流批统一计算中的重要构件，DolphinDB ta module对其做了适配，使得ta模块中的大部分函数可以在响应式状态引擎中实现增量计算。
+
+- 当前无法在响应式状态引擎中使用的指标函数：```stoch, stochRsi, trix, tsf, trange, plus_di, minus_di, macd, macdExt, macdFix, mavp, aroonOsc, obv, atr, natr```。
+
+示例代码如下：
+
+```
+//load module
+use ta
+
+//define stream table
+schemaTable = table(`tradetime`SecurityID`high`low`open`close`vol as name,`TIMESTAMP`SYMBOL`DOUBLE`DOUBLE`DOUBLE`DOUBLE`INT as type)
+share streamTable(1000000:0, schemaTable.name, schemaTable.type) as snapshotStream
+share streamTable(1000000:0,`SecurityID`tradetime`ROC`RSI`CCI`WILLR, `SYMBOL`TIMESTAMP`DOUBLE`DOUBLE`DOUBLE`DOUBLE) as outputTable
+
+//register stream computing engine
+reactiveStateMetrics=<[
+	tradetime,
+	ta::roc(close, 5) as `ROC,
+	ta::rsi(close, 5) as `RSI,
+	ta::cci(high, low, close, 5) as `CCI,
+	ta::willr(high, low, close, 5) as `WILLR
+]>
+taReactiveStateEngine = createReactiveStateEngine("taReactiveStateEngine",metrics=reactiveStateMetrics,dummyTable=snapshotStream,outputTable=outputTable,keyColumn=`SecurityID,keepOrder=true)
+
+createTimeSeriesEngine(name="aggr1min", windowSize=60000, step=60000, metrics=<[first(open),max(high),min(low),last(close),sum(vol)]>, dummyTable=snapshotStream, outputTable=getStreamEngine("taReactiveStateEngine"), timeColumn=`tradetime, useWindowStartTime=true, keyColumn=`SecurityID)
+
+subscribeTable(tableName="snapshotStream", actionName="aggr1min", offset=-1, handler=getStreamEngine("aggr1min"), msgAsTable=true, batchSize=2000, throttle=1, hash=0, reconnect=true)
+```
+
+## 6. DolphinDB ta 指标列表
 
 ### Overlap Studies
 
-**函数**|**语法**|**解释**
----|---|---
-bBands|bBands(close, timePeriod, nbDevUp, nbDevDn, maType)|Bollinger Bands
-dema|dema(close, timePeriod)|Double Exponential Moving Average
-ema|ema(close, timePeriod)|Exponential Moving Average
-kama|kama(close, timePeriod)|Kaufman Adaptive Moving Average
-ma|ma(close, timePeriod, maType)|Moving average
-mavp|mavp(inReal, periods, minPeriod, maxPeriod, maType)|Moving average with variable period
-midPoint|midPoint(close, timePeriod)|MidPoint over period
-midPrice|midPrice(low, high, timePeriod)|Midpoint Price over period
-sma|sma(close, timePeriod)|Simple Moving Average
-t3|t3(close, timePeriod, vfactor)|Triple Exponential Moving Average (T3)
-tema|tema(close, timePeriod)|Triple Exponential Moving Average
-trima|trima(close, timePeriod)|Triangular Moving Average
-wma|wma(close, timePeriod)|Weighted Moving Average
+| **函数**   | **语法**                                              | **解释**                                 |
+|----------|-----------------------------------------------------|----------------------------------------|
+| bBands   | bBands(close, timePeriod, nbDevUp, nbDevDn, maType) | Bollinger Bands                        |
+| dema     | dema(close, timePeriod)                             | Double Exponential Moving Average      |
+| ema      | ema(close, timePeriod)                              | Exponential Moving Average             |
+| kama     | kama(close, timePeriod)                             | Kaufman Adaptive Moving Average        |
+| ma       | ma(close, timePeriod, maType)                       | Moving average                         |
+| mavp     | mavp(inReal, periods, minPeriod, maxPeriod, maType) | Moving average with variable period    |
+| midPoint | midPoint(close, timePeriod)                         | MidPoint over period                   |
+| midPrice | midPrice(low, high, timePeriod)                     | Midpoint Price over period             |
+| sma      | sma(close, timePeriod)                              | Simple Moving Average                  |
+| t3       | t3(close, timePeriod, vfactor)                      | Triple Exponential Moving Average (T3) |
+| tema     | tema(close, timePeriod)                             | Triple Exponential Moving Average      |
+| trima    | trima(close, timePeriod)                            | Triangular Moving Average              |
+| wma      | wma(close, timePeriod)                              | Weighted Moving Average                |
 
 ### Momentum Indicators
 
-**函数**|**语法**|**解释**
----|---|---
-adx|adx(high, low, close, timePeriod)|Average Directional Movement Index
-adxr|adxr(high, low, close, timePeriod)|Average Directional Movement Index Rating
-apo|apo(close,fastPeriod,slowPeriod,maType)|Absolute Price Oscillator
-aroon|aroon(high,low,timePeriod)|Aroon
-aroonOsc|aroonOsc(high, low, timePeriod)|Aroon Oscillator
-bop|bop(open, high, low, close)|Balance Of Power
-cci|cci(high, low, close, timePeriod)|Commodity Channel Index
-cmo|cmo(close, timePeriod)|Chande Momentum Oscillator
-dx|dx(high, low, close, timePeriod)|Directional Movement Index
-macd|macd(close, fastPeriod, slowPeriod, signalPeriod)|Moving Average Convergence/Divergence
-macdExt|macdExt(close, fastPeriod, fastMaType, slowPeriod, slowMaType, signalPeriod, signalMaType)|MACD with controllable MA type
-macdFix|macdFix(close, signalPeriod)|Moving Average Convergence/Divergence Fix 12/26
-mfi|mfi(high, low, close, volume, timePeriod)|Money Flow Index
-minus_di|minus_di(high, low, close, timePeriod)|Minus Directional Indicator
-minus_dm|minus_dm(high, low, timePeriod)|Minus Directional Movement
-mom|mom(close, timePeriod)|Momentum
-plus_di|plus_di(high, low, close, timePeriod)|Plus Directional Indicator
-plus_dm|plus_dm(high, low, timePeriod)|Plus Directional Movement
-ppo|ppo(close, fastPeriod, slowPeriod, maType)|Percentage Price Oscillator
-roc|roc(close, timePeriod)|Rate of change : ((price/prevPrice)-1)*100
-rocp|rocp(close, timePeriod)|Rate of change Percentage: (price-prevPrice)/prevPrice
-rocr|rocr(close, timePeriod)|Rate of change ratio: (price/prevPrice)
-rocr100|rocr100(close, timeperiod)|Rate of change ratio 100 scale: (price/prevPrice)*100
-rsi|rsi(close, timePeriod)|Relative Strength Index
-stoch|stoch(high, low, close, fastkPeriod, slowkPeriod, slowkMatype, slowdPeriod, slowdMatype)|Stochastic
-stochf|stochf(high, low, close, fastkPeriod, fastdPeriod, fastdMatype)|Stochastic Fast
-stochRsi|stochRsi(real, timePeriod, fastkPeriod, fastdPeriod, fastdMatype)|Stochastic Relative Strength Index
-trix|trix(close, timePeriod)|1-day Rate-Of-Change (ROC) of a Triple Smooth EMA
-ultOsc|ultOsc(high, low, close, timePeriod1, timePeriod2, timePeriod3)|Ultimate Oscillator
-willr|willr(high, low, close, timePeriod)|Williams' %R
+| **函数**   | **语法**                                                                                     | **解释**                                                 |
+|----------|--------------------------------------------------------------------------------------------|--------------------------------------------------------|
+| adx      | adx(high, low, close, timePeriod)                                                          | Average Directional Movement Index                     |
+| adxr     | adxr(high, low, close, timePeriod)                                                         | Average Directional Movement Index Rating              |
+| apo      | apo(close,fastPeriod,slowPeriod,maType)                                                    | Absolute Price Oscillator                              |
+| aroon    | aroon(high,low,timePeriod)                                                                 | Aroon                                                  |
+| aroonOsc | aroonOsc(high, low, timePeriod)                                                            | Aroon Oscillator                                       |
+| bop      | bop(open, high, low, close)                                                                | Balance Of Power                                       |
+| cci      | cci(high, low, close, timePeriod)                                                          | Commodity Channel Index                                |
+| cmo      | cmo(close, timePeriod)                                                                     | Chande Momentum Oscillator                             |
+| dx       | dx(high, low, close, timePeriod)                                                           | Directional Movement Index                             |
+| macd     | macd(close, fastPeriod, slowPeriod, signalPeriod)                                          | Moving Average Convergence/Divergence                  |
+| macdExt  | macdExt(close, fastPeriod, fastMaType, slowPeriod, slowMaType, signalPeriod, signalMaType) | MACD with controllable MA type                         |
+| macdFix  | macdFix(close, signalPeriod)                                                               | Moving Average Convergence/Divergence Fix 12/26        |
+| mfi      | mfi(high, low, close, volume, timePeriod)                                                  | Money Flow Index                                       |
+| minus_di | minus_di(high, low, close, timePeriod)                                                     | Minus Directional Indicator                            |
+| minus_dm | minus_dm(high, low, timePeriod)                                                            | Minus Directional Movement                             |
+| mom      | mom(close, timePeriod)                                                                     | Momentum                                               |
+| plus_di  | plus_di(high, low, close, timePeriod)                                                      | Plus Directional Indicator                             |
+| plus_dm  | plus_dm(high, low, timePeriod)                                                             | Plus Directional Movement                              |
+| ppo      | ppo(close, fastPeriod, slowPeriod, maType)                                                 | Percentage Price Oscillator                            |
+| roc      | roc(close, timePeriod)                                                                     | Rate of change : ((price/prevPrice)-1)*100             |
+| rocp     | rocp(close, timePeriod)                                                                    | Rate of change Percentage: (price-prevPrice)/prevPrice |
+| rocr     | rocr(close, timePeriod)                                                                    | Rate of change ratio: (price/prevPrice)                |
+| rocr100  | rocr100(close, timeperiod)                                                                 | Rate of change ratio 100 scale: (price/prevPrice)*100  |
+| rsi      | rsi(close, timePeriod)                                                                     | Relative Strength Index                                |
+| stoch    | stoch(high, low, close, fastkPeriod, slowkPeriod, slowkMatype, slowdPeriod, slowdMatype)   | Stochastic                                             |
+| stochf   | stochf(high, low, close, fastkPeriod, fastdPeriod, fastdMatype)                            | Stochastic Fast                                        |
+| stochRsi | stochRsi(real, timePeriod, fastkPeriod, fastdPeriod, fastdMatype)                          | Stochastic Relative Strength Index                     |
+| trix     | trix(close, timePeriod)                                                                    | 1-day Rate-Of-Change (ROC) of a Triple Smooth EMA      |
+| ultOsc   | ultOsc(high, low, close, timePeriod1, timePeriod2, timePeriod3)                            | Ultimate Oscillator                                    |
+| willr    | willr(high, low, close, timePeriod)                                                        | Williams' %R                                           |
 
 ### Volume Indicators
 
-**函数**|**语法**|**解释**
----|---|---
-ad|ad(high, low, close, volume)|Chaikin A/D Line
-obv|obv(close, volume)|On Balance Volume
+| **函数** | **语法**                       | **解释**            |
+|--------|------------------------------|-------------------|
+| ad     | ad(high, low, close, volume) | Chaikin A/D Line  |
+| obv    | obv(close, volume)           | On Balance Volume |
 
 ### Volatility Indicators
 
-**函数**|**语法**|**解释**
----|---|---
-atr|atr(high, low, close, timePeriod)|Average True Range
-natr|natr(high, low, close, timePeriod)|Normalized Average True Range
-trange|trange(high, low, close)|True Range
+| **函数** | **语法**                             | **解释**                        |
+|--------|------------------------------------|-------------------------------|
+| atr    | atr(high, low, close, timePeriod)  | Average True Range            |
+| natr   | natr(high, low, close, timePeriod) | Normalized Average True Range |
+| trange | trange(high, low, close)           | True Range                    |
 
 ### Price Transform
 
-**函数**|**语法**|**解释**
----|---|---
-avgPrice|avgPrice(open, high, low, close)|Average Price
-medPrice|medPrice(high, low)|Median Price
-typPrice|typPrice(high, low, close)|Typical Price
-wclPrice|wclPrice(high, low, close)|Weighted Close Price
+| **函数**   | **语法**                           | **解释**               |
+|----------|----------------------------------|----------------------|
+| avgPrice | avgPrice(open, high, low, close) | Average Price        |
+| medPrice | medPrice(high, low)              | Median Price         |
+| typPrice | typPrice(high, low, close)       | Typical Price        |
+| wclPrice | wclPrice(high, low, close)       | Weighted Close Price |
 
 ### Statistic Functions
 
-**函数**|**语法**|**解释**
----|---|---
-beta|beta(high, low, timePeriod)|Beta
-correl|correl(high, low, timePeriod)|Pearson's Correlation Coefficient (r)
-linearreg|linearreg(close, timePeriod)|Linear Regression
-linearreg_angle|linearreg_angle(close, timePeriod)|Linear Regression Angle
-linearreg_intercept|linearreg_intercept(close, timePeriod)|Linear Regression Intercept
-linearreg_slope|linearreg_slope(close, timePeriod)|Linear Regression Slope
-stdDev|stdDev(close, timePeriod, nbdev)|Standard Deviation
-tsf|tsf(close, timePeriod)|Time Series Forecast
-var|var(close, timePeriod, nbdev)|Variance
+| **函数**              | **语法**                                 | **解释**                                |
+|---------------------|----------------------------------------|---------------------------------------|
+| beta                | beta(high, low, timePeriod)            | Beta                                  |
+| correl              | correl(high, low, timePeriod)          | Pearson's Correlation Coefficient (r) |
+| linearreg           | linearreg(close, timePeriod)           | Linear Regression                     |
+| linearreg_angle     | linearreg_angle(close, timePeriod)     | Linear Regression Angle               |
+| linearreg_intercept | linearreg_intercept(close, timePeriod) | Linear Regression Intercept           |
+| linearreg_slope     | linearreg_slope(close, timePeriod)     | Linear Regression Slope               |
+| stdDev              | stdDev(close, timePeriod, nbdev)       | Standard Deviation                    |
+| tsf                 | tsf(close, timePeriod)                 | Time Series Forecast                  |
+| var                 | var(close, timePeriod, nbdev)          | Variance                              |
 
 ### Other Functions
+
 * 对Ta-Lib中的 Math Transform 与 Math Operators 类函数，可使用相应的DolphinDB内置函数代替。例如，Ta-Lib中的 SQRT, LN, SUM 函数，可分别使用DolphinDB中的 `sqrt`, `log`, `msum` 函数代替。
 * 下列 Ta-Lib 函数尚未在ta模块中实现：所有 Pattern Recognition 与 Cycle Indicators 类函数，以及HT_TRENDLINE(Hilbert Transform - Instantaneous Trendline), ADOSC(Chaikin A/D Oscillator), MAMA(MESA Adaptive Moving Average), SAR(Parabolic SAR), SAREXT(Parabolic SAR - Extended)函数。
 
-## 6. 路线图(Roadmap)
+## 7. 路线图(Roadmap)
 
 * 尚未实现的Ta-Lib函数将在未来版本中实现。
-* 目前DolphinDB的自定义函数不支持默认参数，也不支持函数调用时基于键值来输入参数。这两点将在DolphinDB Server 1.20.0中实现，届时ta模块将实现跟TA-Lib一致的默认参数。
-* 使用ta模块前必须使用 use ta 以加载，这在交互式查询中不尽方便。DolphinDB Server将在1.20版本中允许在系统初始化时预加载模块，ta模块函数与DolphinDB内置函数将拥有同等地位，以省去加载模块这个步骤。
 
+## 附件
 
+- V1.10.3: [ta.dos](./src/1.10.3/ta.dos)
+- V1.30.19, V2.00.7: [ta.dos](./src/1.30.19or2.00.7/ta.dos)
 
