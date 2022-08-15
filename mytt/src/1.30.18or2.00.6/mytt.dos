@@ -497,7 +497,7 @@ def BIAS(CLOSE, L1 = 6, L2 = 12, L3 = 24) {
 /*
  * BOLL函数，计算通信达的BOLL指标。
  * :param CLOSE: 序列，如收盘价序列（CLOSE）。
- * :param N: 数值，默认值是26。
+ * :param N: 数值，默认值是20。
  * :param P: 数值，默认值是2。
  * :return UPPER，MID，LOWER: 3个序列。
 */
