@@ -1,0 +1,36 @@
+/* *
+*  @ brief  
+*  This script is to test the performance of the implementation of WorldQuant 101 alpha in DolphinDB.
+*  @ Author: DolphinDB
+*  @ Last modification time: 2022.09.01
+*  @ DolphinDB server version: 2.00.7
+*  @ FileName: wq101alphaDDBTime.dos
+*  Don't forget to change your directory.
+*/
+
+use wq101alpha
+use prepare101
+
+times = array(INT, 0)
+passList = 48 56 58 59 63 67 69 70 76 79 80 82 87 89 90 91 93 97 100
+data = loadText("/YOUR_DIR/dataPerformance.csv")
+input = panel(data.tradetime, data.securityid, [data.open, data.close, data.high, data.low, data.vol, data.vwap])
+open, close, high, low, vol, vwap = panel(data.tradetime, data.securityid, [data.open, data.close, data.high, data.low, data.vol, data.vwap])
+
+defs()
+for (i in 1:102){
+	if (i in passList) times.append!(NULL)
+	else{
+		print(i)
+		alphaName = exec name from defs() where name = "wq101alpha::WQAlpha"+string(i)
+		alphaSyntax = exec syntax from defs() where name = "wq101alpha::WQAlpha"+string(i)
+		function = alphaName + alphaSyntax
+		t1 = time(now())
+		res = parseExpr(function[0]).eval()
+		t2 = time(now())
+		times.append!(t2 - t1)
+	}
+}
+
+res = table(1..101 as alphaNames, times as ddbTimeCost)
+saveText(res, "/YOUR_DIR/ddbPerformance.csv")

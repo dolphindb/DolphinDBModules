@@ -1,0 +1,1365 @@
+/* *
+*  @ brief  
+*  This script provides all necessary functions to prepare panel data for module wq101alpha.
+*  @ Author: DolphinDB
+*  @ Last modification time: 2022.09.01
+*  @ DolphinDB server version: 2.00.7
+*  @ FileName: prepare101.dos
+*/
+
+module prepare101
+
+
+//1. Overall preparation
+//Since the fields in the user's existing data table might be different from those in this module,
+//we need to create an one-to-one dictionary of user fields and module fields,
+//and return an in-memory table that matches the field names in this module for subsequent use.
+//User must fill in rawData, startTime, endTime. "infoData" is the table that relates to industry classification.
+
+def prepareData(rawData, startTime, endTime, securityidName=NULL, tradetimeName=NULL, openName=NULL, closeName=NULL, highName=NULL, lowName=NULL, volumeName=NULL, vwapName=NULL, infoSecurityidName=NULL, capName=NULL, indclassName=NULL, infoData=NULL){
+    officialNames = `securityid`tradetime`open`close`high`low`vol`vwap`securityid`cap`indclass
+    userNames = [securityidName, tradetimeName, openName, closeName, highName, lowName, volumeName, vwapName, infoSecurityidName, capName, indclassName]
+
+    namesMain = dict(STRING,STRING)
+    namesInfo = dict(STRING,STRING)
+
+    for (i in 0:8){
+        // By default there will be 8 fields in rawData
+        if (userNames[i] != NULL) namesMain[officialNames[i]] = userNames[i]
+    }
+
+    colsMain = sqlColAlias(sqlCol(namesMain.values()), namesMain.keys())
+    whereCondition = expr(startTime, <=, sqlCol(tradetimeName), <=, endTime)
+    data = sql(select=colsMain, from=rawData, where=whereCondition)
+
+    if (eqObj(infoData, NULL))  return data.eval()
+
+    for (i in 8:11) {
+        // By default there will be 3 fields in infoData
+        if (userNames[i] != NULL) namesInfo[officialNames[i]] = userNames[i]
+    }
+
+    colsInfo = sqlColAlias(sqlCol(namesInfo.values()), namesInfo.keys())
+    info = sql(select=colsInfo, from=infoData)
+
+    return select * from ej(data.eval(), info.eval(), `securityid)
+}
+
+
+//2. Preparation for cross-sectional factors.
+//The calculation process includes factors for time-series cross-sections or subject cross-sections (or both), without industry neutralization.
+//These factors take panel data as parameters and return panel data.
+
+//alpha 1
+//rank(Ts_ArgMax(SignedPower((returns<0?stddev(returns,20):close), 2), 5))-0.5
+//prepare panel data including close
+def prepare1(data, startTime, endTime){
+    p = exec close from data where tradetime between startTime : endTime pivot by tradetime, securityid
+    return p
+}
+
+
+//alpha 2
+//(-1 * correlation(rank(delta(log(volume), 2)), rank(((close - open) / open)), 6))
+//prepare panel data including volume, close, open
+def prepare2(data, startTime, endTime){
+    t = select securityid, tradetime, vol, close, open from data where tradetime between startTime : endTime
+    return dict(`vol`close`open, panel(t.tradetime, t.securityid, [t.vol, t.close, t.open]))
+}
+
+
+//alpha 3
+//(-1 * correlation(rank(open), rank(volume), 10))
+//prepare panel data including open, volume
+def prepare3(data, startTime, endTime){
+    t = select securityid, tradetime, vol, open from data where tradetime between startTime : endTime
+    return dict(`vol`open, panel(t.tradetime, t.securityid, [t.vol, t.open]))
+}
+
+
+//alpha 4
+//(-1 * Ts_Rank(rank(low), 9))
+//prepare panel data including low
+def prepare4(data, startTime, endTime){
+    p = exec low from data where tradetime between startTime : endTime pivot by tradetime, securityid
+    return p
+}
+
+
+//alpha 5
+//(rank((open - (sum(vwap, 10) / 10))) * (-1 * abs(rank((close - vwap)))))
+//prepare panel data including vwap, open, close
+def prepare5(data, startTime, endTime){
+    t = select securityid, tradetime, vwap, open, close from data where tradetime between startTime : endTime
+    return dict(`vwap`open`close, panel(t.tradetime, t.securityid, [t.vwap, t.open, t.close]))
+}
+
+
+//alpha 6
+//(-1 * correlation(open, volume, 10))
+//prepare panel data including open, volume
+def prepare6(data, startTime, endTime){
+    t = select securityid, tradetime, vol, open from data where tradetime between startTime : endTime
+    return dict(`vol`open, panel(t.tradetime, t.securityid, [t.vol, t.open]))
+}
+
+
+//alpha 7
+//((adv20 < volume) ? ((-1 * ts_rank(abs(delta(close, 7)), 60)) * sign(delta(close, 7))) : (-1 * 1))
+//prepare panel data including vol, close
+def prepare7(data, startTime, endTime){
+    t = select securityid, tradetime, vol, close from data where tradetime between startTime : endTime
+    return dict(`vol`close, panel(t.tradetime, t.securityid, [t.vol, t.close]))
+}
+
+
+//alpha 8
+//(-1 * rank(((sum(open, 5) * sum(returns, 5)) - delay((sum(open, 5) * sum(returns, 5)), 10))))
+//prepare panel data including open, close
+def prepare8(data, startTime, endTime){
+    t = select securityid, tradetime, open, close from data where tradetime between startTime : endTime
+    return dict(`open`close, panel(t.tradetime, t.securityid, [t.open, t.close]))
+}
+
+
+//alpha 9
+// ((0 < ts_min(delta(close, 1), 5)) ? delta(close, 1) : ((ts_max(delta(close, 1), 5) < 0) ? delta(close, 1) : (-1 * delta(close, 1))))
+//prepare panel data including close
+def prepare9(data, startTime, endTime){
+    p = exec close from data where tradetime between startTime : endTime pivot by tradetime, securityid
+    return p
+}
+
+
+//alpha 10
+//rank(((0 < ts_min(delta(close, 1), 4)) ? delta(close, 1) : ((ts_max(delta(close, 1), 4) < 0) ? delta(close, 1) : (-1 * delta(close, 1)))))
+//prepare panel data including close
+def prepare10(data, startTime, endTime){
+    p = exec close from data where tradetime between startTime : endTime pivot by tradetime, securityid
+    return p
+}
+
+
+//alpha 11
+//((rank(ts_max((vwap - close), 3)) + rank(ts_min((vwap - close), 3))) * rank(delta(volume, 3)))
+//prepare panel data including vwap, vol, close
+def prepare11(data, startTime, endTime){
+    t = select securityid, tradetime, vwap, vol, close from data where tradetime between startTime : endTime
+    return dict(`vwap`vol`close, panel(t.tradetime, t.securityid, [t.vwap, t.vol, t.close]))
+}
+
+
+//alpha 12
+//(sign(delta(volume, 1)) * (-1 * delta(close, 1)))
+//prepare panel data including vol, close
+def prepare12(data, startTime, endTime){
+    t = select securityid, tradetime, vol, close from data where tradetime between startTime : endTime
+    return dict(`vol`close, panel(t.tradetime, t.securityid, [t.vol, t.close]))
+}
+
+
+//alpha 13
+//(-1 * rank(covariance(rank(close), rank(volume), 5)))
+//prepare panel data including vol, close
+def prepare13(data, startTime, endTime){
+    t = select securityid, tradetime, vol, close from data where tradetime between startTime : endTime
+    return dict(`vol`close, panel(t.tradetime, t.securityid, [t.vol, t.close]))
+}
+
+
+//alpha 14
+//((-1 * rank(delta(returns, 3))) * correlation(open, volume, 10))
+//prepare panel data including vol, open, close
+def prepare14(data, startTime, endTime){
+    t = select securityid, tradetime, vol, open, close from data where tradetime between startTime : endTime
+    return dict(`vol`open`close, panel(t.tradetime, t.securityid, [t.vol, t.open, t.close]))
+}
+
+
+//alpha 15
+//(-1 * sum(rank(correlation(rank(high), rank(volume), 3)), 3))
+//prepare panel data including vol, high
+def prepare15(data, startTime, endTime){
+    t = select securityid, tradetime, vol, high from data where tradetime between startTime : endTime
+    return dict(`vol`high, panel(t.tradetime, t.securityid, [t.vol, t.high]))
+}
+
+
+//alpha 16
+//(-1 * rank(covariance(rank(high), rank(volume), 5)))
+//prepare panel data including vol, high
+def prepare16(data, startTime, endTime){
+    t = select securityid, tradetime, vol, high from data where tradetime between startTime : endTime
+    return dict(`vol`high, panel(t.tradetime, t.securityid, [t.vol, t.high]))
+}
+
+
+//alpha 17
+//(((-1 * rank(ts_rank(close, 10))) * rank(delta(delta(close, 1), 1))) * rank(ts_rank((volume / adv20), 5)))
+//prepare panel data including vol, close
+def prepare17(data, startTime, endTime){
+    t = select securityid, tradetime, vol, close from data where tradetime between startTime : endTime
+    return dict(`vol`close, panel(t.tradetime, t.securityid, [t.vol, t.close]))
+}
+
+
+//alpha 18
+//(-1 * rank(((stddev(abs((close - open)), 5) + (close - open)) + correlation(close, open, 10))))
+//prepare panel data including close, open
+def prepare18(data, startTime, endTime){
+    t = select securityid, tradetime, close, open from data where tradetime between startTime : endTime
+    return dict(`close`open, panel(t.tradetime, t.securityid, [t.close, t.open]))
+}
+
+
+//alpha 19
+//((-1 * sign(((close - delay(close, 7)) + delta(close, 7)))) * (1 + rank((1 + sum(returns, 250)))))
+//prepare panel data including close
+def prepare19(data, startTime, endTime){
+    p = exec close from data where tradetime between startTime : endTime pivot by tradetime, securityid
+    return p
+}
+
+
+//alpha 20
+//(((-1 * rank((open - delay(high, 1)))) * rank((open - delay(close, 1)))) * rank((open - delay(low, 1))))
+//prepare panel data including open, close, high, low
+def prepare20(data, startTime, endTime){
+    t = select securityid, tradetime, open, close, high, low from data where tradetime between startTime : endTime
+    return dict(`open`close`high`low, panel(t.tradetime, t.securityid, [t.open, t.close, t.high, t.low]))
+}
+
+
+//alpha 21
+//((((sum(close, 8) / 8) + stddev(close, 8)) < (sum(close, 2) / 2)) ? (-1 * 1) : (((sum(close, 2) / 2) < ((sum(close, 8) / 8) - stddev(close, 8))) ? 1 : (((1 < (volume / adv20)) || ((volume / adv20) == 1)) ? 1 : (-1 * 1))))
+//prepare panel data including close, vol
+def prepare21(data, startTime, endTime){
+    t = select securityid, tradetime, close, vol from data where tradetime between startTime : endTime
+    return dict(`close`vol, panel(t.tradetime, t.securityid, [t.close, t.vol]))
+}
+
+
+//alpha 22
+//(-1 * (delta(correlation(high, volume, 5), 5) * rank(stddev(close, 20))))
+//prepare panel data including close, vol, high
+def prepare22(data, startTime, endTime){
+    t = select securityid, tradetime, close, vol, high from data where tradetime between startTime : endTime
+    return dict(`close`vol`high, panel(t.tradetime, t.securityid, [t.close, t.vol, t.high]))
+}
+
+
+//alpha 23
+//(((sum(high, 20) / 20) < high) ? (-1 * delta(high, 2)) : 0)
+//prepare panel data including high
+def prepare23(data, startTime, endTime){
+    p = exec high from data where tradetime between startTime : endTime pivot by tradetime, securityid
+    return p
+}
+
+
+//alpha 24
+//((((delta((sum(close, 100) / 100), 100) / delay(close, 100)) < 0.05) || ((delta((sum(close, 100) / 100), 100) / delay(close, 100)) == 0.05)) ? (-1 * (close - ts_min(close, 100))) : (-1 * delta(close, 3)))
+//prepare panel data including close
+def prepare24(data, startTime, endTime){
+    p = exec close from data where tradetime between startTime : endTime pivot by tradetime, securityid
+    return p
+}
+
+
+//alpha 25
+//rank(((((-1 * returns) * adv20) * vwap) * (high - close)))
+//prepare panel data including close, vol, high, vwap
+def prepare25(data, startTime, endTime){
+    t = select securityid, tradetime, close, vol, high, vwap from data where tradetime between startTime : endTime
+    return dict(`close`vol`high`vwap, panel(t.tradetime, t.securityid, [t.close, t.vol, t.high, t.vwap]))
+}
+
+
+//alpha 26
+//(-1 * ts_max(correlation(ts_rank(volume, 5), ts_rank(high, 5), 5), 3))
+//prepare panel data including vol, high
+def prepare26(data, startTime, endTime){
+    t = select securityid, tradetime, vol, high from data where tradetime between startTime : endTime
+    return dict(`vol`high, panel(t.tradetime, t.securityid, [t.vol, t.high]))
+}
+
+
+//alpha 27
+//((0.5 < rank((sum(correlation(rank(volume), rank(vwap), 6), 2) / 2.0))) ? (-1 * 1) : 1)
+//prepare panel data including vol, vwap
+def prepare27(data, startTime, endTime){
+    t = select securityid, tradetime, vol, vwap from data where tradetime between startTime : endTime
+    return dict(`vol`vwap, panel(t.tradetime, t.securityid, [t.vol, t.vwap]))
+}
+
+
+//alpha 28
+//scale(((correlation(adv20, low, 5) + ((high + low) / 2)) - close))
+//prepare panel data including vol, high, low, close
+def prepare28(data, startTime, endTime){
+    t = select securityid, tradetime, vol, high, low, close from data where tradetime between startTime : endTime
+    return dict(`vol`high`low`close, panel(t.tradetime, t.securityid, [t.vol, t.high, t.low, t.close]))
+}
+
+
+//alpha 29
+//(min(product(rank(rank(scale(log(sum(ts_min(rank(rank((-1 * rank(delta((close - 1), 5))))), 2), 1))))), 1), 5) + ts_rank(delay((-1 * returns), 6), 5))
+//prepare panel data including close
+def prepare29(data, startTime, endTime){
+    p = exec close from data where tradetime between startTime : endTime pivot by tradetime, securityid
+    return p
+}
+
+
+//alpha 30
+//(((1.0 - rank(((sign((close - delay(close, 1))) + sign((delay(close, 1) - delay(close, 2)))) + sign((delay(close, 2) - delay(close, 3)))))) * sum(volume, 5)) / sum(volume, 20))
+//prepare panel data including vol, close
+def prepare30(data, startTime, endTime){
+    t = select securityid, tradetime, vol, close from data where tradetime between startTime : endTime
+    return dict(`vol`close, panel(t.tradetime, t.securityid, [t.vol, t.close]))
+}
+
+
+//alpha 31
+// ((rank(rank(rank(decay_linear((-1 * rank(rank(delta(close, 10)))), 10)))) + rank((-1 * delta(close, 3)))) + sign(scale(correlation(adv20, low, 12))))
+//prepare panel data including vol, close, low
+def prepare31(data, startTime, endTime){
+    t = select securityid, tradetime, vol, close, low from data where tradetime between startTime : endTime
+    return dict(`vol`close`low, panel(t.tradetime, t.securityid, [t.vol, t.close, t.low]))
+}
+
+
+//alpha 32
+//(scale(((sum(close, 7) / 7) - close)) + (20 * scale(correlation(vwap, delay(close, 5), 230))))
+//prepare panel data including close, vwap
+def prepare32(data, startTime, endTime){
+    t = select securityid, tradetime, close, vwap from data where tradetime between startTime : endTime
+    return dict(`close`vwap, panel(t.tradetime, t.securityid, [t.close, t.vwap]))
+}
+
+
+//alpha 33
+//rank((-1 * ((1 - (open / close))^1)))
+//prepare panel data including open, close
+def prepare33(data, startTime, endTime){
+    t = select securityid, tradetime, open, close from data where tradetime between startTime : endTime
+    return dict(`open`close, panel(t.tradetime, t.securityid, [t.open, t.close]))
+}
+
+
+//alpha 34
+//rank(((1 - rank((stddev(returns, 2) / stddev(returns, 5)))) + (1 - rank(delta(close, 1)))))
+//prepare panel data including close
+def prepare34(data, startTime, endTime){
+    p = exec close from data where tradetime between startTime : endTime pivot by tradetime, securityid
+    return p
+}
+
+
+//alpha 35
+//((Ts_Rank(volume, 32) * (1 - Ts_Rank(((close + high) - low), 16))) * (1 - Ts_Rank(returns, 32)))
+//prepare panel data including vol, close, high, low
+def prepare35(data, startTime, endTime){
+    t = select securityid, tradetime, vol, close, high, low from data where tradetime between startTime : endTime
+    return dict(`vol`close`high`low, panel(t.tradetime, t.securityid, [t.vol, t.close, t.high, t.low]))
+}
+
+
+//alpha 36
+//(((((2.21 * rank(correlation((close - open), delay(volume, 1), 15))) + (0.7 * rank((open - close)))) + (0.73 * rank(Ts_Rank(delay((-1 * returns), 6), 5)))) + rank(abs(correlation(vwap, adv20, 6)))) + (0.6 * rank((((sum(close, 200) / 200) - open) * (close - open)))))
+//prepare panel data including vol, open, close, vwap
+def prepare36(data, startTime, endTime){
+    t = select securityid, tradetime, vol, open, close, vwap from data where tradetime between startTime : endTime
+    return dict(`vol`open`close`vwap, panel(t.tradetime, t.securityid, [t.vol, t.open, t.close, t.vwap]))
+}
+
+
+//alpha 37
+//(rank(correlation(delay((open - close), 1), close, 200)) + rank((open - close)))
+//prepare panel data including open, close
+def prepare37(data, startTime, endTime){
+    t = select securityid, tradetime, open, close from data where tradetime between startTime : endTime
+    return dict(`open`close, panel(t.tradetime, t.securityid, [t.open, t.close]))
+}
+
+
+//alpha 38
+//((-1 * rank(Ts_Rank(close, 10))) * rank((close / open)))
+//prepare panel data including open, close
+def prepare38(data, startTime, endTime){
+    t = select securityid, tradetime, open, close from data where tradetime between startTime : endTime
+    return dict(`open`close, panel(t.tradetime, t.securityid, [t.open, t.close]))
+}
+
+
+//alpha 39
+//((-1 * rank((delta(close, 7) * (1 - rank(decay_linear((volume / adv20), 9)))))) * (1 + rank(sum(returns, 250))))
+//prepare panel data including vol, close
+def prepare39(data, startTime, endTime){
+    t = select securityid, tradetime, vol, close from data where tradetime between startTime : endTime
+    return dict(`vol`close, panel(t.tradetime, t.securityid, [t.vol, t.close]))
+}
+
+
+//alpha 40
+//((-1 * rank(stddev(high, 10))) * correlation(high, volume, 10))
+//prepare panel data including vol, high
+def prepare40(data, startTime, endTime){
+    t = select securityid, tradetime, vol, high from data where tradetime between startTime : endTime
+    return dict(`vol`high, panel(t.tradetime, t.securityid, [t.vol, t.high]))
+}
+
+
+//alpha 42
+//(rank((vwap - close)) / rank((vwap + close)))
+//prepare panel data including vwap, close
+def prepare42(data, startTime, endTime){
+    t = select securityid, tradetime, vwap, close from data where tradetime between startTime : endTime
+    return dict(`vwap`close, panel(t.tradetime, t.securityid, [t.vwap, t.close]))
+}
+
+
+//alpha 43
+//(ts_rank((volume / adv20), 20) * ts_rank((-1 * delta(close, 7)), 8))
+//prepare panel data including vol, close
+def prepare43(data, startTime, endTime){
+    t = select securityid, tradetime, vol, close from data where tradetime between startTime : endTime
+    return dict(`vol`close, panel(t.tradetime, t.securityid, [t.vol, t.close]))
+}
+
+
+//alpha 44
+//(-1 * correlation(high, rank(volume), 5))
+//prepare panel data including vol, high
+def prepare44(data, startTime, endTime){
+    t = select securityid, tradetime, vol, high from data where tradetime between startTime : endTime
+    return dict(`vol`high, panel(t.tradetime, t.securityid, [t.vol, t.high]))
+}
+
+
+//alpha 45
+//(-1 * ((rank((sum(delay(close, 5), 20) / 20)) * correlation(close, volume, 2)) * rank(correlation(sum(close, 5), sum(close, 20), 2))))
+//prepare panel data including vol, close
+def prepare45(data, startTime, endTime){
+    t = select securityid, tradetime, vol, close from data where tradetime between startTime : endTime
+    return dict(`vol`close, panel(t.tradetime, t.securityid, [t.vol, t.close]))
+}
+
+
+//alpha 46
+//((0.25 < (((delay(close, 20) - delay(close, 10)) / 10) - ((delay(close, 10) - close) / 10))) ? (-1 * 1) : (((((delay(close, 20) - delay(close, 10)) / 10) - ((delay(close, 10) - close) / 10)) < 0) ? 1 : ((-1 * 1) * (close - delay(close, 1)))))
+//prepare panel data including close
+def prepare46(data, startTime, endTime){
+    p = exec close from data where tradetime between startTime : endTime pivot by tradetime, securityid
+    return p
+}
+
+
+//alpha 47
+//((((rank((1 / close)) * volume) / adv20) * ((high * rank((high - close))) / (sum(high, 5) / 5))) - rank((vwap - delay(vwap, 5))))
+//prepare panel data including vol, close, high, vwap
+def prepare47(data, startTime, endTime){
+    t = select securityid, tradetime, vol, close, high, vwap from data where tradetime between startTime : endTime
+    return dict(`vol`close`high`vwap, panel(t.tradetime, t.securityid, [t.vol, t.close, t.high, t.vwap]))
+}
+
+
+//alpha 49
+//(((((delay(close, 20) - delay(close, 10)) / 10) - ((delay(close, 10) - close) / 10)) < (-1 * 0.1)) ? 1 : ((-1 * 1) * (close - delay(close, 1))))
+//prepare panel data including close
+def prepare49(data, startTime, endTime){
+    p = exec close from data where tradetime between startTime : endTime pivot by tradetime, securityid
+    return p
+}
+
+
+//alpha 50
+//(-1 * ts_max(rank(correlation(rank(volume), rank(vwap), 5)), 5))
+//prepare panel data including vol, vwap
+def prepare50(data, startTime, endTime){
+    t = select securityid, tradetime, vol, vwap from data where tradetime between startTime : endTime
+    return dict(`vol`vwap, panel(t.tradetime, t.securityid, [t.vol, t.vwap]))
+}
+
+
+//alpha 51
+//(((((delay(close, 20) - delay(close, 10)) / 10) - ((delay(close, 10) - close) / 10)) < (-1 * 0.05)) ? 1 : ((-1 * 1) * (close - delay(close, 1))))
+//prepare panel data including close
+def prepare51(data, startTime, endTime){
+    p = exec close from data where tradetime between startTime : endTime pivot by tradetime, securityid
+    return p
+}
+
+
+//alpha 52
+//((((-1 * ts_min(low, 5)) + delay(ts_min(low, 5), 5)) * rank(((sum(returns, 240) - sum(returns, 20)) / 220))) * ts_rank(volume, 5))
+//prepare panel data including vol, close, low
+def prepare52(data, startTime, endTime){
+    t = select securityid, tradetime, vol, close, low from data where tradetime between startTime : endTime
+    return dict(`vol`close`low, panel(t.tradetime, t.securityid, [t.vol, t.close, t.low]))
+}
+
+
+//alpha 53
+//(-1 * delta((((close - low) - (high - close)) / (close - low)), 9))
+//prepare panel data including close, high, low
+def prepare53(data, startTime, endTime){
+    t = select securityid, tradetime, close, high, low from data where tradetime between startTime : endTime
+    return dict(`close`high`low, panel(t.tradetime, t.securityid, [t.close, t.high, t.low]))
+}
+
+
+//alpha 55
+//(-1 * correlation(rank(((close - ts_min(low, 12)) / (ts_max(high, 12) - ts_min(low, 12)))), rank(volume), 6))
+//prepare panel data including vol, close, high, low
+def prepare55(data, startTime, endTime){
+    t = select securityid, tradetime, vol, close, high, low from data where tradetime between startTime : endTime
+    return dict(`vol`close`high`low, panel(t.tradetime, t.securityid, [t.vol, t.close, t.high, t.low]))
+}
+
+
+//alpha 57
+//(0 - (1 * ((close - vwap) / decay_linear(rank(ts_argmax(close, 30)), 2))))
+//prepare panel data including close, vwap
+def prepare57(data, startTime, endTime){
+    t = select securityid, tradetime, close, vwap from data where tradetime between startTime : endTime
+    return dict(`close`vwap, panel(t.tradetime, t.securityid, [t.close, t.vwap]))
+}
+
+
+//alpha 60
+//(0 - (1 * ((2 * scale(rank(((((close - low) - (high - close)) / (high - low)) * volume)))) - scale(rank(ts_argmax(close, 10))))))
+//prepare panel data including vol, close, high, low
+def prepare60(data, startTime, endTime){
+    t = select securityid, tradetime, vol, close, high, low from data where tradetime between startTime : endTime
+    return dict(`vol`close`high`low, panel(t.tradetime, t.securityid, [t.vol, t.close, t.high, t.low]))
+}
+
+
+//alpha 61
+//(rank((vwap - ts_min(vwap, 16.1219))) < rank(correlation(vwap, adv180, 17.9282)))
+//prepare panel data including vol, vwap
+def prepare61(data, startTime, endTime){
+    t = select securityid, tradetime, vol, vwap from data where tradetime between startTime : endTime
+    return dict(`vol`vwap, panel(t.tradetime, t.securityid, [t.vol, t.vwap]))
+}
+
+//alpha 62
+//((rank(correlation(vwap, sum(adv20, 22.4101), 9.91009)) < rank(((rank(open) + rank(open)) < (rank(((high + low) / 2)) + rank(high))))) * -1)
+//prepare panel data including vol, vwap, open, high, low
+def prepare62(data, startTime, endTime){
+    t = select securityid, tradetime, vol, vwap, open, high, low from data where tradetime between startTime : endTime
+    return dict(`vol`vwap`open`high`low, panel(t.tradetime, t.securityid, [t.vol, t.vwap, t.open, t.high, t.low]))
+}
+
+
+//alpha 64
+//((rank(correlation(sum(((open * 0.178404) + (low * (1 - 0.178404))), 12.7054), sum(adv120, 12.7054), 16.6208)) < rank(delta(((((high + low) / 2) * 0.178404) + (vwap * (1 - 0.178404))), 3.69741))) * -1)
+//prepare panel data including vol, vwap, open, high, low
+def prepare64(data, startTime, endTime){
+    t = select securityid, tradetime, vol, vwap, open, high, low from data where tradetime between startTime : endTime
+    return dict(`vol`vwap`open`high`low, panel(t.tradetime, t.securityid, [t.vol, t.vwap, t.open, t.high, t.low]))
+}
+
+
+//alpha 65
+//((rank(correlation(((open * 0.00817205) + (vwap * (1 - 0.00817205))), sum(adv60, 8.6911), 6.40374)) < rank((open - ts_min(open, 13.635)))) * -1)
+//prepare panel data including vol, vwap, open
+def prepare65(data, startTime, endTime){
+    t = select securityid, tradetime, vol, vwap, open from data where tradetime between startTime : endTime
+    return dict(`vol`vwap`open, panel(t.tradetime, t.securityid, [t.vol, t.vwap, t.open]))
+}
+
+
+//alpha 66
+//((rank(decay_linear(delta(vwap, 3.51013), 7.23052)) + Ts_Rank(decay_linear(((((low * 0.96633) + (low * (1 - 0.96633))) - vwap) / (open - ((high + low) / 2))), 11.4157), 6.72611)) * -1)
+//prepare panel data including vwap, high, low, open
+def prepare66(data, startTime, endTime){
+    t = select securityid, tradetime, vwap, high, low, open from data where tradetime between startTime : endTime
+    return dict(`vwap`high`low`open, panel(t.tradetime, t.securityid, [t.vwap, t.high, t.low, t.open]))
+}
+
+
+//alpha 68
+//((Ts_Rank(correlation(rank(high), rank(adv15), 8.91644), 13.9333) < rank(delta(((close * 0.518371) + (low * (1 - 0.518371))), 1.06157))) * -1)
+//prepare panel data including vol, close, high, low
+def prepare68(data, startTime, endTime){
+    t = select securityid, tradetime, vol, close, high, low from data where tradetime between startTime : endTime
+    return dict(`vol`close`high`low, panel(t.tradetime, t.securityid, [t.vol, t.close, t.high, t.low]))
+}
+
+
+//alpha 71
+//max(Ts_Rank(decay_linear(correlation(Ts_Rank(close, 3.43976), Ts_Rank(adv180, 12.0647), 18.0175), 4.20501), 15.6948), Ts_Rank(decay_linear((rank(((low + open) - (vwap + vwap)))^2), 16.4662), 4.4388))
+//prepare panel data including vol, vwap, close, open, low
+def prepare71(data, startTime, endTime){
+    t = select securityid, tradetime, vol, vwap, close, open, low from data where tradetime between startTime : endTime
+    return dict(`vol`vwap`close`open`low, panel(t.tradetime, t.securityid, [t.vol, t.vwap, t.close, t.open, t.low]))
+}
+
+
+//alpha 72
+//(rank(decay_linear(correlation(((high + low) / 2), adv40, 8.93345), 10.1519)) / rank(decay_linear(correlation(Ts_Rank(vwap, 3.72469), Ts_Rank(volume, 18.5188), 6.86671), 2.95011)))
+//prepare panel data including vol, vwap, high, low
+def prepare72(data, startTime, endTime){
+    t = select securityid, tradetime, vol, vwap, high, low from data where tradetime between startTime : endTime
+    return dict(`vol`vwap`high`low, panel(t.tradetime, t.securityid, [t.vol, t.vwap, t.high, t.low]))
+}
+
+
+//alpha 73
+//(max(rank(decay_linear(delta(vwap, 4.72775), 2.91864)), Ts_Rank(decay_linear(((delta(((open * 0.147155) + (low * (1 - 0.147155))), 2.03608) / ((open * 0.147155) + (low * (1 - 0.147155)))) * -1), 3.33829), 16.7411)) * -1)
+//prepare panel data including vwap, open, low
+def prepare73(data, startTime, endTime){
+    t = select securityid, tradetime, vwap, open, low from data where tradetime between startTime : endTime
+    return dict(`vwap`open`low, panel(t.tradetime, t.securityid, [t.vwap, t.open, t.low]))
+}
+
+
+//alpha 74
+//((rank(correlation(close, sum(adv30, 37.4843), 15.1365)) < rank(correlation(rank(((high * 0.0261661) + (vwap * (1 - 0.0261661)))), rank(volume), 11.4791))) * -1)
+//prepare panel data including vol, vwap, close, high
+def prepare74(data, startTime, endTime){
+    t = select securityid, tradetime, vol, vwap, close, high from data where tradetime between startTime : endTime
+    return dict(`vol`vwap`close`high, panel(t.tradetime, t.securityid, [t.vol, t.vwap, t.close, t.high]))
+}
+
+
+//alpha 75
+//(rank(correlation(vwap, volume, 4.24304)) < rank(correlation(rank(low), rank(adv50), 12.4413)))
+//prepare panel data including vol, vwap, low
+def prepare75(data, startTime, endTime){
+    t = select securityid, tradetime, vol, vwap, low from data where tradetime between startTime : endTime
+    return dict(`vol`vwap`low, panel(t.tradetime, t.securityid, [t.vol, t.vwap, t.low]))
+}
+
+
+//alpha 77
+//min(rank(decay_linear(((((high + low) / 2) + high) - (vwap + high)), 20.0451)), rank(decay_linear(correlation(((high + low) / 2), adv40, 3.1614), 5.64125)))
+//prepare panel data including vol, vwap, high, low
+def prepare77(data, startTime, endTime){
+    t = select securityid, tradetime, vol, vwap, high, low from data where tradetime between startTime : endTime
+    return dict(`vol`vwap`high`low, panel(t.tradetime, t.securityid, [t.vol, t.vwap, t.high, t.low]))
+}
+
+
+//alpha 78
+//(rank(correlation(sum(((low * 0.352233) + (vwap * (1 - 0.352233))), 19.7428), sum(adv40, 19.7428), 6.83313))^rank(correlation(rank(vwap), rank(volume), 5.77492)))
+//prepare panel data including vol, vwap, low
+def prepare78(data, startTime, endTime){
+    t = select securityid, tradetime, vol, vwap, low from data where tradetime between startTime : endTime
+    return dict(`vol`vwap`low, panel(t.tradetime, t.securityid, [t.vol, t.vwap, t.low]))
+}
+
+
+//alpha 81
+//((rank(Log(product(rank((rank(correlation(vwap, sum(adv10, 49.6054), 8.47743))^4)), 14.9655))) < rank(correlation(rank(vwap), rank(volume), 5.07914))) * -1)
+//prepare panel data including vol, vwap
+def prepare81(data, startTime, endTime){
+    t = select securityid, tradetime, vol, vwap from data where tradetime between startTime : endTime
+    return dict(`vol`vwap, panel(t.tradetime, t.securityid, [t.vol, t.vwap]))
+}
+
+
+//alpha 83
+//((rank(delay(((high - low) / (sum(close, 5) / 5)), 2)) * rank(rank(volume))) / (((high - low) / (sum(close, 5) / 5)) / (vwap - close)))
+//prepare panel data including vol, vwap, close, high, low
+def prepare83(data, startTime, endTime){
+    t = select securityid, tradetime, vol, vwap, close, high, low from data where tradetime between startTime : endTime
+    return dict(`vol`vwap`close`high`low, panel(t.tradetime, t.securityid, [t.vol, t.vwap, t.close, t.high, t.low]))
+}
+
+
+//alpha 84
+//SignedPower(Ts_Rank((vwap - ts_max(vwap, 15.3217)), 20.7127), delta(close, 4.96796))
+//prepare panel data including vwap, close
+def prepare84(data, startTime, endTime){
+    t = select securityid, tradetime, vwap, close from data where tradetime between startTime : endTime
+    return dict(`vwap`close, panel(t.tradetime, t.securityid, [t.vwap, t.close]))
+}
+
+
+//alpha 85
+//(rank(correlation(((high * 0.876703) + (close * (1 - 0.876703))), adv30, 9.61331))^rank(correlation(Ts_Rank(((high + low) / 2), 3.70596), Ts_Rank(volume, 10.1595), 7.11408)))
+//prepare panel data including vol, close, high, low
+def prepare85(data, startTime, endTime){
+    t = select securityid, tradetime, vol, close, high, low from data where tradetime between startTime : endTime
+    return dict(`vol`close`high`low, panel(t.tradetime, t.securityid, [t.vol, t.close, t.high, t.low]))
+}
+
+
+//alpha 86
+//((Ts_Rank(correlation(close, sum(adv20, 14.7444), 6.00049), 20.4195) < rank(((open + close) - (vwap + open)))) * -1)
+//prepare panel data including vol, vwap, open, close
+def prepare86(data, startTime, endTime){
+    t = select securityid, tradetime, vol, vwap, open, close from data where tradetime between startTime : endTime
+    return dict(`vol`vwap`open`close, panel(t.tradetime, t.securityid, [t.vol, t.vwap, t.open, t.close]))
+}
+
+
+//alpha 88
+//min(rank(decay_linear(((rank(open) + rank(low)) - (rank(high) + rank(close))), 8.06882)), Ts_Rank(decay_linear(correlation(Ts_Rank(close, 8.44728), Ts_Rank(adv60, 20.6966), 8.01266), 6.65053), 2.61957))
+
+//prepare panel data including vol, open, close, high, low
+def prepare88(data, startTime, endTime){
+    t = select securityid, tradetime, vol, open, close, high, low from data where tradetime between startTime : endTime
+    return dict(`vol`open`close`high`low, panel(t.tradetime, t.securityid, [t.vol, t.open, t.close, t.high, t.low]))
+}
+
+
+//alpha 92
+//min(Ts_Rank(decay_linear(((((high + low) / 2) + close) < (low + open)), 14.7221), 18.8683), Ts_Rank(decay_linear(correlation(rank(low), rank(adv30), 7.58555), 6.94024), 6.80584))
+//prepare panel data including vol, open, close, high, low
+def prepare92(data, startTime, endTime){
+    t = select securityid, tradetime, vol, open, close, high, low from data where tradetime between startTime : endTime
+    return dict(`vol`open`close`high`low, panel(t.tradetime, t.securityid, [t.vol, t.open, t.close, t.high, t.low]))
+}
+
+
+//alpha 94
+//((rank((vwap - ts_min(vwap, 11.5783)))^Ts_Rank(correlation(Ts_Rank(vwap, 19.6462), Ts_Rank(adv60, 4.02992), 18.0926), 2.70756)) * -1)
+//prepare panel data including vol, vwap
+def prepare94(data, startTime, endTime){
+    t = select securityid, tradetime, vol, vwap from data where tradetime between startTime : endTime
+    return dict(`vol`vwap, panel(t.tradetime, t.securityid, [t.vol, t.vwap]))
+}
+
+
+//alpha 95
+//(rank((open - ts_min(open, 12.4105))) < Ts_Rank((rank(correlation(sum(((high + low) / 2), 19.1351), sum(adv40, 19.1351), 12.8742))^5), 11.7584))
+//prepare panel data including vol, open, high, low
+def prepare95(data, startTime, endTime){
+    t = select securityid, tradetime, vol, open, high, low from data where tradetime between startTime : endTime
+    return dict(`vol`open`high`low, panel(t.tradetime, t.securityid, [t.vol, t.open, t.high, t.low]))
+}
+
+
+//alpha 96
+//(max(Ts_Rank(decay_linear(correlation(rank(vwap), rank(volume), 3.83878), 4.16783), 8.38151), Ts_Rank(decay_linear(Ts_ArgMax(correlation(Ts_Rank(close, 7.45404), Ts_Rank(adv60, 4.13242), 3.65459), 12.6556), 14.0365), 13.4143)) * -1)
+//prepare panel data including vol, vwap, close
+def prepare96(data, startTime, endTime){
+    t = select securityid, tradetime, vol, vwap, close from data where tradetime between startTime : endTime
+    return dict(`vol`vwap`close, panel(t.tradetime, t.securityid, [t.vol, t.vwap, t.close]))
+}
+
+
+//alpha 98
+//(rank(decay_linear(correlation(vwap, sum(adv5, 26.4719), 4.58418), 7.18088)) - rank(decay_linear(Ts_Rank(Ts_ArgMin(correlation(rank(open), rank(adv15), 20.8187), 8.62571), 6.95668), 8.07206)))
+//prepare panel data including vwap, volume, open
+def prepare98(data, startTime, endTime){
+	t = select securityid, tradetime, vwap, vol, open from data where tradetime between startTime : endTime
+	return dict(`vwap`open`vol, panel(t.tradetime, t.securityid, [t.vwap, t.open, t.vol]))
+}
+
+
+//alpha 99
+//((rank(correlation(sum(((high + low) / 2), 19.8975), sum(adv60, 19.8975), 8.8136)) < rank(correlation(low, volume, 6.28259))) * -1)
+//prepare panel data including vol, high, low
+def prepare99(data, startTime, endTime){
+    t = select securityid, tradetime, vol, high, low from data where tradetime between startTime : endTime
+    return dict(`vol`high`low, panel(t.tradetime, t.securityid, [t.vol, t.high, t.low]))
+}
+
+
+
+//3. Calculation helper functions.
+
+def calAlpha1(data, startTime, endTime){
+    input = prepare1(data, startTime, endTime)
+    return wq101alpha::WQAlpha1(input)
+}
+
+
+def calAlpha2(data, startTime, endTime){
+    input = prepare2(data, startTime, endTime)
+    return wq101alpha::WQAlpha2(input.vol, input.close, input.open)
+}
+
+
+def calAlpha3(data, startTime, endTime){
+    input = prepare3(data, startTime, endTime)
+    return wq101alpha::WQAlpha3(input.vol, input.open)
+}
+
+def calAlpha4(data, startTime, endTime){
+    input = prepare4(data, startTime, endTime)
+    return wq101alpha::WQAlpha4(input)
+}
+
+
+def calAlpha5(data, startTime, endTime){
+    input = prepare5(data, startTime, endTime)
+    return wq101alpha::WQAlpha5(input.vwap, input.open, input.close)
+}
+
+
+def calAlpha6(data, startTime, endTime){
+    input = prepare6(data, startTime, endTime)
+    return wq101alpha::WQAlpha6(input.vol, input.open)
+}
+
+
+def calAlpha7(data, startTime, endTime){
+    input = prepare7(data, startTime, endTime)
+    return wq101alpha::WQAlpha7(input.vol, input.close)
+}
+
+
+def calAlpha8(data, startTime, endTime){
+    input = prepare8(data, startTime, endTime)
+    return wq101alpha::WQAlpha8(input.open, input.close)
+}
+
+
+def calAlpha9(data, startTime, endTime){
+    input = prepare9(data, startTime, endTime)
+    return wq101alpha::WQAlpha9(input)
+}
+
+def calAlpha10(data, startTime, endTime){
+    input = prepare10(data, startTime, endTime)
+    return wq101alpha::WQAlpha10(input)
+}
+
+
+def calAlpha11(data, startTime, endTime){
+    input = prepare11(data, startTime, endTime)
+    return wq101alpha::WQAlpha11(input.vwap, input.vol, input.close)
+}
+
+
+def calAlpha12(data, startTime, endTime){
+    input = prepare12(data, startTime, endTime)
+    return wq101alpha::WQAlpha12(input.vol, input.close)
+}
+
+
+def calAlpha13(data, startTime, endTime){
+    input = prepare13(data, startTime, endTime)
+    return wq101alpha::WQAlpha13(input.vol, input.close)
+}
+
+
+def calAlpha14(data, startTime, endTime){
+    input = prepare14(data, startTime, endTime)
+    return wq101alpha::WQAlpha14(input.vol, input.open, input.close)
+}
+
+
+def calAlpha15(data, startTime, endTime){
+    input = prepare15(data, startTime, endTime)
+    return wq101alpha::WQAlpha15(input.vol, input.high)
+}
+
+
+def calAlpha16(data, startTime, endTime){
+    input = prepare16(data, startTime, endTime)
+    return wq101alpha::WQAlpha16(input.vol, input.high)
+}
+
+
+def calAlpha17(data, startTime, endTime){
+    input = prepare17(data, startTime, endTime)
+    return wq101alpha::WQAlpha17(input.vol, input.close)
+}
+
+
+def calAlpha18(data, startTime, endTime){
+    input = prepare18(data, startTime, endTime)
+    return wq101alpha::WQAlpha18(input.close, input.open)
+}
+
+
+def calAlpha19(data, startTime, endTime){
+    input = prepare19(data, startTime, endTime)
+    return wq101alpha::WQAlpha19(input)
+}
+
+
+def calAlpha20(data, startTime, endTime){
+    input = prepare20(data, startTime, endTime)
+    return wq101alpha::WQAlpha20(input.open, input.close, input.high, input.low)
+}
+
+
+def calAlpha21(data, startTime, endTime){
+    input = prepare21(data, startTime, endTime)
+    return wq101alpha::WQAlpha21(input.close, input.vol)
+}
+
+
+def calAlpha22(data, startTime, endTime){
+    input = prepare22(data, startTime, endTime)
+    return wq101alpha::WQAlpha22(input.close, input.vol, input.high)
+}
+
+
+def calAlpha23(data, startTime, endTime){
+    input = prepare23(data, startTime, endTime)
+    return wq101alpha::WQAlpha23(input)
+}
+
+
+def calAlpha24(data, startTime, endTime){
+    input = prepare24(data, startTime, endTime)
+    return wq101alpha::WQAlpha24(input)
+}
+
+
+def calAlpha25(data, startTime, endTime){
+    input = prepare25(data, startTime, endTime)
+    return wq101alpha::WQAlpha25(input.close, input.vol, input.high, input.vwap)
+}
+
+
+def calAlpha26(data, startTime, endTime){
+    input = prepare26(data, startTime, endTime)
+    return wq101alpha::WQAlpha26(input.vol, input.high)
+}
+
+
+def calAlpha27(data, startTime, endTime){
+    input = prepare27(data, startTime, endTime)
+    return wq101alpha::WQAlpha27(input.vol, input.vwap)
+}
+
+
+def calAlpha28(data, startTime, endTime){
+    input = prepare28(data, startTime, endTime)
+    return wq101alpha::WQAlpha28(input.vol, input.high, input.low, input.close)
+}
+
+
+def calAlpha29(data, startTime, endTime){
+    input = prepare29(data, startTime, endTime)
+    return wq101alpha::WQAlpha29(input)
+}
+
+
+def calAlpha30(data, startTime, endTime){
+    input = prepare30(data, startTime, endTime)
+    return wq101alpha::WQAlpha30(input.vol, input.close)
+}
+
+
+def calAlpha31(data, startTime, endTime){
+    input = prepare31(data, startTime, endTime)
+    return wq101alpha::WQAlpha31(input.vol, input.close, input.low)
+}
+
+
+def calAlpha32(data, startTime, endTime){
+    input = prepare32(data, startTime, endTime)
+    return wq101alpha::WQAlpha32(input.close, input.vwap)
+}
+
+
+def calAlpha33(data, startTime, endTime){
+    input = prepare33(data, startTime, endTime)
+    return wq101alpha::WQAlpha33(input.open, input.close)
+}
+
+
+def calAlpha34(data, startTime, endTime){
+    input = prepare34(data, startTime, endTime)
+    return wq101alpha::WQAlpha34(input)
+}
+
+
+def calAlpha35(data, startTime, endTime){
+    input = prepare35(data, startTime, endTime)
+    return wq101alpha::WQAlpha35(input.vol, input.close, input.high, input.low)
+}
+
+
+def calAlpha36(data, startTime, endTime){
+    input = prepare36(data, startTime, endTime)
+    return wq101alpha::WQAlpha36(input.vol, input.open, input.close, input.vwap)
+}
+
+
+def calAlpha37(data, startTime, endTime){
+    input = prepare37(data, startTime, endTime)
+    return wq101alpha::WQAlpha37(input.open, input.close)
+}
+
+
+def calAlpha38(data, startTime, endTime){
+    input = prepare38(data, startTime, endTime)
+    return wq101alpha::WQAlpha38(input.open, input.close)
+}
+
+
+def calAlpha39(data, startTime, endTime){
+    input = prepare39(data, startTime, endTime)
+    return wq101alpha::WQAlpha39(input.vol, input.close)
+}
+
+
+def calAlpha40(data, startTime, endTime){
+    input = prepare40(data, startTime, endTime)
+    return wq101alpha::WQAlpha40(input.vol, input.high)
+}
+
+
+def calAlpha41(data, startTime, endTime){
+    return select tradetime, securityid, `alpha41 as factorname, wq101alpha::WQAlpha41(high, low, vwap) as val from data where tradetime between startTime : endTime
+}
+
+
+def calAlpha42(data, startTime, endTime){
+    input = prepare42(data, startTime, endTime)
+    return wq101alpha::WQAlpha42(input.vwap, input.close)
+}
+
+
+def calAlpha43(data, startTime, endTime){
+    input = prepare43(data, startTime, endTime)
+    return wq101alpha::WQAlpha43(input.vol, input.close)
+}
+
+
+def calAlpha44(data, startTime, endTime){
+    input = prepare44(data, startTime, endTime)
+    return wq101alpha::WQAlpha44(input.vol, input.high)
+}
+
+
+def calAlpha45(data, startTime, endTime){
+    input = prepare45(data, startTime, endTime)
+    return wq101alpha::WQAlpha45(input.vol, input.close)
+}
+
+
+def calAlpha46(data, startTime, endTime){
+    input = prepare46(data, startTime, endTime)
+    return wq101alpha::WQAlpha46(input)
+}
+
+
+def calAlpha47(data, startTime, endTime){
+    input = prepare47(data, startTime, endTime)
+    return wq101alpha::WQAlpha47(input.vol, input.close, input.high, input.vwap)
+}
+
+
+def calAlpha48(data, startTime, endTime){
+    input = select * from data where tradetime between startTime : endTime
+    return wq101alpha::WQAlpha48(input)
+}
+
+
+def calAlpha49(data, startTime, endTime){
+    input = prepare49(data, startTime, endTime)
+    return wq101alpha::WQAlpha49(input)
+}
+
+
+def calAlpha50(data, startTime, endTime){
+    input = prepare50(data, startTime, endTime)
+    return wq101alpha::WQAlpha50(input.vol, input.vwap)
+}
+
+
+def calAlpha51(data, startTime, endTime){
+    input = prepare51(data, startTime, endTime)
+    return wq101alpha::WQAlpha51(input)
+}
+
+
+def calAlpha52(data, startTime, endTime){
+    input = prepare52(data, startTime, endTime)
+    return wq101alpha::WQAlpha52(input.vol, input.close, input.low)
+}
+
+
+def calAlpha53(data, startTime, endTime){
+    input = prepare53(data, startTime, endTime)
+    return wq101alpha::WQAlpha53(input.close, input.high, input.low)
+}
+
+
+def calAlpha54(data, startTime, endTime){
+    return select tradetime, securityid, `alpha54 as factorname, wq101alpha::WQAlpha54(open, close, high, low) as val from data where tradetime between startTime : endTime
+}
+
+
+def calAlpha55(data, startTime, endTime){
+    input = prepare55(data, startTime, endTime)
+    return wq101alpha::WQAlpha55(input.vol, input.close, input.high, input.low)
+}
+
+
+def calAlpha56(data, startTime, endTime){
+    input = select * from data where tradetime between startTime : endTime
+    return wq101alpha::WQAlpha56(input)
+}
+
+
+def calAlpha57(data, startTime, endTime){
+    input = prepare57(data, startTime, endTime)
+    return wq101alpha::WQAlpha57(input.close, input.vwap)
+}
+
+
+def calAlpha58(data, startTime, endTime){
+    input = select * from data where tradetime between startTime : endTime
+    return wq101alpha::WQAlpha58(input)
+}
+
+
+def calAlpha59(data, startTime, endTime){
+    input = select * from data where tradetime between startTime : endTime
+    return wq101alpha::WQAlpha59(input)
+}
+
+
+def calAlpha60(data, startTime, endTime){
+    input = prepare60(data, startTime, endTime)
+    return wq101alpha::WQAlpha60(input.vol, input.close, input.high, input.low)
+}
+
+
+def calAlpha61(data, startTime, endTime){
+    input = prepare61(data, startTime, endTime)
+    return wq101alpha::WQAlpha61(input.vol, input.vwap)
+}
+
+
+def calAlpha62(data, startTime, endTime){
+    input = prepare62(data, startTime, endTime)
+    return wq101alpha::WQAlpha62(input.vol, input.vwap, input.open, input.high, input.low)
+}
+
+
+def calAlpha63(data, startTime, endTime){
+    input = select * from data where tradetime between startTime : endTime
+    return wq101alpha::WQAlpha63(input)
+}
+
+
+def calAlpha64(data, startTime, endTime){
+    input = prepare64(data, startTime, endTime)
+    return wq101alpha::WQAlpha64(input.vol, input.vwap, input.open, input.high, input.low)
+}
+
+
+def calAlpha65(data, startTime, endTime){
+    input = prepare65(data, startTime, endTime)
+    return wq101alpha::WQAlpha65(input.vol, input.vwap, input.open)
+}
+
+
+def calAlpha66(data, startTime, endTime){
+    input = prepare66(data, startTime, endTime)
+    return wq101alpha::WQAlpha66(input.vwap, input.high, input.low, input.open)
+}
+
+
+def calAlpha67(data, startTime, endTime){
+    input = select * from data where tradetime between startTime : endTime
+    return wq101alpha::WQAlpha67(input)
+}
+
+
+def calAlpha68(data, startTime, endTime){
+    input = prepare68(data, startTime, endTime)
+    return wq101alpha::WQAlpha68(input.vol, input.close, input.high, input.low)
+}
+
+
+def calAlpha69(data, startTime, endTime){
+    input = select * from data where tradetime between startTime : endTime
+    return wq101alpha::WQAlpha69(input)
+}
+
+
+def calAlpha70(data, startTime, endTime){
+    input = select * from data where tradetime between startTime : endTime
+    return wq101alpha::WQAlpha70(input)
+}
+
+
+def calAlpha71(data, startTime, endTime){
+    input = prepare71(data, startTime, endTime)
+    return wq101alpha::WQAlpha71(input.vol, input.vwap, input.close, input.open, input.low)
+}
+
+
+def calAlpha72(data, startTime, endTime){
+    input = prepare72(data, startTime, endTime)
+    return wq101alpha::WQAlpha72(input.vol, input.vwap, input.high, input.low)
+}
+
+
+def calAlpha73(data, startTime, endTime){
+    input = prepare73(data, startTime, endTime)
+    return wq101alpha::WQAlpha73(input.vwap, input.open, input.low)
+}
+
+
+def calAlpha74(data, startTime, endTime){
+    input = prepare74(data, startTime, endTime)
+    return wq101alpha::WQAlpha74(input.vol, input.vwap, input.close, input.high)
+}
+
+
+def calAlpha75(data, startTime, endTime){
+    input = prepare75(data, startTime, endTime)
+    return wq101alpha::WQAlpha75(input.vol, input.vwap, input.low)
+}
+
+
+def calAlpha76(data, startTime, endTime){
+    input = select * from data where tradetime between startTime : endTime
+    return wq101alpha::WQAlpha76(input)
+}
+
+
+def calAlpha77(data, startTime, endTime){
+    input = prepare77(data, startTime, endTime)
+    return wq101alpha::WQAlpha77(input.vol, input.vwap, input.high, input.low)
+}
+
+
+def calAlpha78(data, startTime, endTime){
+    input = prepare78(data, startTime, endTime)
+    return wq101alpha::WQAlpha78(input.vol, input.vwap, input.low)
+}
+
+
+def calAlpha79(data, startTime, endTime){
+    input = select * from data where tradetime between startTime : endTime
+    return wq101alpha::WQAlpha79(input)
+}
+
+
+def calAlpha80(data, startTime, endTime){
+    input = select * from data where tradetime between startTime : endTime
+    return wq101alpha::WQAlpha80(input)
+}
+
+
+def calAlpha81(data, startTime, endTime){
+    input = prepare81(data, startTime, endTime)
+    return wq101alpha::WQAlpha81(input.vol, input.vwap)
+}
+
+
+def calAlpha82(data, startTime, endTime){
+    input = select * from data where tradetime between startTime : endTime
+    return wq101alpha::WQAlpha82(input)
+}
+
+
+def calAlpha83(data, startTime, endTime){
+    input = prepare83(data, startTime, endTime)
+    return wq101alpha::WQAlpha83(input.vol, input.vwap, input.close, input.high, input.low)
+}
+
+
+def calAlpha84(data, startTime, endTime){
+    input = prepare84(data, startTime, endTime)
+    return wq101alpha::WQAlpha84(input.vwap, input.close)
+}
+
+
+def calAlpha85(data, startTime, endTime){
+    input = prepare85(data, startTime, endTime)
+    return wq101alpha::WQAlpha85(input.vol, input.close, input.high, input.low)
+}
+
+
+def calAlpha86(data, startTime, endTime){
+    input = prepare86(data, startTime, endTime)
+    return wq101alpha::WQAlpha86(input.vol, input.vwap, input.open, input.close)
+}
+
+
+def calAlpha87(data, startTime, endTime){
+    input = select * from data where tradetime between startTime : endTime
+    return wq101alpha::WQAlpha87(input)
+}
+
+
+def calAlpha88(data, startTime, endTime){
+    input = prepare88(data, startTime, endTime)
+    return wq101alpha::WQAlpha88(input.vol, input.open, input.close, input.high, input.low)
+}
+
+
+def calAlpha89(data, startTime, endTime){
+    input = select * from data where tradetime between startTime : endTime
+    return wq101alpha::WQAlpha89(input)
+}
+
+
+def calAlpha90(data, startTime, endTime){
+    input = select * from data where tradetime between startTime : endTime
+    return wq101alpha::WQAlpha90(input)
+}
+
+
+def calAlpha91(data, startTime, endTime){
+    input = select * from data where tradetime between startTime : endTime
+    return wq101alpha::WQAlpha91(input)
+}
+
+
+def calAlpha92(data, startTime, endTime){
+    input = prepare92(data, startTime, endTime)
+    return wq101alpha::WQAlpha92(input.vol, input.open, input.close, input.high, input.low)
+}
+
+
+def calAlpha93(data, startTime, endTime){
+    input = select * from data where tradetime between startTime : endTime
+    return wq101alpha::WQAlpha93(input)
+}
+
+
+def calAlpha94(data, startTime, endTime){
+    input = prepare94(data, startTime, endTime)
+    return wq101alpha::WQAlpha94(input.vol, input.vwap)
+}
+
+
+def calAlpha95(data, startTime, endTime){
+    input = prepare95(data, startTime, endTime)
+    return wq101alpha::WQAlpha95(input.vol, input.open, input.high, input.low)
+}
+
+
+def calAlpha96(data, startTime, endTime){
+    input = prepare96(data, startTime, endTime)
+    return wq101alpha::WQAlpha96(input.vol, input.vwap, input.close)
+}
+
+
+def calAlpha97(data, startTime, endTime){
+    input = select * from data where tradetime between startTime : endTime
+    return wq101alpha::WQAlpha97(input)
+}
+
+
+def calAlpha98(data, startTime, endTime){
+    input = prepare98(data, startTime, endTime)
+    return wq101alpha::WQAlpha98(input.vwap, input.open, input.vol)
+}
+
+
+def calAlpha99(data, startTime, endTime){
+    input = prepare99(data, startTime, endTime)
+    return wq101alpha::WQAlpha99(input.vol, input.high, input.low)
+}
+
+
+def calAlpha100(data, startTime, endTime){
+    input = select * from data where tradetime between startTime : endTime
+    return wq101alpha::WQAlpha100(input)
+}
+
+
+def calAlpha101(data, startTime, endTime){
+    return select tradetime, securityid, `alpha101 as factorname, wq101alpha::WQAlpha101(close, open, high, low) as val from data where tradetime between startTime : endTime
+}

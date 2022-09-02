@@ -1,0 +1,38 @@
+/* *
+*  @ brief  
+*  This script is to verify the correctness of the implementation of WorldQuant 101 alpha in DolphinDB.
+*  @ Author: DolphinDB
+*  @ Last modification time: 2022.09.01
+*  @ DolphinDB server version: 2.00.7
+*  @ FileName: wqAlphaDDBRes.dos
+*  Don't forget to change your directory.
+*/
+
+idList = "sz"+lpad(string(000001..00010), 6, `0)
+data = select * from loadText("/YOUR_DIR/dataPerformance.csv") where securityid in idList 
+
+use wq101alpha
+use prepare101
+
+startTime = timestamp(2010.01.01)
+endTime = timestamp(2010.12.31)
+passList = [23,31,39,48,56,57,58,59,63,64,66,67,68,69,70,71,72,73,76,77,79,80,82,87,88,89,90,91,92,93,96,97,98,100]
+resDDBTable = select tradetime from data where securityid = "sz000001"
+input = panel(data.tradetime, data.securityid, [data.open, data.close, data.high, data.low, data.vol, data.vwap])
+open, close, high, low, vol, vwap = panel(data.tradetime, data.securityid, [data.open, data.close, data.high, data.low, data.vol, data.vwap])
+for (i in 1:102){		
+	if (i in passList) continue
+	else{
+		print("start wqAlpha"+i)
+		alphaName = exec name from defs() where name = "wq101alpha::WQAlpha"+string(i)
+		alphaSyntax = exec syntax from defs() where name = "wq101alpha::WQAlpha"+string(i)
+		function = alphaName + alphaSyntax
+		t1 = time(now())
+		res = parseExpr(function[0]).eval()
+		resTmp = table(res[0]).rename!( 'Alpha' + string(i))
+		resDDBTable = resDDBTable join resTmp
+	}
+}
+
+login(`admin,`123456)
+saveText(resDDBTable,"/YOUR_DIR/ddbVerifyRes.csv")

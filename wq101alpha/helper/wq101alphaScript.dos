@@ -1,0 +1,66 @@
+/* *
+*  @ brief  
+*  This script calculates all 101 alpha factors and save them into database.
+*  @ Author: DolphinDB
+*  @ Last modification time: 2022.09.01
+*  @ DolphinDB server version: 2.00.7
+*  @ FileName: wq101alphaScript.dos
+*/
+
+use wq101alpha
+use prepare101
+
+//Necessary functions
+def createFactorWideDbTable(dbName, tbName){
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+
+	dbDate = database("", RANGE,  2010.01M + (0..10)*12)
+	dbSymbol=database("", VALUE, `alpha + string(1..101))
+	db = database(directory=dbName, partitionType=COMPO, partitionScheme=[dbDate,dbSymbol],engine="TSDB")
+
+	baseColNames = `tradetime`factorname join ("sz"+lpad(string(000001..004000), 6, `0))
+	baseColType = ([TIMESTAMP,SYMBOL]).append!(take(DOUBLE,4000))
+
+	mtable=table(1:0, baseColNames,baseColType);
+	min_factor = db.createPartitionedTable(table=mtable, tableName=tbName, partitionColumns=`tradetime`factorname,sortColumns=`factorname`tradetime,compressMethods={tradetime:"delta"},keepDuplicates=LAST)
+}
+
+
+def writePanelInWideTable(res, factor){
+	resWide = table(res.rowNames() as tradetime, res).rename!(array(STRING,0,100).append!(["tradetime"]).append!(res.colNames()))
+	resWide[`factorname] = factor
+	reorderColumns!(resWide,`tradetime`factorname)
+	loadTable("dfs://K_FACTOR_WIDE","factor_k_wide").append!(resWide)
+}
+
+
+def writeLongInWideTable(res){
+	resWide = select double(val) from res pivot by tradetime, factorname, securityid
+	loadTable("dfs://K_FACTOR_WIDE","factor_k_wide").append!(resWide)
+}
+
+
+
+
+//Load data
+
+login('admin', '123456')
+rawData = loadTable("dfs://k_day_level", "k_day")
+infoData = select * from loadTable("dfs://info", "info_data")
+startTime = timestamp(2010.01.01)
+endTime = timestamp(2010.01.31)
+data = prepareData(rawData=rawData, startTime=startTime, endTime=endTime, securityidName="securityid", tradetimeName="tradetime", openName="open", closeName="close", highName="high", lowName="low", volumeName="vol", vwapName="vwap", infoSecurityidName="securityid", capName="cap", indclassName="indclass", infoData=infoData)
+
+
+//Calculate and save factors
+
+rtnTable = 41 54 101 48 56 58 59 63 67 69 70 76 79 80 82 87 89 90 91 93 97 100
+createFactorWideDbTable("dfs://K_FACTOR_WIDE", "factor_k_wide")
+
+for (i in 1:102){
+    res = parseExpr('calAlpha' + string(i) + '(data, startTime, endTime)').eval()
+    if (i in rtnTable) writeLongInWideTable(res)
+    else writePanelInWideTable(double(res), 'alpha' + string(i))
+}

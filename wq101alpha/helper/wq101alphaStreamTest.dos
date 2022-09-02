@@ -1,0 +1,1320 @@
+/* *
+*  @ brief  
+*  This script is the implementation of real-time WorldQuant 101 alpha computation.
+*  @ Author: DolphinDB
+*  @ Last modification time: 2022.09.01
+*  @ DolphinDB server version: 2.00.8
+*  @ FileName: wq101alphaStreamTest.dos
+*  Don't forget to change your directory in line 32.
+*/
+
+//clear the enviroment, prepare the module and data
+def dropAllStreamEngines(){
+	engineStatus=getStreamEngineStat()
+	allCurrrentEngineTypes=engineStatus.keys()
+	for(eachEngineType in allCurrrentEngineTypes){
+		engineInfoTable=engineStatus[eachEngineType]
+		for (eachEngineName in engineInfoTable.name){
+			try{
+				dropStreamEngine(eachEngineName)
+				print("注销引擎",eachEngineName,"成功")
+			}
+			catch(ex){
+				print("注销引擎",eachEngineName,"失败:",ex)
+			}
+		}
+	}
+}
+dropAllStreamEngines()
+login("admin", "123456")
+use wq101alpha
+
+hisData = loadText("/YOUR_DIR/dataPerformance.csv")
+
+
+//WQAlpha 1 streaming
+inputSchemaT = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha1(close)]>
+streamEngine = streamEngineParser(name="WQAlpha1Parser", metrics=metrics, dummyTable=inputSchemaT, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+//WQAlpha 2 streaming
+inputSchema = table(1:0, ["securityid","tradetime","open","close", "vol"], [SYMBOL,TIMESTAMP, DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL, TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha2(vol, close, open)]>
+streamEngine = streamEngineParser(name="WQAlpha2Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, open, close, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+//WQAlpha 3 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "open"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL, TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha3(vol, open)]>
+streamEngine = streamEngineParser(name="WQAlpha3Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch')
+data = select SecurityID, TradeTime, vol, open from hisData  order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+//WQAlpha 4 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "low"], [SYMBOL,TIMESTAMP, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL, TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha4(low)]>
+streamEngine = streamEngineParser(name="WQAlpha4Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+//WQAlpha 5 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vwap", "open", "close"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha5(vwap, open, close)]>
+streamEngine = streamEngineParser(name="WQAlpha5Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vwap, open, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+//WQAlpha 6 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "open"], [SYMBOL,TIMESTAMP,  DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL, TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha6(vol, open)]>
+streamEngine = streamEngineParser(name="WQAlpha6Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol, open from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+//WQAlpha 6 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "close"], [SYMBOL,TIMESTAMP,  DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL, TIMESTAMP, INT])
+metrics = <[WQAlpha7(vol, close)]>
+streamEngine = streamEngineParser(name="WQAlpha7Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =  select SecurityID, TradeTime, vol, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 8 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "open", "close"], [SYMBOL,TIMESTAMP,  DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha8(open, close)]>
+streamEngine = streamEngineParser(name="WQAlpha8Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =  select SecurityID, TradeTime, open, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+//WQAlpha 9 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "close"], [SYMBOL,TIMESTAMP,  DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL, TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha9(close)]>
+streamEngine = streamEngineParser(name="WQAlpha9Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =   select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+//WQAlpha 10 streaming
+inputSchema = table(1:0, ["securityid","tradetime","close"], [SYMBOL,TIMESTAMP,  DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,  DOUBLE])
+metrics = <[SecurityID, WQAlpha10(close)]>
+streamEngine = streamEngineParser(name="WQAlpha10Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =  select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+//WQAlpha 11 streaming
+inputSchema = table(1:0, ["securityid","tradetime","vwap", "vol", "close"], [SYMBOL,TIMESTAMP,  DOUBLE, DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha11(vwap, vol, close)]>
+streamEngine = streamEngineParser(name="WQAlpha11Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =  select SecurityID, TradeTime, vwap, vol, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+//WQAlpha 12 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "close"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL, TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha12(vol, close)]>
+streamEngine = streamEngineParser(name="WQAlpha12Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =  select SecurityID, TradeTime, vol, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+//WQAlpha 13 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "close"], [SYMBOL,TIMESTAMP,  DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,  DOUBLE])
+metrics = <[WQAlpha13(vol, close)]>
+streamEngine = streamEngineParser(name="WQAlpha13Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =  select SecurityID, TradeTime,  vol, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 14 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "open", "close"], [SYMBOL,TIMESTAMP,  DOUBLE, DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL, TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha14(vol, open, close)]>
+streamEngine = streamEngineParser(name="WQAlpha14Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =  select SecurityID, TradeTime, vol, open, close from  hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+//WQAlpha 15 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "high"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL, TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha15(vol, high)]>
+streamEngine = streamEngineParser(name="WQAlpha15Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =  select SecurityID, TradeTime, vol, high from  hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+//WQAlpha 16 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "high"], [SYMBOL,TIMESTAMP,  DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL, TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha16(vol, high)]>
+streamEngine = streamEngineParser(name="WQAlpha16Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =  select SecurityID, TradeTime, vol, high from  hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 17 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "close"], [SYMBOL,TIMESTAMP,  DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL, TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha17(vol, close)]>
+streamEngine = streamEngineParser(name="WQAlpha17Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =   select SecurityID, TradeTime, vol, close from  hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+//WQAlpha 18 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "close", "open"], [SYMBOL,TIMESTAMP,  DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL, TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha18(close, open)]>
+streamEngine = streamEngineParser(name="WQAlpha18Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =   select SecurityID, TradeTime, close, open from  hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+//WQAlpha 19 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "close"], [SYMBOL,TIMESTAMP, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL, TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha19(close)]>
+streamEngine = streamEngineParser(name="WQAlpha19Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from  hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+//WQAlpha 20 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "open", "close", "high", "low"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE, DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL, TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha20(open, close, high, low)]>
+streamEngine = streamEngineParser(name="WQAlpha20Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, open, close, high, low from  hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+//WQAlpha 21 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "close", "vol"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL, TIMESTAMP, INT])
+metrics = <[WQAlpha21(close, vol)]>
+streamEngine = streamEngineParser(name="WQAlpha21Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =  select SecurityID, TradeTime, close, vol from  hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+//WQAlpha 22 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "close", "vol", "high"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL, TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha22(close, vol, high)]>
+streamEngine = streamEngineParser(name="WQAlpha22Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+
+data =  select SecurityID, TradeTime, close, vol, high from  hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+//WQAlpha 23 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "high"], [SYMBOL,TIMESTAMP, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL, TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha23(high)]>
+streamEngine = streamEngineParser(name="WQAlpha23Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =  select SecurityID, TradeTime, high from  hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+//WQAlpha 24 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "close"], [SYMBOL,TIMESTAMP, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL, TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha24(close)]>
+streamEngine = streamEngineParser(name="WQAlpha24Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =  select SecurityID, TradeTime, close from  hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+//WQAlpha 25 streaming
+inputSchema = table(1:0, ["securityid","tradetime",  "close", "vol", "high", "vwap"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE,  DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,  DOUBLE])
+metrics = <[SecurityID, WQAlpha25(close, vol, high, vwap)]>
+streamEngine = streamEngineParser(name="WQAlpha25Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, vol, high, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+//WQAlpha 26 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "high"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL, TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha26(vol, high)]>
+streamEngine = streamEngineParser(name="WQAlpha26Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol, high from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 27 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "vwap"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL, TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha27(vol, vwap)]>
+streamEngine = streamEngineParser(name="WQAlpha27Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =select SecurityID, TradeTime, vol, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+//WQAlpha 28 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "high", "low", "close"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE, DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL, TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha28(vol, high, low, close)]>
+streamEngine = streamEngineParser(name="WQAlpha28Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =select SecurityID, TradeTime, vol, high, low, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+//WQAlpha 29 streaming
+inputSchema = table(1:0, ["securityid","tradetime",  "close"], [SYMBOL,TIMESTAMP, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL, TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha29(close)]>
+streamEngine = streamEngineParser(name="WQAlpha29Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+//WQAlpha 29 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "close"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL, TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha30(vol, close)]>
+streamEngine = streamEngineParser(name="WQAlpha30Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =select SecurityID, TradeTime, vol, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 31 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "close", "low"], [SYMBOL,TIMESTAMP,  DOUBLE ,DOUBLE ,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL, TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha31(vol, close, low)]>
+streamEngine = streamEngineParser(name="WQAlpha31Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =select SecurityID, TradeTime, vol, close, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+//WQAlpha 32 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "close", "vwap"], [SYMBOL,TIMESTAMP,  DOUBLE , DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,   DOUBLE])
+metrics = <[WQAlpha32(close, vwap)]>
+streamEngine = streamEngineParser(name="WQAlpha32Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =select SecurityID, TradeTime, close, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+//WQAlpha 33 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "open", "close"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,  DOUBLE])
+metrics = <[SecurityID, WQAlpha33(open, close)]>
+streamEngine = streamEngineParser(name="WQAlpha33Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, open, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+//WQAlpha 34 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "close"], [SYMBOL,TIMESTAMP, DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,  DOUBLE])
+metrics = <[SecurityID, WQAlpha34(close)]>
+streamEngine = streamEngineParser(name="WQAlpha34Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =  select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+//WQAlpha 35 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "close", "high", "low"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE, DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL, TIMESTAMP, INT])
+metrics = <[WQAlpha35(vol, close, high, low)]>
+streamEngine = streamEngineParser(name="WQAlpha35Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =   select SecurityID, TradeTime, vol, close, high, low  from  hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 36 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "open", "close", "vwap"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE, DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL, TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha36(vol, open, close, vwap)]>
+streamEngine = streamEngineParser(name="WQAlpha36Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =   select SecurityID, TradeTime, vol, open, close, vwap from  hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 37 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "open", "close"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL, TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha37(open, close)]>
+streamEngine = streamEngineParser(name="WQAlpha37Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =    select SecurityID, TradeTime, open, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 38 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "open", "close"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL, TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha38(open, close)]>
+streamEngine = streamEngineParser(name="WQAlpha38Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =   select SecurityID, TradeTime, open, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 39 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "close"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL, TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha39(vol, close)]>
+streamEngine = streamEngineParser(name="WQAlpha39Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =  select SecurityID, TradeTime, vol, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 40 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "high"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL, TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha40(vol, high)]>
+streamEngine = streamEngineParser(name="WQAlpha40Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =  select SecurityID, TradeTime, vol, high from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 41 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "high", "low", "vwap"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,   DOUBLE])
+metrics = <[WQAlpha41(high, low, vwap)]>
+streamEngine = streamEngineParser(name="WQAlpha41Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =  select SecurityID, TradeTime, high, low, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 42 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vwap", "close"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,   DOUBLE])
+metrics = <[WQAlpha42(vwap, close)]>
+streamEngine = streamEngineParser(name="WQAlpha42Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =   select SecurityID, TradeTime, vwap, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 43 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "close"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,   INT])
+metrics = <[WQAlpha43(vol, close)]>
+streamEngine = streamEngineParser(name="WQAlpha43Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =   select SecurityID, TradeTime, vol, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 44 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "high"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,   DOUBLE])
+metrics = <[WQAlpha44(vol, high)]>
+streamEngine = streamEngineParser(name="WQAlpha44Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol, high from  hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+
+//WQAlpha 45 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "close"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,   DOUBLE])
+metrics = <[WQAlpha45(vol, close)]>
+streamEngine = streamEngineParser(name="WQAlpha45Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =  select SecurityID, TradeTime, vol, close from  hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 46 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "close"], [SYMBOL,TIMESTAMP, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,   DOUBLE])
+metrics = <[WQAlpha46(close)]>
+streamEngine = streamEngineParser(name="WQAlpha46Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =  select SecurityID, TradeTime, close from  hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 47 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "close","high","vwap"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,   DOUBLE])
+metrics = <[WQAlpha47(vol, close, high, vwap)]>
+streamEngine = streamEngineParser(name="WQAlpha47Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol, close, high, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 49 streaming
+inputSchema = table(1:0, ["securityid","tradetime",  "close"], [SYMBOL,TIMESTAMP, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,   DOUBLE])
+metrics = <[WQAlpha49(close)]>
+streamEngine = streamEngineParser(name="WQAlpha49Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =  select SecurityID, TradeTime, close from  hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 50 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,   DOUBLE])
+metrics = <[WQAlpha50(vol, vwap)]>
+streamEngine = streamEngineParser(name="WQAlpha50Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol, vwap from  hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 51 streaming
+inputSchema = table(1:0, ["securityid","tradetime",  "close"], [SYMBOL,TIMESTAMP, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,   DOUBLE])
+metrics = <[WQAlpha51(close)]>
+streamEngine = streamEngineParser(name="WQAlpha51Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from  hisData order by TradeTime
+streamEngine.append!(data)
+
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 52 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "close","low"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,   DOUBLE])
+metrics = <[WQAlpha52(vol, close, low)]>
+streamEngine = streamEngineParser(name="WQAlpha52Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol, close, low from  hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 53 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "close", "high","low"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,   DOUBLE])
+metrics = <[WQAlpha53(close, high, low)]>
+streamEngine = streamEngineParser(name="WQAlpha53Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =select SecurityID, TradeTime, close, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 54 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "open", "close", "high","low"], [SYMBOL,TIMESTAMP,DOUBLE, DOUBLE, DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,   DOUBLE])
+metrics = <[WQAlpha54(open, close, high, low)]>
+streamEngine = streamEngineParser(name="WQAlpha54Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, open, close, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 55 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "close", "high","low"], [SYMBOL,TIMESTAMP,DOUBLE, DOUBLE, DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,   DOUBLE])
+metrics = <[WQAlpha55(vol, close, high, low)]>
+streamEngine = streamEngineParser(name="WQAlpha55Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =select SecurityID, TradeTime, vol, close, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+
+//WQAlpha 57 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "close", "vwap"], [SYMBOL,TIMESTAMP,DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,   DOUBLE])
+metrics = <[WQAlpha57(close, vwap)]>
+streamEngine = streamEngineParser(name="WQAlpha57Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data =select SecurityID, TradeTime, close, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+
+//WQAlpha 60 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol","close", "high", "low"], [SYMBOL,TIMESTAMP,DOUBLE, DOUBLE,DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,   DOUBLE])
+metrics = <[WQAlpha60(vol, close, high, low)]>
+streamEngine = streamEngineParser(name="WQAlpha60Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol, close, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 61 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "vwap"], [SYMBOL,TIMESTAMP,DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,   DOUBLE])
+metrics = <[WQAlpha61(vol, vwap)]>
+streamEngine = streamEngineParser(name="WQAlpha61Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 62 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "vwap", "open", "high", "low"], [SYMBOL,TIMESTAMP,DOUBLE, DOUBLE,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,   DOUBLE])
+metrics = <[WQAlpha62(vol, vwap, open, high, low)]>
+streamEngine = streamEngineParser(name="WQAlpha62Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol, vwap, open, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 64 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "vwap", "open", "high", "low"], [SYMBOL,TIMESTAMP,DOUBLE, DOUBLE,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,   DOUBLE])
+metrics = <[WQAlpha64(vol, vwap, open, high, low)]>
+streamEngine = streamEngineParser(name="WQAlpha64Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol, vwap, open, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 65 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "vwap", "open", "high", "low"], [SYMBOL,TIMESTAMP,DOUBLE, DOUBLE,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,   DOUBLE])
+metrics = <[WQAlpha65(vol, vwap, open, high, low)]>
+streamEngine = streamEngineParser(name="WQAlpha65Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol, vwap, open, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 66 streaming
+inputSchema = table(1:0, ["securityid","tradetime",  "vwap", "high" , "low" , "open"], [SYMBOL,TIMESTAMP,DOUBLE, DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,   DOUBLE])
+metrics = <[WQAlpha66(vwap, high, low, open)]>
+streamEngine = streamEngineParser(name="WQAlpha66Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vwap, high, low, open from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 68 streaming
+inputSchema = table(1:0, ["securityid","tradetime",  "vol", "close" , "high" , "low"], [SYMBOL,TIMESTAMP,DOUBLE, DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,   DOUBLE])
+metrics = <[WQAlpha68(vol, close, high, low)]>
+streamEngine = streamEngineParser(name="WQAlpha68Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol, close, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 71 streaming
+inputSchema = table(1:0, ["securityid","tradetime",  "vol", "vwap" , "close" , "open", "low"], [SYMBOL,TIMESTAMP,DOUBLE, DOUBLE,DOUBLE,DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha71(vol, vwap, close, open, low)]>
+streamEngine = streamEngineParser(name="WQAlpha71Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol, vwap, close, open, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 72 streaming
+inputSchema = table(1:0, ["securityid","tradetime",  "vol", "vwap" , "high" , "low"], [SYMBOL,TIMESTAMP,DOUBLE, DOUBLE,DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha72(vol, vwap, high, low)]>
+streamEngine = streamEngineParser(name="WQAlpha72Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol, vwap, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 73 streaming
+inputSchema = table(1:0, ["securityid","tradetime",  "vwap" , "open" , "low"], [SYMBOL,TIMESTAMP,DOUBLE, DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha73(vwap, open, low)]>
+streamEngine = streamEngineParser(name="WQAlpha73Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vwap, open, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 74 streaming
+inputSchema = table(1:0, ["securityid","tradetime",  "vol", "vwap" , "close" , "high"], [SYMBOL,TIMESTAMP,DOUBLE, DOUBLE, DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP, DOUBLE])
+metrics = <[ WQAlpha74(vol, vwap, close, high)]>
+streamEngine = streamEngineParser(name="WQAlpha74Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol, vwap, close, high from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 75 streaming
+inputSchema = table(1:0, ["securityid","tradetime",  "vol", "vwap" , "low"], [SYMBOL,TIMESTAMP,DOUBLE, DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha75(vol, vwap, low)]>
+streamEngine = streamEngineParser(name="WQAlpha75Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol, vwap, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 76 streaming
+inputSchema = table(1:0, ["securityid","tradetime",  "vol", "vwap" , "high", "low"], [SYMBOL,TIMESTAMP,DOUBLE, DOUBLE, DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha77(vol, vwap, high, low)]>
+streamEngine = streamEngineParser(name="WQAlpha77Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol, vwap, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 78 streaming
+inputSchema = table(1:0, ["securityid","tradetime",  "vol", "vwap" , "low"], [SYMBOL,TIMESTAMP,DOUBLE, DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP, DOUBLE])
+metrics = <[WQAlpha78(vol, vwap, low)]>
+streamEngine = streamEngineParser(name="WQAlpha78Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol, vwap, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 81 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "vwap"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,   DOUBLE])
+metrics = <[WQAlpha81(vol, vwap)]>
+streamEngine = streamEngineParser(name="WQAlpha81Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 83 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol","vwap", "close","high", "low"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,   DOUBLE])
+metrics = <[WQAlpha83(vol, vwap, close, high, low)]>
+streamEngine = streamEngineParser(name="WQAlpha83Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol, vwap, close, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 84 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vwap","close"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,  DOUBLE])
+metrics = <[WQAlpha84(vwap, close)]>
+streamEngine = streamEngineParser(name="WQAlpha84Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vwap, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 85 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "close", "high", "low"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE,DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,   DOUBLE])
+metrics = <[WQAlpha85(vol, close, high, low)]>
+streamEngine = streamEngineParser(name="WQAlpha85Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol, close, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 86 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "vwap","open", "close"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE,DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,   DOUBLE])
+metrics = <[WQAlpha86(vol, vwap, open, close)]>
+streamEngine = streamEngineParser(name="WQAlpha86Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol, vwap, open, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 88 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "open", "close", "high", "low"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE,DOUBLE, DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,   DOUBLE])
+metrics = <[WQAlpha88(vol, open, close, high, low)]>
+streamEngine = streamEngineParser(name="WQAlpha88Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol, open, close, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 92 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "open", "close", "high", "low"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE,DOUBLE, DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,   DOUBLE])
+metrics = <[WQAlpha92(vol, open, close, high, low)]>
+streamEngine = streamEngineParser(name="WQAlpha92Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol, open, close, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 94 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "vwap"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,   DOUBLE])
+metrics = <[WQAlpha94(vol, vwap)]>
+streamEngine = streamEngineParser(name="WQAlpha94Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 95 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "open","high", "low"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE ,DOUBLE ,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,   DOUBLE])
+metrics = <[WQAlpha95(vol, open, high, low)]>
+streamEngine = streamEngineParser(name="WQAlpha95Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol, open, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 96 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "vwap","close"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE, DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,   DOUBLE])
+metrics = <[WQAlpha96(vol, vwap, close)]>
+streamEngine = streamEngineParser(name="WQAlpha96Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol, vwap, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 98 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vwap", "open","vol"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,   DOUBLE])
+metrics = <[WQAlpha98(vwap, open, vol)]>
+streamEngine = streamEngineParser(name="WQAlpha98Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vwap, open, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 99 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "high","low"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,   DOUBLE])
+metrics = <[WQAlpha99(vol, high, low)]>
+streamEngine = streamEngineParser(name="WQAlpha99Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//WQAlpha 101 streaming
+inputSchema = table(1:0, ["securityid","tradetime", "close", "open", "high","low"], [SYMBOL,TIMESTAMP, DOUBLE, DOUBLE, DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,   DOUBLE])
+metrics = <[WQAlpha101(close, open, high, low)]>
+streamEngine = streamEngineParser(name="WQAlpha101Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, open, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()

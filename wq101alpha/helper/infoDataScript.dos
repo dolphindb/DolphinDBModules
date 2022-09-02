@@ -1,0 +1,41 @@
+/* *
+*  @ brief  
+*  This script is to create database for info data. 
+*  @ Author: DolphinDB
+*  @ Last modification time: 2022.09.01
+*  @ DolphinDB server version: 2.00.7
+*  @ FileName: prepare101.dos
+*/
+
+
+def createInfoDbTable(dbName, tbName){
+    if(existsDatabase(dbName)){
+        dropDatabase(dbName)
+    }
+    db = database(dbName, VALUE, 1 2 3)
+    t = table(1:0, `securityid`indclass`cap, [SYMBOL,SYMBOL,DOUBLE])
+    db.createTable(t, tbName)
+}
+
+def genInfo(dbName, tbName){
+    securityid ="sz"+lpad(string(000001..004000), 6, `0)
+    indclass = symbol(string(rand(`10`20`30`40`50, size(securityid))) + string(rand(`15`25`35, size(securityid))) + string(rand(`10`20`30, size(securityid))) + string(rand(`60`70`80, size(securityid))))
+    cap = randUniform(500000, 1000000000, size(securityid))
+
+    t = table(securityid, indclass, cap)
+
+    securityid = NULL
+    indclass = NULL
+    cap = NULL
+
+    db = loadTable(dbName, tbName)
+    db.append!(t)
+}
+
+dbName = "dfs://info"
+tbName = "info_data"
+
+createInfoDbTable(dbName, tbName)
+genInfo(dbName, tbName)
+
+
