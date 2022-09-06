@@ -1,0 +1,47 @@
+
+use ops
+
+login("admin", "123456")
+
+@testing:case="test_function_dropRecoveringPartitions_chunkGranularity_database"
+dbName = "dfs://test_dropRecoveringPartitions"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+db = database(dbName, VALUE, 2012.01.01..2012.01.30, chunkGranularity="DATABASE")
+n = 100000
+data = table(take(2012.01.01..2012.01.30, n) as date, take("A"+string(1..100), n) as sym, 1..n as val)
+pt1 = db.createPartitionedTable(data, "pt1", `date)
+pt1.append!(data)
+
+pt2 = db.createPartitionedTable(data, "pt2", `date)
+pt2.append!(data)
+
+ops::dropRecoveringPartitions(dbName)
+ops::dropRecoveringPartitions(dbName, "pt1")
+ops::dropRecoveringPartitions(dbName, "pt2")
+
+@testing:case="test_function_dropRecoveringPartitions_chunkGranularity_table"
+dbName = "dfs://test_dropRecoveringPartitions"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+db = database(dbName, VALUE, 2012.01.01..2012.01.30, chunkGranularity="TABLE")
+n = 100000
+data = table(take(2012.01.01..2012.01.30, n) as date, take("A"+string(1..100), n) as sym, 1..n as val)
+pt1 = db.createPartitionedTable(data, "pt1", `date)
+pt1.append!(data)
+
+pt2 = db.createPartitionedTable(data, "pt2", `date)
+pt2.append!(data)
+
+try{
+	ops::dropRecoveringPartitions(dbName)
+}catch(ex){
+	print ex
+}
+
+ops::dropRecoveringPartitions(dbName, "pt1")
+ops::dropRecoveringPartitions(dbName, "pt2")
+
+

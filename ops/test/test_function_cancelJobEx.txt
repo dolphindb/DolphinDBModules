@@ -1,0 +1,148 @@
+
+use ops
+
+@testing:case="test_function_cancelJobEx_id_int"
+ops::cancelJobEx(1)
+
+@testing:case="test_function_cancelJobEx_id_string_vector", exception=1
+ops::cancelJobEx(["aaa", "bbb"])
+
+@testing:case="prepare_data"
+login("admin", "123456")
+dbName = "dfs://test_cancenJobEx"
+tableName = "pt"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+db = database(dbName, VALUE, 2012.01.01..2012.01.10)
+n = 100000
+data = table(take(2012.01.01..2012.01.10, n) as date, take("A"+string(1..100), n) as sym, 1..n as val)
+pt = db.createPartitionedTable(data, tableName, `date)
+pt.append!(data)
+
+def query1(dbName, tableName){
+	do{
+		d = rand(2012.01.01..2012.01.10, 1)[0]
+		timer select * from loadTable(dbName, tableName) where date==d
+		sleep(1000)
+	}while(true)
+}
+
+@testing:case="test_function_cancelJobEx_id_not_specify_current_node"
+jobs = array(STRING, 0, 10)
+for(i in 1..5){
+	job = submitJob("query_"+string(i), "", query1, dbName, tableName)
+	jobs.append!(job)
+	sleep(500)
+}
+
+re = select * from getRecentJobs() where jobId in jobs
+assert 1, isNull(re["endTime"])==true
+
+ops::cancelJobEx()
+
+sleep(3000)
+re = select * from getRecentJobs() where jobId in jobs
+assert 2, isNull(re["endTime"])==false
+
+@testing:case="test_function_cancelJobEx_id_NULL_current_node"
+jobs = array(STRING, 0, 10)
+for(i in 1..5){
+	job = submitJob("query_"+string(i), "", query1, dbName, tableName)
+	jobs.append!(job)
+	sleep(500)
+}
+
+re = select * from getRecentJobs() where jobId in jobs
+assert 1, isNull(re["endTime"])==true
+
+ops::cancelJobEx(NULL)
+
+sleep(3000)
+re = select * from getRecentJobs() where jobId in jobs
+assert 2, isNull(re["endTime"])==false
+
+
+
+
+@testing:case="test_function_cancelJobEx_id_not_NULL_current_node"
+jobs = array(STRING, 0, 10)
+for(i in 1..5){
+	job = submitJob("query_"+string(i), "", query1, dbName, tableName)
+	jobs.append!(job)
+	sleep(500)
+}
+
+re = select * from getRecentJobs() where jobId in jobs
+assert 1, isNull(re["endTime"])==true
+
+ops::cancelJobEx("query_")
+
+sleep(3000)
+re = select * from getRecentJobs() where jobId in jobs
+assert 2, isNull(re["endTime"])==false
+
+@testing:case="test_function_cancelJobEx_id_not_specify_all_nodes"
+jobs = array(STRING, 0, 10)
+nodes = exec name from rpc(getControllerAlias(), getClusterPerf) where mode!=1
+
+for(node in nodes){
+	for(i in 1..5){
+		job = rpc(node, submitJob, "query_"+node+"_"+string(i), "query", query1, dbName, tableName)
+		jobs.append!(job)
+		sleep(100)
+	}
+}
+
+re = select * from pnodeRun(getRecentJobs) where jobId in jobs
+assert 1, isNull(re["endTime"])==true
+
+ops::cancelJobEx()
+
+sleep(3000)
+re = select * from pnodeRun(getRecentJobs) where jobId in jobs
+assert 2, isNull(re["endTime"])==false
+
+@testing:case="test_function_cancelJobEx_id_NULL_all_nodes"
+jobs = array(STRING, 0, 10)
+nodes = exec name from rpc(getControllerAlias(), getClusterPerf) where mode!=1
+
+for(node in nodes){
+	for(i in 1..5){
+		job = rpc(node, submitJob, "query_"+node+"_"+string(i), "query", query1, dbName, tableName)
+		jobs.append!(job)
+		sleep(100)
+	}
+}
+
+re = select * from pnodeRun(getRecentJobs) where jobId in jobs
+assert 1, isNull(re["endTime"])==true
+
+ops::cancelJobEx(string(NULL))
+
+sleep(3000)
+re = select * from pnodeRun(getRecentJobs) where jobId in jobs
+assert 2, isNull(re["endTime"])==false
+
+@testing:case="test_function_cancelJobEx_id_not_NULL_all_nodes"
+jobs = array(STRING, 0, 10)
+nodes = exec name from rpc(getControllerAlias(), getClusterPerf) where mode!=1
+
+for(node in nodes){
+	for(i in 1..5){
+		job = rpc(node, submitJob, "query_"+node+"_"+string(i), "query", query1, dbName, tableName)
+		jobs.append!(job)
+		sleep(100)
+	}
+}
+
+re = select * from pnodeRun(getRecentJobs) where jobId in jobs
+assert 1, isNull(re["endTime"])==true
+
+ops::cancelJobEx("query_")
+
+sleep(3000)
+re = select * from pnodeRun(getRecentJobs) where jobId in jobs
+assert 2, isNull(re["endTime"])==false
+
+

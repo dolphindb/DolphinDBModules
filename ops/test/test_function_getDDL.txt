@@ -1,0 +1,149 @@
+
+use ops
+
+login("admin", "123456")
+
+@testing:case="test_function_getDDL_dbName_not_exist"
+ops::getDDL("dfs://test_not_exist", "pt")
+
+@testing:case="test_function_getDDL_olap_chunkGranularity_database"
+dbName = "dfs://test_getDDL_olap"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+db = database(dbName, VALUE, 2012.01.01..2012.01.10, chunkGranularity="DATABASE")
+n = 100000
+data1 = table(take(2012.01.01..2012.01.10, n) as date, take("A"+string(1..100), n) as sym, 1..n as val)
+pt1 = db.createPartitionedTable(data1, "pt1", `date)
+pt1.append!(data1)
+pt2 = db.createPartitionedTable(data1, "pt2", `date, {val:"delta"})
+pt2.append!(data1)
+
+data2 = table(take(2012.01.01..2012.01.10, n) as date, take("A"+string(1..100), n) as sym, 1..n as val, 1..n as price)
+dt1 = db.createTable(data2, "dt1")
+dt1.append!(data2)
+dt2 = db.createTable(data2, "dt2", {val:"delta"})
+dt2.append!(data2)
+
+
+ops::getDDL(dbName, "pt1")
+ops::getDDL(dbName, "pt2")
+
+ops::getDDL(dbName, "dt1")
+ops::getDDL(dbName, "dt2")
+
+@testing:case="test_function_getDDL_olap_chunkGranularity_table"
+dbName = "dfs://test_getDDL_olap"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+db = database(dbName, VALUE, 2012.01.01..2012.01.10, chunkGranularity="TABLE")
+n = 100000
+data1 = table(take(2012.01.01..2012.01.10, n) as date, take("A"+string(1..100), n) as sym, 1..n as val)
+pt1 = db.createPartitionedTable(data1, "pt1", `date)
+pt1.append!(data1)
+pt2 = db.createPartitionedTable(data1, "pt2", `date, {val:"delta"})
+pt2.append!(data1)
+
+data2 = table(take(2012.01.01..2012.01.10, n) as date, take("A"+string(1..100), n) as sym, 1..n as val, 1..n as price)
+dt1 = db.createTable(data2, "dt1")
+dt1.append!(data2)
+dt2 = db.createTable(data2, "dt2", {val:"delta"})
+dt2.append!(data2)
+
+
+ops::getDDL(dbName, "pt1")
+ops::getDDL(dbName, "pt2")
+
+ops::getDDL(dbName, "dt1")
+ops::getDDL(dbName, "dt2")
+
+@testing:case="test_function_getDDL_tsdb_chunkGranularity_database"
+dbName = "dfs://test_getDDL_tsdb"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+db = database(dbName, VALUE, 2012.01.01..2012.01.10, engine="TSDB", chunkGranularity="DATABASE")
+n = 100000
+data1 = table(take(2012.01.01..2012.01.10, n) as date, take("A"+string(1..100), n) as sym, 1..n as val)
+pt1 = db.createPartitionedTable(data1, "pt1", `date, , `sym`date, ALL)
+pt1.append!(data1)
+pt2 = db.createPartitionedTable(data1, "pt2", `date, , `sym`date, FIRST)
+pt2.append!(data1)
+pt3 = db.createPartitionedTable(data1, "pt3", `date, , `sym`date, LAST)
+pt3.append!(data1)
+pt4 = db.createPartitionedTable(data1, "pt4", `date, , `sym`date, LAST, [hashBucket{, 5}])
+pt4.append!(data1)
+pt5 = db.createPartitionedTable(data1, "pt5", `date, {val:"delta"}, `sym`date, LAST, [hashBucket{, 5}])
+pt5.append!(data1)
+
+data2 = table(take(2012.01.01..2012.01.10, n) as date, take("A"+string(1..100), n) as sym, 1..n as val, 1..n as price)
+dt1 = db.createTable(data2, "dt1", , `sym`date, ALL)
+dt1.append!(data2)
+dt2 = db.createTable(data2, "dt2", , `sym`date, FIRST)
+dt2.append!(data2)
+dt3 = db.createTable(data2, "dt3", , `sym`date, LAST)
+dt3.append!(data2)
+dt4 = db.createTable(data2, "dt4", , `sym`date, LAST, [hashBucket{, 5}])
+dt4.append!(data2)
+dt5 = db.createTable(data2, "dt5", {val:"delta"}, `sym`date, LAST)
+dt5.append!(data2)
+
+ops::getDDL(dbName, "pt1")
+ops::getDDL(dbName, "pt2")
+ops::getDDL(dbName, "pt3")
+ops::getDDL(dbName, "pt4")
+ops::getDDL(dbName, "pt5")
+
+
+ops::getDDL(dbName, "dt1")
+ops::getDDL(dbName, "dt2")
+ops::getDDL(dbName, "dt3")
+ops::getDDL(dbName, "dt4")
+ops::getDDL(dbName, "dt5")
+
+@testing:case="test_function_getDDL_tsdb_chunkGranularity_table"
+dbName = "dfs://test_getDDL_tsdb"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+db = database(dbName, VALUE, 2012.01.01..2012.01.10, engine="TSDB", chunkGranularity="TABLE")
+n = 100000
+data1 = table(take(2012.01.01..2012.01.10, n) as date, take("A"+string(1..100), n) as sym, 1..n as val)
+pt1 = db.createPartitionedTable(data1, "pt1", `date, , `sym`date, ALL)
+pt1.append!(data1)
+pt2 = db.createPartitionedTable(data1, "pt2", `date, , `sym`date, FIRST)
+pt2.append!(data1)
+pt3 = db.createPartitionedTable(data1, "pt3", `date, , `sym`date, LAST)
+pt3.append!(data1)
+pt4 = db.createPartitionedTable(data1, "pt4", `date, , `sym`date, LAST, [hashBucket{, 5}])
+pt4.append!(data1)
+pt5 = db.createPartitionedTable(data1, "pt5", `date, {val:"delta"}, `sym`date, LAST, [hashBucket{, 5}])
+pt5.append!(data1)
+
+data2 = table(take(2012.01.01..2012.01.10, n) as date, take("A"+string(1..100), n) as sym, 1..n as val, 1..n as price)
+dt1 = db.createTable(data2, "dt1", , `sym`date, ALL)
+dt1.append!(data2)
+dt2 = db.createTable(data2, "dt2", , `sym`date, FIRST)
+dt2.append!(data2)
+dt3 = db.createTable(data2, "dt3", , `sym`date, LAST)
+dt3.append!(data2)
+dt4 = db.createTable(data2, "dt4", , `sym`date, LAST, [hashBucket{, 5}])
+dt4.append!(data2)
+dt5 = db.createTable(data2, "dt5", {val:"delta"}, `sym`date, LAST)
+dt5.append!(data2)
+
+ops::getDDL(dbName, "pt1")
+ops::getDDL(dbName, "pt2")
+ops::getDDL(dbName, "pt3")
+ops::getDDL(dbName, "pt4")
+ops::getDDL(dbName, "pt5")
+
+
+ops::getDDL(dbName, "dt1")
+ops::getDDL(dbName, "dt2")
+ops::getDDL(dbName, "dt3")
+ops::getDDL(dbName, "dt4")
+ops::getDDL(dbName, "dt5")
+
+
