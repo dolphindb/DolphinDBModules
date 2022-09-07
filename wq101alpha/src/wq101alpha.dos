@@ -506,7 +506,7 @@ def WQAlpha51(close){
 //((((-1 * ts_min(low, 5)) + delay(ts_min(low, 5), 5)) * rank(((sum(returns, 240) - sum(returns, 20)) / 220))) * ts_rank(volume, 5))
 
 def WQAlpha52(vol, close, low){
-    return (-mmin(low, 5) + mfirst(mmin(low, 5), 6)) * rowRank(msum(ratios(close) - 1, 240) - msum(ratios(close) - 1, 220), percent=true) * mrank(vol, true, 5)
+    return (-mmin(low, 5) + mfirst(mmin(low, 5), 6)) * rowRank((msum(ratios(close) - 1, 240) - msum(ratios(close) - 1, 220)) / 220, percent=true) * mrank(vol, true, 5)
 }
 
 
