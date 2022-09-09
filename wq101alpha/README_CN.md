@@ -4,7 +4,7 @@
 
 该模块的实现具有三大优势：
 * 实现简单：在 DolphinDB 中基本可以实现原公式的一对一直接翻译。
-* 性能优越：性能远优于传统的 Python 实现方式，平均性能是Python的250倍，中位数是15.5倍。
+* 性能优越：性能远优于传统的 Python pandas 实现方式，平均性能是 Python pandas 的250倍，中位数是15.5倍。
 * 批流一体：模块中定义的因子函数，既可以用于历史计算，又可以用于流式增量计算。
 
 > 本教程包含的所有代码兼容 DolphinDB 2.00.8，1.30.20 及以上版本。
@@ -27,6 +27,8 @@
   - [3.1 面板数据格式的因子存储](#31-面板数据格式的因子存储)
   - [3.2 表形式的因子存储](#32-表形式的因子存储)
 - [4. 性能对比](#4-性能对比)
+  - [4.1 DolphinDB 与 Python Pandas 性能对比](#41-dolphindb-与-python-pandas-性能对比)
+  - [4.2 DolphinDB 与 Python numpy 的性能对比](#42-dolphindb-与-python-numpy-的性能对比)
 - [5. 正确性验证](#5-正确性验证)
   - [5.1 包含截面计算的因子验证](#51-包含截面计算的因子验证)
   - [5.2 无状态因子验证](#52-无状态因子验证)
@@ -335,7 +337,13 @@ writeLongInWideTable(res)
 
 ## 4. 性能对比
 
-本章用[一年模拟日频数据](test/dataPerformance.csv)对比了 `wq101alpha` 模块和 [101因子的Python实现](https://github.com/yli188/WorldQuant_alpha101_code) 计算101个因子的性能。完整的性能对比脚本可参考 [wq101alpha 模块性能测试](test/wq101alphaDDBTime.dos) 和 [Python alpha 101 性能测试](test/wq101alphaPyTime.py) 。
+本章节将用 DolphinDB 实现的 `wq101alpha` 模块与 python 中用 pandas, numpy 模块实现的 WorldQuant alpha 因子分别对比计算性能。
+
+结果上来看 DolphinDB 的计算性能卓越。
+
+### 4.1 DolphinDB 与 Python Pandas 性能对比
+
+本节用[一年模拟日频数据](test/dataPerformance.csv)对比了 `wq101alpha` 模块和 [101因子的Pandas实现](https://github.com/yli188/WorldQuant_alpha101_code) 计算101个因子的性能。完整的性能对比脚本可参考 [wq101alpha 模块性能测试](test/wq101alphaDDBTime.dos) 和 [Python alpha 101 性能测试](test/wq101alphaPyTime.py) 。
 
 
 用 `wq101alpha` 模块中的函数计算并计时，核心代码如下，完整的脚本可参考 [wq101alpha 模块性能测试](test/wq101alphaDDBTime.dos)：
@@ -344,17 +352,17 @@ writeLongInWideTable(res)
 times = array(INT, 0)
 defs()
 for (i in 1:102){
-	if (i in passList) times.append!(NULL)
-	else{
-		print(i)
-		alphaName = exec name from defs() where name = "wq101alpha::WQAlpha"+string(i)
-		alphaSyntax = exec syntax from defs() where name = "wq101alpha::WQAlpha"+string(i)
-		function = alphaName + alphaSyntax
-		t1 = time(now())
-		res = parseExpr(function[0]).eval()
-		t2 = time(now())
-		times.append!(t2 - t1)
-	}
+    if (i in passList) times.append!(NULL)
+    else{
+        print(i)
+        alphaName = exec name from defs() where name = "wq101alpha::WQAlpha"+string(i)
+        alphaSyntax = exec syntax from defs() where name = "wq101alpha::WQAlpha"+string(i)
+        function = alphaName + alphaSyntax
+        t1 = time(now())
+        res = parseExpr(function[0]).eval()
+        t2 = time(now())
+        times.append!(t2 - t1)
+    }
 }
 ```
 
@@ -365,7 +373,7 @@ times = []
 
 nofunc = [48, 56, 58, 59, 63, 67, 69, 70, 76, 79, 80, 82, 87, 89, 90, 91, 93, 97, 100]
 
-for i in tqdm(range(1, 102)):
+for i in range(1, 102):
     if i in nofunc:
         times.append('no function')
         continue
@@ -425,8 +433,29 @@ for i in tqdm(range(1, 102)):
 
 从上表结果可以看出，使用 DolphinDB 实现的 `wq101alpha` 模块的计算效率远远高于 Python 的实现。Python 实现的耗时平均是 DolphinDB 实现的250倍，中位数为15.5倍。
 
-其中因子12和41的实现，DolphinDB 慢于 Python。原因是sign, pow 函数的实现有些许不同。DolphinDB会在后续版本中提升这两个内置函数的性能。
+其中因子41的实现，DolphinDB 慢于 Python。原因是 pow 函数的实现有些许不同。DolphinDB 会在后续版本中提升这个内置函数的性能。
 
+### 4.2 DolphinDB 与 Python numpy 的性能对比
+
+考虑到用 python pandas Dataframe 实现因子的计算性能效率可能不及 numpy ，为公平起见，本节抽取了11个 pandas 实现耗时特别久的因子，重新用 numpy 实现，具体代码见[部分101因子的numpy实现](test/partialAlpha_npPerformance.py)。 DolphinDB 与 numpy 在实现这些因子的性能比较如下：
+
+| 因子ID# | ddb  | pandas  | numpy  | 耗时比(pandas/ddb) | 耗时比(numpy/ddb) |
+| ------- | ---- | ------- | ------ | ------------------ | ----------------- |
+| 1       | 86   | 68,837  | 418    | 800.4              | 4.9               |
+| 4       | 75   | 89,440  | 54,417 | 1,192.5            | 725.6             |
+| 5       | 120  | 600     | 218    | 5.0                | 1.8               |
+| 7       | 148  | 72,001  | 39,472 | 486.5              | 266.7             |
+| 8       | 112  | 1,513   | 265    | 13.5               | 2.4               |
+| 9       | 50   | 714     | 152    | 14.3               | 3.0               |
+| 17      | 177  | 174,055 | 93,704 | 983.4              | 529.4             |
+| 29      | 406  | 89,515  | 47,100 | 220.5              | 116.0             |
+| 38      | 91   | 89,487  | 46,257 | 983.4              | 508.3             |
+| 52      | 131  | 91,360  | 46,715 | 697.4              | 356.6             |
+| 83      | 209  | 1,107   | 464    | 5.3                | 2.2               |
+
+从结果上来看， numpy 的实现确实比 pandas dataframe 实现快一些，但是由于窗口函数 numpy 中是用 [`numpy.lib.stride_tricks.sliding_window_view`](https://numpy.org/doc/stable/reference/generated/numpy.lib.stride_tricks.sliding_window_view.html) 实现的，对于窗口计算没有优化，故性能并没有显著提升。
+
+综合来看，DolphinDB 在实现 WorldQuant 101 alpha 因子上有非常大的优势，性能卓越。
 
 
 ## 5. 正确性验证
@@ -529,7 +558,7 @@ res = exec factor from resultStream pivot by TradeTime, SecurityID
 - [基本面数据建库建表](helper/infoDataScript.dos)
 - [Alpha101计算存储全流程代码汇总](helper/wq101alphaScript.dos)
 - [因子计算准备函数模块](helper/prepare101.dos) 
-- [日频因子全流程代码汇总](https://gitee.com/dolphindb/Tutorials_CN/blob/master/script/factorPractice/appendix_8.1_case1_daily.dos)
+- [因子最佳实践中的因子存储章节](https://gitee.com/dolphindb/Tutorials_CN/blob/master/best_practice_for_factor_calculation.md#5-%E5%9B%A0%E5%AD%90%E7%9A%84%E5%AD%98%E5%82%A8%E5%92%8C%E6%9F%A5%E8%AF%A2)
 - [101因子的Python实现参考出处](https://github.com/yli188/WorldQuant_alpha101_code)
 - [本文用的101因子python模块代码](test/alpha101_adjusted.py)
 - [一年模拟日频数据](test/dataPerformance.csv)

@@ -954,11 +954,11 @@ dropAllStreamEngines()
 
 
 //WQAlpha 65 streaming
-inputSchema = table(1:0, ["securityid","tradetime", "vol", "vwap", "open", "high", "low"], [SYMBOL,TIMESTAMP,DOUBLE, DOUBLE,DOUBLE,DOUBLE,DOUBLE])
+inputSchema = table(1:0, ["securityid","tradetime", "vol", "vwap", "open"], [SYMBOL,TIMESTAMP,DOUBLE, DOUBLE,DOUBLE])
 resultStream = table(10000:0, ["SecurityID","TradeTime", "factor"], [SYMBOL,TIMESTAMP,   DOUBLE])
-metrics = <[WQAlpha65(vol, vwap, open, high, low)]>
+metrics = <[WQAlpha65(vol, vwap, open)]>
 streamEngine = streamEngineParser(name="WQAlpha65Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="securityid", timeColumn=`tradetime, triggeringPattern='perBatch', triggeringInterval=4000)
-data = select SecurityID, TradeTime, vol, vwap, open, high, low from hisData order by TradeTime
+data = select SecurityID, TradeTime, vol, vwap, open from hisData order by TradeTime
 streamEngine.append!(data)
 //check the result
 res = exec factor from resultStream pivot by TradeTime, SecurityID
