@@ -343,7 +343,7 @@ writeLongInWideTable(res)
 
 ### 4.1 DolphinDB 与 Python Pandas 性能对比
 
-本节用[一年模拟日频数据](test/dataPerformance.csv)对比了 `wq101alpha` 模块和 [101因子的Pandas实现](https://github.com/yli188/WorldQuant_alpha101_code) 计算101个因子的性能。完整的性能对比脚本可参考 [wq101alpha 模块性能测试](test/wq101alphaDDBTime.dos) 和 [Python alpha 101 性能测试](test/wq101alphaPyTime.py) 。
+本节用[一年模拟日频数据](test/dataPerformance.zip)对比了 `wq101alpha` 模块和 [101因子的Pandas实现](https://github.com/yli188/WorldQuant_alpha101_code) 计算101个因子的性能。完整的性能对比脚本可参考 [wq101alpha 模块性能测试](test/wq101alphaDDBTime.dos) 和 [Python alpha 101 性能测试](test/wq101alphaPyTime.py) 。
 
 
 用 `wq101alpha` 模块中的函数计算并计时，核心代码如下，完整的脚本可参考 [wq101alpha 模块性能测试](test/wq101alphaDDBTime.dos)：
@@ -462,7 +462,7 @@ for i in range(1, 102):
 
 目前101个alpha因子不存在统一的实现方式。本文参考了 [101因子的Python实现](https://github.com/yli188/WorldQuant_alpha101_code) 中的实现方式，用稍作调整的[python模块代码](test/alpha101_adjusted.py)，部分验证了该模块的正确性。由于在验证过程中发现诸多问题，该小节中将分类、分布验证并探讨该模块实现方式与 Python 实现方式的不同。
 
-验证所用的数据为[一年模拟日频数据](test/dataPerformance.csv)中的前十支股票。用 [DolphinDB 验证脚本](test/wqAlphaDDBRes.dos) 在 DolphinDB 及 [Python 验证脚本](test/wqAlphaPyRes.py) 在 python 中跑完因子后，截取第一支股票的数据做对比。
+验证所用的数据为[一年模拟日频数据](test/dataPerformance.zip)中的前十支股票。用 [DolphinDB 验证脚本](test/wqAlphaDDBRes.dos) 在 DolphinDB 及 [Python 验证脚本](test/wqAlphaPyRes.py) 在 python 中跑完因子后，截取第一支股票的数据做对比。
 
 最后的验证步骤可参考[正确性验证脚本](test/verifyResult.py) 。
 
@@ -561,7 +561,7 @@ res = exec factor from resultStream pivot by TradeTime, SecurityID
 - [因子最佳实践中的因子存储章节](https://gitee.com/dolphindb/Tutorials_CN/blob/master/best_practice_for_factor_calculation.md#5-%E5%9B%A0%E5%AD%90%E7%9A%84%E5%AD%98%E5%82%A8%E5%92%8C%E6%9F%A5%E8%AF%A2)
 - [101因子的Python实现参考出处](https://github.com/yli188/WorldQuant_alpha101_code)
 - [本文用的101因子python模块代码](test/alpha101_adjusted.py)
-- [一年模拟日频数据](test/dataPerformance.csv)
+- [一年模拟日频数据](test/dataPerformance.zip)
 - [wq101alpha 模块性能测试脚本](test/wq101alphaDDBTime.dos)
 - [Python alpha 101 性能测试脚本](test/wq101alphaPyTime.py)
 - [完整性能对比结果](test/PerformanceCompare.csv)
