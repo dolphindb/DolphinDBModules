@@ -2,10 +2,11 @@
 *  @ brief  
 *  This script is the implementation of real-time WorldQuant 101 alpha computation.
 *  @ Author: DolphinDB
-*  @ Last modification time: 2022.10.12
+*  @ Last modification time: 2022.10.21
 *  @ DolphinDB server version: 2.00.8
 *  @ FileName: wq101alphaStreamTest.dos
 *  Don't forget to change your directory in line 32.
+*  The implementation only includes the non-industry factors
 */
 
 //clear the enviroment, prepare the module and data
@@ -29,13 +30,13 @@ dropAllStreamEngines()
 login("admin", "123456")
 use wq101alpha
 
-hisData = loadText("/YOURDIC/dataPerformance.csv")
+hisData = loadText("/YOURDIR/dataPerformance.csv")
 
 //WQAlpha 1 streaming
-inputSchemaT = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
 resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
 metrics = <[SecurityID,WQAlpha1(close)]>
-streamEngine = streamEngineParser(name="WQAlpha1Parser", metrics=metrics, dummyTable=inputSchemaT, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+streamEngine = streamEngineParser(name="WQAlpha1Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
 data = select SecurityID, TradeTime, close from hisData order by TradeTime
 streamEngine.append!(data)
 //check the result

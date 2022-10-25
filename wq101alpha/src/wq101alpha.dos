@@ -4,16 +4,16 @@
 *  and divides the functions into three categories according to their features.
 *  The development of this module is based on day level data.
 *  @ Author: DolphinDB
-*  @ Last modification time: 2022.09.01
-*  @ DolphinDB server version: 2.00.7
+*  @ Last modification time: 2022.10.14
+*  @ DolphinDB server version: 2.00.8
 *  @ FileName: wq101alpha.dos
 */
 
 module wq101alpha
 
-//1. General cross-sectional factors:
-//The calculation process includes factors for time-series cross-sections or subject cross-sections (or both), without industry neutralization.
+//1. factors without industry neutralization: 82 factors in total
 //These factors take panel data as parameters and return panel data.
+
 
 //alpha 1
 //rank(Ts_ArgMax(SignedPower((returns<0?stddev(returns,20):close), 2), 5))-0.5
@@ -416,7 +416,12 @@ def WQAlpha40(vol, high){
     return -rowRank(mstd(high, 10), percent=true) * mcorr(high, vol, 10)
 }
 
+//alpha 41
+//(((high * low)^0.5) - vwap)
 
+def WQAlpha41(high, low, vwap){
+    return pow(high * low, 0.5) - vwap
+}
 
 //alpha 42
 //(rank((vwap - close)) / rank((vwap + close)))
@@ -516,6 +521,15 @@ def WQAlpha52(vol, close, low){
 
 def WQAlpha53(close, high, low){
     return -(((close - low) - (high - close)) / (close - low) - mfirst(((close - low) - (high - close)) / (close - low), 10))
+}
+
+
+
+//alpha 54
+//((-1 * ((low - close) * (open^5))) / ((low - high) * (close^5)))
+
+def WQAlpha54(open, close, high, low){
+    return -(low - close) * pow(open, 5) / ((low - high) * pow(close, 5))
 }
 
 
@@ -818,28 +832,6 @@ def WQAlpha99(vol, high, low){
 
 
 
-//2. Stateless factor:
-//The calculation process includes only the current state.
-//These factors take vectors as parameters and return in-memory tables.
-
-//alpha 41
-//(((high * low)^0.5) - vwap)
-
-def WQAlpha41(high, low, vwap){
-    return pow(high * low, 0.5) - vwap
-}
-
-
-
-//alpha 54
-//((-1 * ((low - close) * (open^5))) / ((low - high) * (close^5)))
-
-def WQAlpha54(open, close, high, low){
-    return -(low - close) * pow(open, 5) / ((low - high) * pow(close, 5))
-}
-
-
-
 //alpha 101
 //((close - open) / ((high - low) + .001))
 
@@ -849,11 +841,12 @@ def WQAlpha101(close, open, high, low){
 
 
 
-//3. Factors with industry classification information:
+//2. Factors with industry classification information:
 //The calculation process includes industry neutralization and requires complex operations such as context by.
 //These factors take in-memory tables as parameters and return in-memory tables.
 //Industry classification standards are not uniform. In order to facilitate generalization, we make certain adjustments to the formula.
-//In this module, levels of classification are ignored; instead calculations applies directly to all bits of the industry classification
+//In this module, levels of classification are ignored; instead calculations applies directly to all bits of the industry classification.
+//These factors are alpha 48,56,58,59,63,67,69,70,76,79,80,82,87,89,90,91,93,97,100.
 
 //alpha 48
 //(indneutralize(((correlation(delta(close, 1), delta(delay(close, 1), 1), 250) * delta(close, 1)) / close), IndClass.subindustry) / sum(((delta(close, 1) / delay(close, 1))^2), 250))

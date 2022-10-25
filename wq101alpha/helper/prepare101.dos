@@ -2,8 +2,8 @@
 *  @ brief  
 *  This script provides all necessary functions to prepare panel data for module wq101alpha.
 *  @ Author: DolphinDB
-*  @ Last modification time: 2022.09.01
-*  @ DolphinDB server version: 2.00.7
+*  @ Last modification time: 2022.10.14
+*  @ DolphinDB server version: 2.00.8
 *  @ FileName: prepare101.dos
 */
 
@@ -410,6 +410,15 @@ def prepare40(data, startTime, endTime){
 }
 
 
+
+//alpha 41
+//(((high * low)^0.5) - vwap)
+//prepare panel data including high, low, vwap
+def prepare41(data, startTime, endTime){
+    t = select securityid, tradetime, high, low, vwap from data where tradetime between startTime : endTime
+    return dict(`high`low`vwap, panel(t.tradetime, t.securityid, [t.high, t.low, t.vwap]))
+}
+
 //alpha 42
 //(rank((vwap - close)) / rank((vwap + close)))
 //prepare panel data including vwap, close
@@ -506,6 +515,16 @@ def prepare52(data, startTime, endTime){
 def prepare53(data, startTime, endTime){
     t = select securityid, tradetime, close, high, low from data where tradetime between startTime : endTime
     return dict(`close`high`low, panel(t.tradetime, t.securityid, [t.close, t.high, t.low]))
+}
+
+
+
+//alpha 54
+//((-1 * ((low - close) * (open^5))) / ((low - high) * (close^5)))
+//prepare panel data including open, close, high, low
+def prepare54(data, startTime, endTime){
+    t = select securityid, tradetime, open, close, high, low from data where tradetime between startTime : endTime
+    return dict(`open`close`high`low, panel(t.tradetime, t.securityid, [t.open, t.close, t.high, t.low]))
 }
 
 
@@ -762,6 +781,16 @@ def prepare99(data, startTime, endTime){
 
 
 
+//alpha 101
+//((close - open) / ((high - low) + .001))
+//prepare panel data including close, open, high, low
+def prepare101(data, startTime, endTime){
+    t = select securityid, tradetime, close, open, high, low from data where tradetime between startTime : endTime
+    return dict(`close`open`high`low, panel(t.tradetime, t.securityid, [t.close, t.open, t.high, t.low]))
+}
+
+
+
 //3. Calculation helper functions.
 
 def calAlpha1(data, startTime, endTime){
@@ -1003,7 +1032,8 @@ def calAlpha40(data, startTime, endTime){
 
 
 def calAlpha41(data, startTime, endTime){
-    return select tradetime, securityid, `alpha41 as factorname, wq101alpha::WQAlpha41(high, low, vwap) as val from data where tradetime between startTime : endTime
+    input = prepare41(data, startTime, endTime)
+    return wq101alpha::WQAlpha41(input.high, input.low, input.vwap)
 }
 
 
@@ -1080,7 +1110,8 @@ def calAlpha53(data, startTime, endTime){
 
 
 def calAlpha54(data, startTime, endTime){
-    return select tradetime, securityid, `alpha54 as factorname, wq101alpha::WQAlpha54(open, close, high, low) as val from data where tradetime between startTime : endTime
+    input = prepare54(data, startTime, endTime)
+    return wq101alpha::WQAlpha54(input.open, input.close, input.high, input.low)
 }
 
 
@@ -1361,5 +1392,6 @@ def calAlpha100(data, startTime, endTime){
 
 
 def calAlpha101(data, startTime, endTime){
-    return select tradetime, securityid, `alpha101 as factorname, wq101alpha::WQAlpha101(close, open, high, low) as val from data where tradetime between startTime : endTime
+    input = prepare101(data, startTime, endTime)
+    return wq101alpha::WQAlpha101(input.close, input.open, input.high, input.low)
 }

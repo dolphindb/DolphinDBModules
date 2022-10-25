@@ -56,7 +56,7 @@ data = prepareData(rawData=rawData, startTime=startTime, endTime=endTime, securi
 
 //Calculate and save factors
 
-rtnTable = 41 54 101 48 56 58 59 63 67 69 70 76 79 80 82 87 89 90 91 93 97 100
+rtnTable = 48 56 58 59 63 67 69 70 76 79 80 82 87 89 90 91 93 97 100
 createFactorWideDbTable("dfs://K_FACTOR_WIDE", "factor_k_wide")
 
 for (i in 1:102){
