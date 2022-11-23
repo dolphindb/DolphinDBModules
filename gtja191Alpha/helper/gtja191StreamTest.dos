@@ -1,0 +1,3059 @@
+/* *
+*  @ brief  
+*  This script is the implementation of real-time GTJA 191 alpha computation.
+*  @ Author: DolphinDB
+*  @ Last modification time: 2022.11.23
+*  @ DolphinDB server version: 2.00.9
+*  @ FileName: gtja191StreamTest.dos
+*  Don't forget to change your directory in line 12.
+*/
+
+use gtja191Alpha
+hisData = loadText("/YOURDIR/datatest.csv")
+
+//clear the enviroment, prepare the module and data
+def dropAllStreamEngines(){
+	engineStatus=getStreamEngineStat()
+	allCurrrentEngineTypes=engineStatus.keys()
+	for(eachEngineType in allCurrrentEngineTypes){
+		engineInfoTable=engineStatus[eachEngineType]
+		for (eachEngineName in engineInfoTable.name){
+			try{
+				dropStreamEngine(eachEngineName)
+				print("注销引擎",eachEngineName,"成功")
+			}
+			catch(ex){
+				print("注销引擎",eachEngineName,"失败:",ex)
+			}
+		}
+	}
+}
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 1 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","open","close","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha1(open,close,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha1Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, open, close, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 2 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","high","low"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha2(close,high,low)]>
+streamEngine = streamEngineParser(name="gtjaAlpha2Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 3 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","high","low"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha3(close,high,low)]>
+streamEngine = streamEngineParser(name="gtjaAlpha3Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 4 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha4(close,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha4Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 5 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","high","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha5(high,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha5Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, high, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 6 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","open","high"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha6(open,high)]>
+streamEngine = streamEngineParser(name="gtjaAlpha6Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, open, high from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 7 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","vol","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha7(close,vol,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha7Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, vol, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 8 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","high","low","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha8(high,low,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha8Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, high, low, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 9 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","high","low","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha9(high,low,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha9Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, high, low, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 10 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha10(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha10Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 11 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","high","low","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha11(close,high,low,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha11Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, high, low, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 12 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","open","close","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha12(open,close,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha12Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, open, close, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 13 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","high","low","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha13(high,low,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha13Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, high, low, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 14 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha14(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha14Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 15 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","open","close"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha15(open, close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha15Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, open, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 16 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","vol","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha16(vol,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha16Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 17 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha17(close,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha17Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 18 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha18(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha18Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 19 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha19(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha19Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 20 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha20(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha20Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 21 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha21(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha21Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+//gtjaAlpha 22 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha22(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha22Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 23 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha23(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha23Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 24 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha24(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha24Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 25 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha25(close,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha25Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 26 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha26(close,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha26Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 27 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha27(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha27Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 28 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","high","low"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha28(close,high,low)]>
+streamEngine = streamEngineParser(name="gtjaAlpha28Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 29 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha29(close,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha29Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 30 streaming
+
+
+
+//gtjaAlpha 31 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha31(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha31Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 32 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","high","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha32(high,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha32Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, high, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 33 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","low","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha33(close,low,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha33Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, low, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 34 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha34(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha34Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 35 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","open","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha35(open,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha35Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, open, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 36 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","vol","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha36(vol,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha36Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 37 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","open","close"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha37(open,close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha37Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, open, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 38 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","high"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha38(high)]>
+streamEngine = streamEngineParser(name="gtjaAlpha38Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, high from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 39 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","open","close","vol","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha39(open,close,vol,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha39Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, open, close, vol, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 40 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha40(close,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha40Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 41 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","vwap"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha41(vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha41Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 42 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","high","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha42(high,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha42Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, high, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 43 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha43(close,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha43Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 44 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","low","vol","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha44(low,vol,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha44Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, low, vol, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 45 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","open","close","vol","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha45(open,close,vol,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha45Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, open, close, vol, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 46 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha46(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha46Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 47 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","high","low"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha47(close,high,low)]>
+streamEngine = streamEngineParser(name="gtjaAlpha47Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 48 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha48(close,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha48Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 49 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","high","low"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha49(high,low)]>
+streamEngine = streamEngineParser(name="gtjaAlpha49Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 50 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","high","low"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha50(high,low)]>
+streamEngine = streamEngineParser(name="gtjaAlpha50Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 51 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","high","low"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha51(high,low)]>
+streamEngine = streamEngineParser(name="gtjaAlpha51Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 52 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","high","low"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha52(close,high,low)]>
+streamEngine = streamEngineParser(name="gtjaAlpha52Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 53 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha53(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha53Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 54 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","open","close"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha54(open,close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha54Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, open, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 55 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","open","close","high","low"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha55(open,close,high,low)]>
+streamEngine = streamEngineParser(name="gtjaAlpha55Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, open, close, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 56 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","open","high","low","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha56(open,high,low,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha56Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, open, high, low, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 57 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","high","low"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha57(close,high,low)]>
+streamEngine = streamEngineParser(name="gtjaAlpha57Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 58 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha58(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha58Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 59 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","high","low"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha59(close,high,low)]>
+streamEngine = streamEngineParser(name="gtjaAlpha59Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 60 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","high","low","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha60(close,high,low,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha60Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, high, low, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 61 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","low","vol","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha61(low,vol,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha61Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, low, vol, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 62 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","high","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha62(high,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha62Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, high, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 63 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha63(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha63Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 64 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","vol", "vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha64(close,vol,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha64Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, vol, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 65 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha65(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha65Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 66 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha66(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha66Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 67 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha67(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha67Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 68 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","high","low","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha68(high,low,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha68Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, high, low, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 69 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","open","high","low"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha69(open,high,low)]>
+streamEngine = streamEngineParser(name="gtjaAlpha69Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, open, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 70 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","vol","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha70(vol,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha70Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 71 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha71(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha71Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 72 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","high","low"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha72(close,high,low)]>
+streamEngine = streamEngineParser(name="gtjaAlpha72Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 73 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","vol","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha73(close,vol,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha73Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, vol, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 74 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","low","vol","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha74(low,vol,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha74Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, low, vol, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 75 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","open","close","index_close","index_open"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha75(open,close,index_open,index_close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha75Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, open, close, index_open, index_close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 76 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha76(close,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha76Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 77 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","high","low","vol","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha77(high,low,vol,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha77Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, high, low, vol, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 78 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","high","low"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha78(close,high,low)]>
+streamEngine = streamEngineParser(name="gtjaAlpha78Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 79 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha79(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha79Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 80 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","vol"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha80(vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha80Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 81 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","vol"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha81(vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha81Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 82 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","high","low"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha82(close,high,low)]>
+streamEngine = streamEngineParser(name="gtjaAlpha82Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 83 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","high","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha83(high,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha83Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, high, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 84 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha84(close,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha84Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 85 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha85(close,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha85Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 86 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha86(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha86Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 87 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","open","high","low","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha87(open,high,low,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha87Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, open, high, low, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 88 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha88(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha88Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 89 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha89(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha89Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 90 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","vol","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha90(vol,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha90Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 91 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","low","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha91(close,low,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha91Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, low, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 92 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","vol","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha92(close,vol,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha92Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, vol, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 93 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","open","low"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha93(open,low)]>
+streamEngine = streamEngineParser(name="gtjaAlpha93Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, open, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 94 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha94(close,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha94Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 95 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","vol","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha95(vol,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha95Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 96 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","high","low"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha96(close,high,low)]>
+streamEngine = streamEngineParser(name="gtjaAlpha96Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 97 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","vol"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha97(vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha97Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 98 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha98(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha98Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 99 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha99(close,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha99Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 100 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","vol"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha100(vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha100Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 101 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","high","vol","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha101(close,high,vol,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha101Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, high, vol, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 102 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","vol"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha102(vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha102Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 103 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","low"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha103(low)]>
+streamEngine = streamEngineParser(name="gtjaAlpha103Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 104 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","high","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha104(close,high,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha104Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, high, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 105 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","open","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha105(open,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha105Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, open, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 106 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha106(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha106Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 107 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","open","close","high","low"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha107(open,close,high,low)]>
+streamEngine = streamEngineParser(name="gtjaAlpha107Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, open, close, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 108 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","high","vol","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha108(high,vol,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha108Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, high, vol, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 109 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","high","low"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha109(high,low)]>
+streamEngine = streamEngineParser(name="gtjaAlpha109Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 110 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","high","low"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha110(close,high,low)]>
+streamEngine = streamEngineParser(name="gtjaAlpha110Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 111 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","high","low","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha111(close,high,low,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha111Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, high, low, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 112 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha112(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha112Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 113 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha113(close,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha113Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 114 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","high","low","vol","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha114(close,high,low,vol,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha114Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, high, low, vol, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 115 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","high","low","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha115(close,high,low,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha115Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, high, low, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 116 streaming
+
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha116(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha116Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+//gtjaAlpha 117 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","high","low","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha117(close,high,low,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha117Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, high, low, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 118 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","open","high","low"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha118(open,high,low)]>
+streamEngine = streamEngineParser(name="gtjaAlpha118Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, open, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 119 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","open","vol","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha119(open,vol,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha119Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, open, vol, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 120 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime","SecurityID","factor"], [TIMESTAMP,SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha120(close,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha120Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 121 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","vol","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha121(vol,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha121Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 122 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha122(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha122Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 123 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","high","low","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha123(high,low,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha123Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, high, low, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 124 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha124(close,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha124Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 125 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","vol","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha125(close,vol,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha125Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, vol, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 126 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","high","low"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha126(close,high,low)]>
+streamEngine = streamEngineParser(name="gtjaAlpha126Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 127 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha127(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha127Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 128 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","high","low","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha128(close,high,low,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha128Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, high, low, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 129 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha129(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha129Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 130 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","high","low","vol","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha130(high,low,vol,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha130Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, high, low, vol, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 131 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","vol","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha131(close,vol,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha131Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, vol, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 132 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","vol","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha132(vol,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha132Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 133 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","high","low"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha133(high,low)]>
+streamEngine = streamEngineParser(name="gtjaAlpha133Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 134 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha134(close,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha134Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 135 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha135(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha135Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 136 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","open","close","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha136(open,close,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha136Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, open, close, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 137 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","open","close","high","low"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha137(open,close,high,low)]>
+streamEngine = streamEngineParser(name="gtjaAlpha137Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, open, close, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 138 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","low","vol","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha138(low,vol,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha138Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, low, vol, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 139 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","open","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha139(open,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha139Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, open, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 140 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","open","close","high","low","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha140(open,close,high,low,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha140Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, open, close, high, low, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 141 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","high","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha141(high,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha141Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, high, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 142 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha142(close,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha142Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 143 streaming
+
+
+
+//gtjaAlpha 144 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","vol","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha144(close,vol,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha144Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, vol, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 145 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","vol"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha145(vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha145Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 146 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha146(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha146Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 147 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha147(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha147Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+//gtjaAlpha 148 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","open","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha148(open,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha148Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, open, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 149 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","index_close"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha149(close,index_close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha149Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, index_close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 150 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","high","low","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha150(close,high,low,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha150Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, high, low, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 151 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha151(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha151Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 152 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha152(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha152Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 153 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha153(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha153Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 154 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","vol","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha154(vol,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha154Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 155 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","vol"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha155(vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha155Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 156 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","open","low","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha156(open,low,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha156Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, open, low, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 157 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha157(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha157Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 158 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","high","low"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha158(close,high,low)]>
+streamEngine = streamEngineParser(name="gtjaAlpha158Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 159 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","high","low"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha159(close,high,low)]>
+streamEngine = streamEngineParser(name="gtjaAlpha159Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 160 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha160(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha160Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 161 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","high","low"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha161(close,high,low)]>
+streamEngine = streamEngineParser(name="gtjaAlpha161Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 162 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha162(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha162Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 163 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","high","vol","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha163(close,high,vol,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha163Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, high, vol, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 164 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","high","low"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha164(close,high,low)]>
+streamEngine = streamEngineParser(name="gtjaAlpha164Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 165 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, ["TradeTime","SecurityID","factor"], [TIMESTAMP,SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha165(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha165Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+//gtjaAlpha 166 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha166(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha166Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+//gtjaAlpha 167 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha167(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha167Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 168 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","vol"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha168(vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha168Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 169 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha169(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha169Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 170 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","high","vol","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha170(close,high,vol,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha170Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, high, vol, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 171 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","open","close","high","low"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha171(open,close,high,low)]>
+streamEngine = streamEngineParser(name="gtjaAlpha171Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, open, close, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 172 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","high","low"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha172(close,high,low)]>
+streamEngine = streamEngineParser(name="gtjaAlpha172Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 173 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha173(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha173Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 174 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha174(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha174Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 175 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","high","low"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha175(close,high,low)]>
+streamEngine = streamEngineParser(name="gtjaAlpha175Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 176 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","high","low","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha176(close,high,low,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha176Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, high, low, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 177 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","high"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha177(high)]>
+streamEngine = streamEngineParser(name="gtjaAlpha177Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, high from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 178 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha178(close,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha178Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 179 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","low","vol","vwap"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha179(low,vol,vwap)]>
+streamEngine = streamEngineParser(name="gtjaAlpha179Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, low, vol, vwap from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 180 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha180(close,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha180Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 181 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","index_close"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha181(close,index_close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha181Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, index_close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 182 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","open","index_close","index_open"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha182(close,index_close,open,index_open)]>
+streamEngine = streamEngineParser(name="gtjaAlpha182Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, open, close, index_open, index_close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 183 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha183(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha183Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 184 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","open","close"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha184(open,close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha184Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, open, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 185 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","open","close"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["TradeTime", "SecurityID","factor"], [TIMESTAMP, SYMBOL,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha185(open,close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha185Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, open, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 186 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","high","low"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, ["SecurityID","TradeTime","factor"], [SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[SecurityID,gtjaAlpha186(close,high,low)]>
+streamEngine = streamEngineParser(name="gtjaAlpha186Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 187 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","open","high"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha187(open,high)]>
+streamEngine = streamEngineParser(name="gtjaAlpha187Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, open, high from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 188 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","high","low"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha188(high,low)]>
+streamEngine = streamEngineParser(name="gtjaAlpha188Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, high, low from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 189 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha189(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha189Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 190 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close"], [SYMBOL,TIMESTAMP,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha190(close)]>
+streamEngine = streamEngineParser(name="gtjaAlpha190Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
+
+
+
+//gtjaAlpha 191 streaming
+inputSchema = table(1:0, ["SecurityID","TradeTime","close","high","low","vol"], [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE,DOUBLE])
+resultStream = table(10000:0, [ "SecurityID","TradeTime","factor"], [ SYMBOL,TIMESTAMP,DOUBLE])
+metrics = <[gtjaAlpha191(close,high,low,vol)]>
+streamEngine = streamEngineParser(name="gtjaAlpha191Parser", metrics=metrics, dummyTable=inputSchema, outputTable=resultStream, keyColumn="SecurityID", timeColumn=`tradetime, triggeringPattern='keyCount', triggeringInterval=4000)
+data = select SecurityID, TradeTime, close, high, low, vol from hisData order by TradeTime
+streamEngine.append!(data)
+//check the result
+res = exec factor from resultStream pivot by TradeTime, SecurityID
+//check how many enginges are using
+getStreamEngineStat()
+//drop all used engines
+dropAllStreamEngines()
