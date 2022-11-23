@@ -1,6 +1,6 @@
 # 国泰君安 191 Alpha 因子库 <!-- omit in toc -->
 
-[国泰君安 191 Alpha 因子](src/gtja191alpha.dos) 来源于国泰君安 2017 年 6 月份公布的研报《基于短周期价量特征的多因子选股体系——数量化专题之九十三》，属于短周期价量因子。为了使用户更方便地计算因子，本模块使用 DolphinDB 脚本实现了所有 191 个因子的函数，并封装在 DolphinDB 模块  **gtja191Alpha** ([gtja191alpha.dos](src/gtja191alpha.dos)) 中。
+[国泰君安 191 Alpha 因子](src/gtja191Alpha.dos) 来源于国泰君安 2017 年 6 月份公布的研报《基于短周期价量特征的多因子选股体系——数量化专题之九十三》，属于短周期价量因子。为了使用户更方便地计算因子，本模块使用 DolphinDB 脚本实现了所有 191 个因子的函数，并封装在 DolphinDB 模块  **gtja191Alpha** ([gtja191Alpha.dos](src/gtja191Alpha.dos)) 中。
 
 本文将为大家介绍该因子库的基本规范，并以其中几个因子为例，展示因子库在批计算、流计算中的应用。
   
@@ -212,7 +212,7 @@ res = exec factor from resultStream pivot by TradeTime, SecurityID
 
 ### 5.2 附录2
 
-- [国泰君安 191 Alpha 因子模块](src/gtja191alpha.dos)
+- [国泰君安 191 Alpha 因子模块](src/gtja191Alpha.dos)
 - [日频数据文件](/gtja191Alpha/helper/datatest.zip)
 - [国泰君安191 Alpha 辅助模块](helper/gtja191Prepare.dos)
 - [国泰君安191Alpha流计算完整过程](helper/gtja191StreamTest.dos)
