@@ -4,7 +4,7 @@
 *  and divides the functions into three categories according to their features.
 *  The development of this module is based on day level data.
 *  @ Author: DolphinDB
-*  @ Last modification time: 2022.11.23
+*  @ Last modification time: 2022.12.7
 *  @ DolphinDB server version: 2.00.9
 *  @ FileName: gtja191alpha.dos
 */
@@ -294,7 +294,7 @@ def gtjaAlpha32(high, vol){
 //((((-1 * TSMIN(LOW, 5)) + DELAY(TSMIN(LOW, 5), 5)) * RANK(((SUM(RET, 240) - SUM(RET, 20)) / 220))) * TSRANK(VOLUME, 5))
 
 def gtjaAlpha33(close, low, vol){
-    return (-1 * mmin(low, 5) + mfirst(mmin(low, 5), 6)) * rowRank(msum(ratios(close) - 1, 20) - msum(ratios(close) - 1, 20) / 220, percent=true) * mrank(vol, true, 5)
+    return (-1 * mmin(low, 5) + mfirst(mmin(low, 5), 6)) * rowRank(msum(ratios(close) - 1, 240) - msum(ratios(close) - 1, 20) / 220, percent=true) * mrank(vol, true, 5)
 }
 
 
