@@ -2,7 +2,7 @@
 *  @ brief  
 *  This script provides all necessary functions to prepare panel data for module gtja191Alpha.
 *  @ Author: DolphinDB
-*  @ Last modification time: 2022.11.23
+*  @ Last modification time: 2022.12.14
 *  @ DolphinDB server version: 2.00.9
 *  @ FileName: gtja191Prepare.dos
 */
@@ -132,6 +132,12 @@ def gtjaCalAlpha15(data, startTime, endTime){
 def gtjaCalAlpha16(data, startTime, endTime){
     input = gtjaPrepare(data, startTime, endTime)
     return gtja191Alpha::gtjaAlpha16(input.vol,input.vwap)
+}
+
+
+def gtjaCalAlpha17(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha16(input.close,input.vwap)
 }
 
 
@@ -923,7 +929,7 @@ def gtjaCalAlpha148(data, startTime, endTime){
 
 def gtjaCalAlpha149(data, startTime, endTime){
 	input = gtjaPrepare(data, startTime, endTime) 
-	return gtja191Alpha::gtjaAlpha149(input.close, input.index.close)
+	return gtja191Alpha::gtjaAlpha149(input.close, input.index_close)
 } 
 
 
@@ -977,7 +983,7 @@ def gtjaCalAlpha157(data, startTime, endTime){
 
 def gtjaCalAlpha158(data, startTime, endTime){
 	input = gtjaPrepare(data, startTime, endTime) 
-	return gtja191Alpha::gtjaAlpha158(input.clpose, input.high, input.low)
+	return gtja191Alpha::gtjaAlpha158(input.close, input.high, input.low)
 } 
 
 
