@@ -4,7 +4,7 @@
 *  and divides the functions into three categories according to their features.
 *  The development of this module is based on day level data.
 *  @ Author: DolphinDB
-*  @ Last modification time: 2022.12.7
+*  @ Last modification time: 2022.12.14
 *  @ DolphinDB server version: 2.00.9
 *  @ FileName: gtja191alpha.dos
 */
@@ -1286,11 +1286,11 @@ def gtjaAlpha148(open, vol){
 
 
 //alpha 149
-//REGBETA(FILTER(CLOSE/DELAY(CLOSE,1)-1,BANCHMARKINDEXCLOSE<DELAY(BANCHMARKINDEXCLOSE,1) ),FILTER(BANCHMARKINDEXCLOSE/DELAY(BANCHMARKINDEXCLOSE,1)-1,BANCHMARKINDEXCLOSE<DELA Y(BANCHMARKINDEXCLOSE,1)),252)
+//REGBETA(FILTER(CLOSE/DELAY(CLOSE,1)-1,BANCHMARKINDEXCLOSE<DELAY(BANCHMARKINDEXCLOSE,1) ),FILTER(BANCHMARKINDEXCLOSE/DELAY(BANCHMARKINDEXCLOSE,1)-1,BANCHMARKINDEXCLOSE<DELAY(BANCHMARKINDEXCLOSE,1)),252)
 
 def gtjaAlpha149(close,index_close){
-    condition = iif(index_close<move(index_close,1),1,0)
-    return mbeta((close/move(close,1)-1)*condition, ((index_close/move(index_close,1)-1)*condition).reshape(), 252)
+    condition = iif(index_close<move(index_close,1),1,NULL)
+    return mbeta((close/move(close,1)-1)*condition, ((index_close/move(index_close,1)-1)*condition), 252)
 }
 
 

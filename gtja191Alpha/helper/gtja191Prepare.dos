@@ -137,7 +137,7 @@ def gtjaCalAlpha16(data, startTime, endTime){
 
 def gtjaCalAlpha17(data, startTime, endTime){
     input = gtjaPrepare(data, startTime, endTime)
-    return gtja191Alpha::gtjaAlpha16(input.close,input.vwap)
+    return gtja191Alpha::gtjaAlpha17(input.close,input.vwap)
 }
 
 
