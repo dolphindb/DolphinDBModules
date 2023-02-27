@@ -4,7 +4,7 @@
 *  and divides the functions into three categories according to their features.
 *  The development of this module is based on day level data.
 *  @ Author: DolphinDB
-*  @ Last modification time: 2022.12.14
+*  @ Last modification time: 2023.01.17
 *  @ DolphinDB server version: 2.00.9
 *  @ FileName: gtja191alpha.dos
 */
@@ -20,7 +20,7 @@ module gtja191Alpha
 
 def gtjaAlpha1(open, close, vol){
     delta = log(vol) - mfirst(log(vol), 2)
-    return -1 * (mcorr(rowRank(delta, percent=true), rowRank((close - open) / open, percent=true), 6))
+    return -1 * (mcorr(rowRank(delta, percent=true), rowRank((close - open) \ open, percent=true), 6))
 }
 
 
@@ -28,7 +28,7 @@ def gtjaAlpha1(open, close, vol){
 //(-1 * DELTA((((CLOSE - LOW) - (HIGH - CLOSE)) / (HIGH - LOW)), 1))
 
 def gtjaAlpha2(close, high, low){
-    tmp = (close - low - (high - close)) / (high - low)
+    tmp = (close - low - (high - close)) \ (high - low)
     return -1 * (tmp - mfirst(tmp, 2))
 }
 
@@ -46,9 +46,9 @@ def gtjaAlpha3(close, high, low){
 //((((SUM(CLOSE, 8) / 8) + STD(CLOSE, 8)) < (SUM(CLOSE, 2) / 2)) ? (-1 * 1) : (((SUM(CLOSE, 2) / 2) < ((SUM(CLOSE, 8) / 8) - STD(CLOSE, 8))) ? 1 : (((1 < (VOLUME / MEAN(VOLUME,20))) || ((VOLUME / MEAN(VOLUME,20)) == 1)) ? 1 : (-1 * 1))))
 
 def gtjaAlpha4(close, vol){
-    cond1 = ((msum(close, 8) / 8 + mstd(close, 8)) < (msum(close, 2) / 2))
-    cond2 = ((msum(close, 2) / 2) < (msum(close, 8) / 8 - mstd(close, 8)))
-    iffalse2 = iif((1 < (vol / mavg(vol, 20))) || (vol / mavg(vol, 20) == 1), 1, -1)
+    cond1 = ((msum(close, 8) \ 8 + mstd(close, 8)) < (msum(close, 2) \ 2))
+    cond2 = ((msum(close, 2) \ 2) < (msum(close, 8) \ 8 - mstd(close, 8)))
+    iffalse2 = iif((1 < (vol \ mavg(vol, 20))) || (vol \ mavg(vol, 20) == 1), 1, -1)
     iffalse1 = iif(cond2, 1, iffalse2)
     return iif(cond1, -1, iffalse1)
 }
@@ -83,7 +83,7 @@ def gtjaAlpha7(close, vol, vwap){
 //RANK(DELTA(((((HIGH + LOW) / 2) * 0.2) + (VWAP * 0.8)), 4) * -1)
 
 def gtjaAlpha8(high, low, vwap){
-    tmp = (high + low) / 2 * 0.2 + vwap * 0.8
+    tmp = (high + low) \ 2 * 0.2 + vwap * 0.8
     return rowRank((tmp - mfirst(tmp, 5)) * (-1), percent=true)
 }
 
@@ -92,7 +92,7 @@ def gtjaAlpha8(high, low, vwap){
 //SMA(((HIGH+LOW)/2-(DELAY(HIGH,1)+DELAY(LOW,1))/2)*(HIGH-LOW)/VOLUME,7,2)
 
 def gtjaAlpha9(high, low, vol){
-    A = ((high + low) / 2 - (mfirst(high, 2) + mfirst(low, 2)) / 2) * (high - low) / vol
+    A = ((high + low) \ 2 - (mfirst(high, 2) + mfirst(low, 2)) \ 2) * (high - low) \ vol
     return ewmMean(A,alpha=2\7)
 }
 
@@ -109,7 +109,7 @@ def gtjaAlpha10(close){
 //SUM(((CLOSE-LOW)-(HIGH-CLOSE))./(HIGH-LOW).*VOLUME,6)
 
 def gtjaAlpha11(close, high, low, vol){
-    return msum((close - low - (high - close)) / (high - low) * vol, 6)
+    return msum((close - low - (high - close)) \ (high - low) * vol, 6)
 }
 
 
@@ -117,7 +117,7 @@ def gtjaAlpha11(close, high, low, vol){
 //(RANK((OPEN - (SUM(VWAP, 10) / 10)))) * (-1 * (RANK(ABS((CLOSE - VWAP)))))
 
 def gtjaAlpha12(open, close, vwap){
-    return rowRank(open - msum(vwap, 10) / 10, percent=true) * (-1 * rowRank(abs(close - vwap), percent=true))
+    return rowRank(open - msum(vwap, 10) \ 10, percent=true) * (-1 * rowRank(abs(close - vwap), percent=true))
 }
 
 
@@ -141,7 +141,7 @@ def gtjaAlpha14(close){
 //OPEN/DELAY(CLOSE,1)-1
 
 def gtjaAlpha15(open, close){
-    return open / mfirst(close, 2) - 1
+    return open \ mfirst(close, 2) - 1
 }
 
 
@@ -165,7 +165,7 @@ def gtjaAlpha17(close, vwap){
 //CLOSE/DELAY(CLOSE,5)
 
 def gtjaAlpha18(close){
-    return close / mfirst(close, 6)
+    return close \ mfirst(close, 6)
 }
 
 
@@ -173,7 +173,7 @@ def gtjaAlpha18(close){
 //(CLOSE<DELAY(CLOSE,5)?(CLOSE-DELAY(CLOSE,5))/DELAY(CLOSE,5):(CLOSE=DELAY(CLOSE,5)?0:(CLOSE-DELAY(CLOSE,5))/CLOSE))
 
 def gtjaAlpha19(close){
-    return iif(close < mfirst(close, 6), (close - mfirst(close, 6)) / mfirst(close, 6), iif(close == mfirst(close, 6), 0, (close - mfirst(close, 6)) / close))
+    return iif(close < mfirst(close, 6), (close - mfirst(close, 6)) \ mfirst(close, 6), iif(close == mfirst(close, 6), 0, (close - mfirst(close, 6)) \ close))
 }
 
 
@@ -181,7 +181,7 @@ def gtjaAlpha19(close){
 //(CLOSE-DELAY(CLOSE,6))/DELAY(CLOSE,6)*100
 
 def gtjaAlpha20(close){
-    return (close - mfirst(close, 7)) / mfirst(close, 7) * 100
+    return (close - mfirst(close, 7)) \ mfirst(close, 7) * 100
 }
 
 
@@ -198,7 +198,7 @@ def gtjaAlpha21(close){
 
 @state
 def gtjaAlpha22(close){
-    A = (close - mavg(close,6)) / mavg(close,6) - move((close - mavg(close,6)) / mavg(close,6),3)
+    A = (close - mavg(close,6)) \ mavg(close,6) - move((close - mavg(close,6)) \ mavg(close,6),3)
     return ewmMean(A,alpha=1\12)
 }
 
@@ -209,7 +209,7 @@ def gtjaAlpha22(close){
 def gtjaAlpha23(close){
     A = iif(close > move(close,1), mstd(close,20), 0)
     B = iif(close <= move(close,1), mstd(close,20), 0)
-    return ewmMean(A,alpha=1\20)/(ewmMean(A,alpha=1\20) + ewmMean(B,alpha=1\20))*100
+    return ewmMean(A,alpha=1\20)\(ewmMean(A,alpha=1\20) + ewmMean(B,alpha=1\20))*100
 }
 
 
@@ -226,7 +226,7 @@ def gtjaAlpha24(close){
 //((-1 * RANK((DELTA(CLOSE, 7) * (1 - RANK(DECAYLINEAR((VOLUME / MEAN(VOLUME,20)), 9)))))) * (1 + RANK(SUM(RET, 250))))
 
 def gtjaAlpha25(close, vol){
-    return -1 * rowRank((close - mfirst(close, 8)) * (1 - rowRank(mavg(vol / mavg(vol, 20), 1..9), percent=true)), percent=true) * (1 + rowRank(msum(ratios(close) - 1, 250), percent=true))
+    return -1 * rowRank((close - mfirst(close, 8)) * (1 - rowRank(mavg(vol \ mavg(vol, 20), 1..9), percent=true)), percent=true) * (1 + rowRank(msum(ratios(close) - 1, 250), percent=true))
 }
 
 
@@ -234,7 +234,7 @@ def gtjaAlpha25(close, vol){
 //((((SUM(CLOSE, 7) / 7) - CLOSE)) + ((CORR(VWAP, DELAY(CLOSE, 5), 230))))
 
 def gtjaAlpha26(close, vwap){
-    return msum(close, 7) / 7 - close + mcorr(vwap, mfirst(close, 6), 230)
+    return msum(close, 7) \ 7 - close + mcorr(vwap, mfirst(close, 6), 230)
 }
 
 
@@ -242,7 +242,7 @@ def gtjaAlpha26(close, vwap){
 //WMA((CLOSE-DELAY(CLOSE,3))/DELAY(CLOSE,3)*100+(CLOSE-DELAY(CLOSE,6))/DELAY(CLOSE,6)*100,12)
 
 def gtjaAlpha27(close){
-    return mavg((close-move(close,3))/move(close,3)*100 + (close-move(close,6))/move(close,6)*100, 1..12 * 0.9, 12)
+    return mavg((close-move(close,3))\move(close,3)*100 + (close-move(close,6))\move(close,6)*100, 1..12 * 0.9, 12)
 }
 
 
@@ -250,7 +250,7 @@ def gtjaAlpha27(close){
 //3*SMA((CLOSE-TSMIN(LOW,9))/(TSMAX(HIGH,9)-TSMIN(LOW,9))*100,3,1)-2*SMA(SMA((CLOSE-TSMIN(LOW,9))/(MAX(HIGH,9)-TSMAX(LOW,9))*100,3,1),3,1)
 
 def gtjaAlpha28(close, high, low){
-    A = (close - mmin(low,9))/(mmax(high,9)-mmin(low,9)*100)
+    A = (close - mmin(low,9))\(mmax(high,9)-mmin(low,9)*100)
     B = ewmMean(A,alpha=1\3)
     return 3*B - 2*ewmMean(B,alpha=1\3)
 }
@@ -260,7 +260,7 @@ def gtjaAlpha28(close, high, low){
 //(CLOSE-DELAY(CLOSE,6))/DELAY(CLOSE,6)*VOLUME
 
 def gtjaAlpha29(close, vol){
-    return (close - mfirst(close, 7)) / mfirst(close, 7) * vol
+    return (close - mfirst(close, 7)) \ mfirst(close, 7) * vol
 }
 
 
@@ -270,7 +270,7 @@ def gtjaAlpha29(close, vol){
 //When calculating, you need to obtain the MKT, SMB, and HML corresponding to the timestamp, and input these three values ​​as vectors into parameters.
 
 def gtjaAlpha30(close,index_close, MKT, SMB, HML){
-    return mavg(pow(each(def(x)->x.Residual,loop(ols{,(MKT,SMB,HML)},close/move(close,1),1,2)),2),1..20*0.9,20)
+    return mavg(pow(each(def(x)->x.Residual,loop(ols{,(MKT,SMB,HML)},close\move(close,1),1,2)),2),1..20*0.9,20)
 }
 
 
@@ -278,7 +278,7 @@ def gtjaAlpha30(close,index_close, MKT, SMB, HML){
 //(CLOSE-MEAN(CLOSE,12))/MEAN(CLOSE,12)*100
 
 def gtjaAlpha31(close){
-    return (close - mavg(close, 12)) / mavg(close, 12) * 100
+    return (close - mavg(close, 12)) \ mavg(close, 12) * 100
 }
 
 
@@ -294,7 +294,7 @@ def gtjaAlpha32(high, vol){
 //((((-1 * TSMIN(LOW, 5)) + DELAY(TSMIN(LOW, 5), 5)) * RANK(((SUM(RET, 240) - SUM(RET, 20)) / 220))) * TSRANK(VOLUME, 5))
 
 def gtjaAlpha33(close, low, vol){
-    return (-1 * mmin(low, 5) + mfirst(mmin(low, 5), 6)) * rowRank(msum(ratios(close) - 1, 240) - msum(ratios(close) - 1, 20) / 220, percent=true) * mrank(vol, true, 5)
+    return (-1 * mmin(low, 5) + mfirst(mmin(low, 5), 6)) * rowRank(msum(ratios(close) - 1, 240) - msum(ratios(close) - 1, 20) \ 220, percent=true) * mrank(vol, true, 5)
 }
 
 
@@ -302,7 +302,7 @@ def gtjaAlpha33(close, low, vol){
 //MEAN(CLOSE,12)/CLOSE
 
 def gtjaAlpha34(close){
-    return mavg(close, 12) / close
+    return mavg(close, 12) \ close
 }
 
 
@@ -334,7 +334,7 @@ def gtjaAlpha37(open, close){
 //(((SUM(HIGH, 20) / 20) < HIGH) ? (-1 * DELTA(HIGH, 2)) : 0)
 
 def gtjaAlpha38(high){
-    return iif((msum(high, 20) / 20) < high, -1 * (high - mfirst(high, 3)), 0)
+    return iif((msum(high, 20) \ 20) < high, -1 * (high - mfirst(high, 3)), 0)
 }
 
 
@@ -350,7 +350,7 @@ def gtjaAlpha39(open, close, vol, vwap){
 //SUM((CLOSE>DELAY(CLOSE,1)?VOLUME:0),26)/SUM((CLOSE<=DELAY(CLOSE,1)?VOLUME:0),26)*100
 
 def gtjaAlpha40(close, vol){
-    return msum(iif(close > mfirst(close, 2), vol, 0), 26) / msum(iif(close <= mfirst(close, 2), vol, 0), 26) * 100
+    return msum(iif(close > mfirst(close, 2), vol, 0), 26) \ msum(iif(close <= mfirst(close, 2), vol, 0), 26) * 100
 }
 
 
@@ -398,7 +398,7 @@ def gtjaAlpha45(open, close, vol, vwap){
 //(MEAN(CLOSE,3)+MEAN(CLOSE,6)+MEAN(CLOSE,12)+MEAN(CLOSE,24))/(4*CLOSE)
 
 def gtjaAlpha46(close){
-    return (mavg(close, 3) + mavg(close, 6) + mavg(close, 12) + mavg(close, 24)) / (4 * close)
+    return (mavg(close, 3) + mavg(close, 6) + mavg(close, 12) + mavg(close, 24)) \ (4 * close)
 }
 
 
@@ -406,7 +406,7 @@ def gtjaAlpha46(close){
 //SMA((TSMAX(HIGH,6)-CLOSE)/(TSMAX(HIGH,6)-TSMIN(LOW,6))*100,9,1)
 
 def gtjaAlpha47(close, high, low){
-    A = (mmax(high,6)-close)/(mmax(high,6)-mmin(low,6))*100
+    A = (mmax(high,6)-close)\(mmax(high,6)-mmin(low,6))*100
     return ewmMean(A,alpha=1\9)
 }
 
@@ -415,7 +415,7 @@ def gtjaAlpha47(close, high, low){
 //(-1*((RANK(((SIGN((CLOSE - DELAY(CLOSE, 1))) + SIGN((DELAY(CLOSE, 1) - DELAY(CLOSE, 2)))) + SIGN((DELAY(CLOSE, 2) - DELAY(CLOSE, 3)))))) * SUM(VOLUME, 5)) / SUM(VOLUME, 20))
 
 def gtjaAlpha48(close, vol){
-    return -1 * rowRank(sign(close - mfirst(close, 2)) + sign(mfirst(close, 2) - mfirst(close, 3)) + sign(mfirst(close, 3) - mfirst(close, 4)), percent=true) * msum(vol, 5) / msum(vol, 20)
+    return -1 * rowRank(sign(close - mfirst(close, 2)) + sign(mfirst(close, 2) - mfirst(close, 3)) + sign(mfirst(close, 3) - mfirst(close, 4)), percent=true) * msum(vol, 5) \ msum(vol, 20)
 }
 
 
@@ -425,7 +425,7 @@ def gtjaAlpha48(close, vol){
 def gtjaAlpha49(high, low){
     sum1 = msum(iif((high + low) >= (mfirst(high, 2) + mfirst(low, 2)), 0, max(abs(high - mfirst(high, 2)), abs(low - mfirst(low, 2)))), 12)
     sum2 = msum(iif((high + low) <= (mfirst(high, 2) + mfirst(low, 2)), 0, max(abs(high - mfirst(high, 2)), abs(low - mfirst(low, 2)))), 12)
-    return sum1 / (sum1 + sum2)
+    return sum1 \ (sum1 + sum2)
 }
 
 
@@ -435,7 +435,7 @@ def gtjaAlpha49(high, low){
 def gtjaAlpha50(high, low){
     sum1 = msum(iif((high + low) <= (mfirst(high, 2) + mfirst(low, 2)), 0, max(abs(high - mfirst(high, 2)), abs(low - mfirst(low, 2)))), 12)
     sum2 = msum(iif((high + low) >= (mfirst(high, 2) + mfirst(low, 2)), 0, max(abs(high - mfirst(high, 2)), abs(low - mfirst(low, 2)))), 12)
-    return sum1 / (sum1 + sum2) - sum2 / (sum1 + sum2)
+    return sum1 \ (sum1 + sum2) - sum2 \ (sum1 + sum2)
 }
 
 
@@ -445,7 +445,7 @@ def gtjaAlpha50(high, low){
 def gtjaAlpha51(high, low){
     sum1 = msum(iif((high + low) <= (mfirst(high, 2) + mfirst(low, 2)), 0, max(abs(high - mfirst(high, 2)), abs(low - mfirst(low, 2)))), 12)
     sum2 = msum(iif((high + low) >= (mfirst(high, 2) + mfirst(low, 2)), 0, max(abs(high - mfirst(high, 2)), abs(low - mfirst(low, 2)))), 12)
-    return sum1 / (sum1 + sum2)
+    return sum1 \ (sum1 + sum2)
 }
 
 
@@ -453,7 +453,7 @@ def gtjaAlpha51(high, low){
 //SUM(MAX(0,HIGH-DELAY((HIGH+LOW+CLOSE)/3,1)),26)/SUM(MAX(0,DELAY((HIGH+LOW+CLOSE)/3,1)-L),26)* 100
 
 def gtjaAlpha52(close, high, low){
-    return msum(max(0, high - mfirst((high + low + close) / 3, 2)), 26) / msum(max(0, mfirst((high + low + close) / 3, 2) - low), 26) * 100
+    return msum(max(0, high - mfirst((high + low + close) \ 3, 2)), 26) \ msum(max(0, mfirst((high + low + close) \ 3, 2) - low), 26) * 100
 }
 
 
@@ -461,7 +461,7 @@ def gtjaAlpha52(close, high, low){
 //COUNT(CLOSE>DELAY(CLOSE,1),12)/12*100
 
 def gtjaAlpha53(close){
-    return mcount(iif(close > mfirst(close, 2), 1, NULL), 12) / 12 * 100
+    return mcount(iif(close > mfirst(close, 2), 1, NULL), 12) \ 12 * 100
 }
 
 
@@ -477,27 +477,27 @@ def gtjaAlpha54(open, close){
 //SUM(16*(CLOSE-DELAY(CLOSE,1)+(CLOSE-OPEN)/2+DELAY(CLOSE,1)-DELAY(OPEN,1))/((ABS(HIGH-DELAY(CLOSE,1))>ABS(LOW-DELAY(CLOSE,1)) & ABS(HIGH-DELAY(CLOSE,1))>ABS(HIGH-DELAY(LOW,1))?ABS(HIGH-DELAY(CLOSE,1))+ABS(LOW-DELAY(CLOSE,1))/2+ABS(DELAY(CLOSE,1)-DELAY(OPEN,1))/4:(ABS(LOW-DELAY(CLOSE,1))>ABS(HIGH-DELAY(LOW,1)) & ABS(LOW-DELAY(CLOSE,1))>ABS(HIGH-DELAY(CLOSE,1))?ABS(LOW-DELAY(CLOSE,1))+ABS(HIGH-DELAY(CLOSE,1))/2+ABS(DELAY(CLOSE,1)-DELAY(OPEN,1))/4:ABS(HIGH-DELAY(LOW,1))+ABS(DELAY(CLOSE,1)-DELAY(OPEN,1))/4)))*MAX(ABS(HIGH-DELAY(CLOSE,1)),ABS(LOW-DELAY(CLOSE,1))),20)
 
 def gtjaAlpha55(open, close, high, low){
-    tmp1 = 16 * (close - mfirst(close, 2) + (close - open) / 2 + mfirst(close, 2) - mfirst(open, 2))
+    tmp1 = 16 * (close - mfirst(close, 2) + (close - open) \ 2 + mfirst(close, 2) - mfirst(open, 2))
 
     //condition: ABS(HIGH-DELAY(CLOSE,1))>ABS(LOW-DELAY(CLOSE,1)) & ABS(HIGH-DELAY(CLOSE,1))>ABS(HIGH-DELAY(LOW,1))
     cond = abs(high - mfirst(close, 2)) > abs(low - mfirst(close, 2)) && abs(high - mfirst(close, 2)) > abs(high - mfirst(low, 2))
 
     //if true: ABS(HIGH-DELAY(CLOSE,1))+ABS(LOW-DELAY(CLOSE,1))/2+ABS(DELAY(CLOSE,1)-DELAY(OPEN,1))/4
-    iftrue = abs(high - mfirst(close, 2)) + abs(low - mfirst(close, 2)) / 2 + abs(mfirst(close, 2) - mfirst(open, 2)) / 4
+    iftrue = abs(high - mfirst(close, 2)) + abs(low - mfirst(close, 2)) \ 2 + abs(mfirst(close, 2) - mfirst(open, 2)) \ 4
 
     //if false: (ABS(LOW-DELAY(CLOSE,1))>ABS(HIGH-DELAY(LOW,1)) & ABS(LOW-DELAY(CLOSE,1))>ABS(HIGH-DELAY(CLOSE,1))?ABS(LOW-DELAY(CLOSE,1))+ABS(HIGH-DELAY(CLOSE,1))/2+ABS(DELAY(CLOSE,1)-DELAY(OPEN,1))/4:ABS(HIGH-DELAY(LOW,1))+ABS(DELAY(CLOSE,1)-DELAY(OPEN,1))/4)
     //cond2: ABS(LOW-DELAY(CLOSE,1))>ABS(HIGH-DELAY(LOW,1)) & ABS(LOW-DELAY(CLOSE,1))>ABS(HIGH-DELAY(CLOSE,1))
     cond2 = abs(low - mfirst(close, 2)) > abs(high - mfirst(low, 2)) && abs(low - mfirst(close, 2)) > abs(high - mfirst(close, 2))
 
     //if true 2: ABS(LOW-DELAY(CLOSE,1))+ABS(HIGH-DELAY(CLOSE,1))/2+ABS(DELAY(CLOSE,1)-DELAY(OPEN,1))/4
-    iftrue2 = abs(low - mfirst(close, 2)) + abs(high - mfirst(low, 2)) / 2 + abs(mfirst(close, 2) - mfirst(open, 2)) / 4
+    iftrue2 = abs(low - mfirst(close, 2)) + abs(high - mfirst(low, 2)) \ 2 + abs(mfirst(close, 2) - mfirst(open, 2)) \ 4
 
     //if false 2: ABS(HIGH-DELAY(LOW,1))+ABS(DELAY(CLOSE,1)-DELAY(OPEN,1))/4
-    iffalse2 = abs(high - mfirst(low, 2)) + abs(mfirst(close, 2) - mfirst(open, 2)) / 4
+    iffalse2 = abs(high - mfirst(low, 2)) + abs(mfirst(close, 2) - mfirst(open, 2)) \ 4
     iffalse = iif(cond2, iftrue2, iffalse2)
     tmp2 = iif(cond, iftrue, iffalse)
     tmp3 = max(abs(high - mfirst(close, 2)), abs(low - mfirst(close, 2)))
-    return msum(tmp1 / tmp2 * tmp3, 20)
+    return msum(tmp1 \ tmp2 * tmp3, 20)
 }
 
 
@@ -505,7 +505,7 @@ def gtjaAlpha55(open, close, high, low){
 //(RANK((OPEN - TSMIN(OPEN, 12))) < RANK((RANK(CORR(SUM(((HIGH + LOW) / 2), 19), SUM(MEAN(VOLUME,40), 19), 13))^5)))
 
 def gtjaAlpha56(open, high, low, vol){
-    return rowRank(open - mmin(open, 12), percent=true) < rowRank(pow(rowRank(mcorr(msum((high + low) / 2, 19), msum(mavg(vol, 40), 19), 13), percent=true), 5), percent=true)
+    return rowRank(open - mmin(open, 12), percent=true) < rowRank(pow(rowRank(mcorr(msum((high + low) \ 2, 19), msum(mavg(vol, 40), 19), 13), percent=true), 5), percent=true)
 }
 
 
@@ -513,7 +513,7 @@ def gtjaAlpha56(open, high, low, vol){
 //SMA((CLOSE-TSMIN(LOW,9))/(TSMAX(HIGH,9)-TSMIN(LOW,9))*100,3,1)
 
 def gtjaAlpha57(close, high, low){
-    A = (close - mmin(low,9))/(mmax(high,9) - mmin(low,9))*100
+    A = (close - mmin(low,9))\(mmax(high,9) - mmin(low,9))*100
     return ewmMean(A,alpha=1\3)
 }
 
@@ -522,7 +522,7 @@ def gtjaAlpha57(close, high, low){
 //COUNT(CLOSE>DELAY(CLOSE,1),20)/20*100
 
 def gtjaAlpha58(close){
-    return mcount(iif(close > mfirst(close, 2), 1, NULL), 20) / 20 * 100
+    return mcount(iif(close > mfirst(close, 2), 1, NULL), 20) \ 20 * 100
 }
 
 
@@ -538,7 +538,7 @@ def gtjaAlpha59(close, high, low){
 //SUM(((CLOSE-LOW)-(HIGH-CLOSE))./(HIGH-LOW).*VOLUME,20)
 
 def gtjaAlpha60(close, high, low, vol){
-    return msum((close - low - (high - close)) / (high - low) * vol, 20)
+    return msum((close - low - (high - close)) \ (high - low) * vol, 20)
 }
 
 
@@ -565,7 +565,7 @@ def gtjaAlpha62(high, vol){
 def gtjaAlpha63(close){
     A = max((close - move(close,1)),0)
     B = abs(close - move(close,1))
-    return ewmMean(A,alpha=1\6) / ewmMean(B,alpha=1\6) * 100
+    return ewmMean(A,alpha=1\6) \ ewmMean(B,alpha=1\6) * 100
 }
 
 
@@ -581,7 +581,7 @@ def gtjaAlpha64(close, vol, vwap){
 //MEAN(CLOSE,6)/CLOSE
 
 def gtjaAlpha65(close){
-    return mavg(close, 6) / close
+    return mavg(close, 6) \ close
 }
 
 
@@ -589,7 +589,7 @@ def gtjaAlpha65(close){
 //(CLOSE-MEAN(CLOSE,6))/MEAN(CLOSE,6)*100
 
 def gtjaAlpha66(close){
-    return (close - mavg(close, 6)) / mavg(close, 6) * 100
+    return (close - mavg(close, 6)) \ mavg(close, 6) * 100
 }
 
 
@@ -599,7 +599,7 @@ def gtjaAlpha66(close){
 def gtjaAlpha67(close){
     A = max((close - move(close,1)),0)
     B = abs(close - move(close,1))
-    return ewmMean(A,alpha=1\24) / ewmMean(B,alpha=1\24) * 100
+    return ewmMean(A,alpha=1\24) \ ewmMean(B,alpha=1\24) * 100
 }
 
 
@@ -607,7 +607,7 @@ def gtjaAlpha67(close){
 //SMA(((HIGH+LOW)/2-(DELAY(HIGH,1)+DELAY(LOW,1))/2)*(HIGH-LOW)/VOLUME,15,2)
 
 def gtjaAlpha68(high, low, vol){
-    A = ((high + low)/2 - (move(high,1)+move(low,1))/2)*(high-low)/vol
+    A = ((high + low)\2 - (move(high,1)+move(low,1))\2)*(high-low)\vol
     return ewmMean(A,alpha=2\15)
 }
 
@@ -622,7 +622,7 @@ def gtjaAlpha69(open, high, low){
     //DBM: (OPEN>=DELAY(OPEN,1)?0:MAX((OPEN-LOW),(OPEN-DELAY(OPEN,1))))
     DBM = iif(open >= mfirst(open, 2), 0, max(open - low, open - mfirst(open, 2)))
 
-    return iif(msum(DTM, 20) > msum(DBM, 20), (msum(DTM,20) - msum(DBM,20)) / msum(DTM,20), iif(msum(DTM,20) == msum(DBM,20), 0, (msum(DTM,20) - msum(DBM,20)) / msum(DBM,20)))
+    return iif(msum(DTM, 20) > msum(DBM, 20), (msum(DTM,20) - msum(DBM,20)) \ msum(DTM,20), iif(msum(DTM,20) == msum(DBM,20), 0, (msum(DTM,20) - msum(DBM,20)) \ msum(DBM,20)))
 }
 
 
@@ -638,7 +638,7 @@ def gtjaAlpha70(vol, vwap){
 //(CLOSE-MEAN(CLOSE,24))/MEAN(CLOSE,24)*100
 
 def gtjaAlpha71(close){
-    return (close - mavg(close, 24)) / mavg(close, 24) * 100
+    return (close - mavg(close, 24)) \ mavg(close, 24) * 100
 }
 
 
@@ -646,7 +646,7 @@ def gtjaAlpha71(close){
 //SMA((TSMAX(HIGH,6)-CLOSE)/(TSMAX(HIGH,6)-TSMIN(LOW,6))*100,15,1)
 
 def gtjaAlpha72(close, high, low){
-    A = (mmax(high,6)-close)/(mmax(high,6)-mmin(low,6))*100
+    A = (mmax(high,6)-close)\(mmax(high,6)-mmin(low,6))*100
     return ewmMean(A,alpha=1\15)
 }
 
@@ -671,7 +671,7 @@ def gtjaAlpha74(low, vol, vwap){
 //COUNT(CLOSE>OPEN & BANCHMARKINDEXCLOSE<BANCHMARKINDEXOPEN,50)/COUNT(BANCHMARKINDEXCLOSE<BANCHMARKINDEXOPEN,50)
 
 def gtjaAlpha75(open, close, index_open, index_close){
-    return mcount(iif(close>open,1,0) * iif(index_close<index_open,1,0), 50) / mcount(iif(index_close<index_open,1,0), 50)
+    return mcount(iif(close>open,1,0) * iif(index_close<index_open,1,0), 50) \ mcount(iif(index_close<index_open,1,0), 50)
 }
 
 
@@ -679,7 +679,7 @@ def gtjaAlpha75(open, close, index_open, index_close){
 //STD(ABS((CLOSE/DELAY(CLOSE,1)-1))/VOLUME,20)/MEAN(ABS((CLOSE/DELAY(CLOSE,1)-1))/VOLUME,20)
 
 def gtjaAlpha76(close, vol){
-    return mstd(abs(close / mfirst(close, 2) - 1) / vol, 20) / mavg(abs(close / mfirst(close, 2) - 1) / vol, 20)
+    return mstd(abs(close \ mfirst(close, 2) - 1) \ vol, 20) \ mavg(abs(close \ mfirst(close, 2) - 1) \ vol, 20)
 }
 
 
@@ -687,7 +687,7 @@ def gtjaAlpha76(close, vol){
 //MIN(RANK(DECAYLINEAR(((((HIGH + LOW) / 2) + HIGH) - (VWAP + HIGH)), 20)), RANK(DECAYLINEAR(CORR(((HIGH + LOW) / 2), MEAN(VOLUME,40), 3), 6)))
 
 def gtjaAlpha77(high, low, vol, vwap){
-    return min(rowRank(mavg((high + low) / 2 + high - (vwap + high), 1..20), percent=true), rowRank(mavg(mcorr((high + low) / 2, mavg(vol, 40), 3), 1..6), percent=true))
+    return min(rowRank(mavg((high + low) \ 2 + high - (vwap + high), 1..20), percent=true), rowRank(mavg(mcorr((high + low) \ 2, mavg(vol, 40), 3), 1..6), percent=true))
 }
 
 
@@ -695,7 +695,7 @@ def gtjaAlpha77(high, low, vol, vwap){
 //((HIGH+LOW+CLOSE)/3-MA((HIGH+LOW+CLOSE)/3,12))/(0.015*MEAN(ABS(CLOSE-MEAN((HIGH+LOW+CLOSE)/3,12)),12))
 
 def gtjaAlpha78(close, high, low){
-    return ((high + low + close) / 3 - mavg((high + low + close) / 3, 12)) / (0.015 * mavg(abs(close - mavg((high + low + close) / 3, 12)), 12))
+    return ((high + low + close) \ 3 - mavg((high + low + close) \ 3, 12)) \ (0.015 * mavg(abs(close - mavg((high + low + close) \ 3, 12)), 12))
 }
 
 
@@ -705,7 +705,7 @@ def gtjaAlpha78(close, high, low){
 def gtjaAlpha79(close){
     A = max((close - move(close,1)),0)
     B = abs(close - move(close,1))
-    return ewmMean(A,alpha=1\12) / ewmMean(B,alpha=1\12) * 100
+    return ewmMean(A,alpha=1\12) \ ewmMean(B,alpha=1\12) * 100
 }
 
 
@@ -713,7 +713,7 @@ def gtjaAlpha79(close){
 //(VOLUME-DELAY(VOLUME,5))/DELAY(VOLUME,5)*100
 
 def gtjaAlpha80(vol){
-    return (vol - move(vol, 5)) / move(vol, 5) * 100
+    return (vol - move(vol, 5)) \ move(vol, 5) * 100
 }
 
 
@@ -729,7 +729,7 @@ def gtjaAlpha81(vol){
 //SMA((TSMAX(HIGH,6)-CLOSE)/(TSMAX(HIGH,6)-TSMIN(LOW,6))*100,20,1)
 
 def gtjaAlpha82(close, high, low){
-    A = (mmax(high,6)-close)/(mmax(high,6)-mmin(low,6))*100
+    A = (mmax(high,6)-close)\(mmax(high,6)-mmin(low,6))*100
     return ewmMean(A,alpha=1\20)
 }
 
@@ -754,7 +754,7 @@ def gtjaAlpha84(close, vol){
 //(TSRANK((VOLUME / MEAN(VOLUME,20)), 20) * TSRANK((-1 * DELTA(CLOSE, 7)), 8))
 
 def gtjaAlpha85(close, vol){
-    return mrank(vol / mavg(vol, 20), true, 20) * mrank(-1 * (close - mfirst(close, 8)), true, 8)
+    return mrank(vol \ mavg(vol, 20), true, 20) * mrank(-1 * (close - mfirst(close, 8)), true, 8)
 }
 
 
@@ -762,8 +762,8 @@ def gtjaAlpha85(close, vol){
 //((0.25 < (((DELAY(CLOSE, 20) - DELAY(CLOSE, 10)) / 10) - ((DELAY(CLOSE, 10) - CLOSE) / 10))) ? (-1 * 1) : (((((DELAY(CLOSE, 20) - DELAY(CLOSE, 10)) / 10) - ((DELAY(CLOSE, 10) - CLOSE) / 10)) < 0) ? 1 : ((-1 * 1) * (CLOSE - DELAY(CLOSE, 1)))))
 
 def gtjaAlpha86(close){
-    cond1 = (0.25 < ((mfirst(close, 21) - mfirst(close, 11)) / 10 - (mfirst(close, 11) - close) / 10))
-    cond2 = (((mfirst(close, 21) - mfirst(close, 11)) / 10 - (mfirst(close, 11) - close) / 10) < 0)
+    cond1 = (0.25 < ((mfirst(close, 21) - mfirst(close, 11)) \ 10 - (mfirst(close, 11) - close) \ 10))
+    cond2 = (((mfirst(close, 21) - mfirst(close, 11)) \ 10 - (mfirst(close, 11) - close) \ 10) < 0)
     iffalse = iif(cond2, 1, -1 * 1 * (close - mfirst(close, 2)))
     return iif(cond1, -1 * 1, iffalse)
 }
@@ -773,7 +773,7 @@ def gtjaAlpha86(close){
 //((RANK(DECAYLINEAR(DELTA(VWAP, 4), 7)) + TSRANK(DECAYLINEAR(((((LOW * 0.9) + (LOW * 0.1)) - VWAP) / (OPEN - ((HIGH + LOW) / 2))), 11), 7)) * -1)
 
 def gtjaAlpha87(open, high, low, vwap){
-    return (rowRank(mavg(vwap - mfirst(vwap, 5), 1..7), percent=true) + mrank(mavg((low * 0.9 + low * 0.1 - vwap) / (open - (high + low) / 2), 1..11), true, 7)) * (-1)
+    return (rowRank(mavg(vwap - mfirst(vwap, 5), 1..7), percent=true) + mrank(mavg((low * 0.9 + low * 0.1 - vwap) \ (open - (high + low) \ 2), 1..11), true, 7)) * (-1)
 }
 
 
@@ -781,7 +781,7 @@ def gtjaAlpha87(open, high, low, vwap){
 //(CLOSE-DELAY(CLOSE,20))/DELAY(CLOSE,20)*100
 
 def gtjaAlpha88(close){
-    return (close - mfirst(close, 21)) / mfirst(close, 21) * 100
+    return (close - mfirst(close, 21)) \ mfirst(close, 21) * 100
 }
 
 
@@ -846,7 +846,7 @@ def gtjaAlpha95(vol, vwap){
 //SMA(SMA((CLOSE-TSMIN(LOW,9))/(TSMAX(HIGH,9)-TSMIN(LOW,9))*100,3,1),3,1)
 
 def gtjaAlpha96(close, high, low){
-    A = (close - mmin(low,9))/(mmax(high,9) - mmin(low,9))*100
+    A = (close - mmin(low,9))\(mmax(high,9) - mmin(low,9))*100
     B = ewmMean(A,alpha=1\3)
     return ewmMean(B,alpha=1\3)
 }
@@ -864,8 +864,8 @@ def gtjaAlpha97(vol){
 //((((DELTA((SUM(CLOSE, 100) / 100), 100) / DELAY(CLOSE, 100)) < 0.05) || ((DELTA((SUM(CLOSE, 100) / 100), 100) / DELAY(CLOSE, 100)) == 0.05)) ? (-1 * (CLOSE - TSMIN(CLOSE, 100))) : (-1 * DELTA(CLOSE, 3)))
 
 def gtjaAlpha98(close){
-    cond1 = ((msum(close, 100) / 100 - mfirst(msum(close, 100) / 100, 101)) / mfirst(close, 101) < 0.05)
-    cond2 = ((msum(close, 100) / 100 - mfirst(msum(close, 100) / 100, 101)) / mfirst(close, 101) == 0.05)
+    cond1 = ((msum(close, 100) \ 100 - mfirst(msum(close, 100) \ 100, 101)) \ mfirst(close, 101) < 0.05)
+    cond2 = ((msum(close, 100) \ 100 - mfirst(msum(close, 100) \ 100, 101)) \ mfirst(close, 101) == 0.05)
     return iif(cond1 || cond2, -1 * (close - mmin(close, 100)), -1 * (close - mfirst(close, 4)))
 }
 
@@ -957,7 +957,7 @@ def gtjaAlpha108(high, vol, vwap){
 
 def gtjaAlpha109(high, low){
     A =  ewmMean(high-low,alpha=2\10)
-    return A / ewmMean(A,alpha=2\10)
+    return A \ ewmMean(A,alpha=2\10)
 }
 
 
@@ -965,7 +965,7 @@ def gtjaAlpha109(high, low){
 //SUM(MAX(0,HIGH-DELAY(CLOSE,1)),20)/SUM(MAX(0,DELAY(CLOSE,1)-LOW),20)*100
 
 def gtjaAlpha110(close, high, low){
-    return msum(max(0, high - mfirst(close, 2)), 20) / msum(max(0, mfirst(close, 2) - low), 20) * 100
+    return msum(max(0, high - mfirst(close, 2)), 20) \ msum(max(0, mfirst(close, 2) - low), 20) * 100
 }
 
 
@@ -973,7 +973,7 @@ def gtjaAlpha110(close, high, low){
 //SMA(VOL*((CLOSE-LOW)-(HIGH-CLOSE))/(HIGH-LOW),11,2)-SMA(VOL*((CLOSE-LOW)-(HIGH-CLOSE))/(HIGH-LOW),4,2)
 
 def gtjaAlpha111(close, high, low, vol){
-    A = vol*((close-low)-(high-close))/(high-low)
+    A = vol*((close-low)-(high-close))\(high-low)
     return ewmMean(A,alpha=2\11) - ewmMean(A,alpha=2\4)
 }
 
@@ -984,7 +984,7 @@ def gtjaAlpha111(close, high, low, vol){
 def gtjaAlpha112(close){
     sum1 = msum(iif((close - mfirst(close, 2)) > 0, close - mfirst(close, 2), 0), 12)
     sum2 = msum(iif((close - mfirst(close, 2)) < 0, abs(close - mfirst(close, 2)), 0), 12)
-    return (sum1 - sum2) / (sum1 + sum2) * 100
+    return (sum1 - sum2) \ (sum1 + sum2) * 100
 }
 
 
@@ -1000,7 +1000,7 @@ def gtjaAlpha113(close, vol){
 //((RANK(DELAY(((HIGH - LOW) / (SUM(CLOSE, 5) / 5)), 2)) * RANK(RANK(VOLUME))) / (((HIGH - LOW) / (SUM(CLOSE, 5) / 5)) / (VWAP - CLOSE)))
 
 def gtjaAlpha114(close, high, low, vol, vwap){
-    return rowRank(mfirst((high - low) / (msum(close, 5) / 5), 3), percent=true) * rowRank(rowRank(vol, percent=true), percent=true) / ((high - low) / (msum(close, 5) / 5) / (vwap - close))
+    return rowRank(mfirst((high - low) \ (msum(close, 5) \ 5), 3), percent=true) * rowRank(rowRank(vol, percent=true), percent=true) \ ((high - low) \ (msum(close, 5) \ 5) \ (vwap - close))
 }
 
 
@@ -1008,7 +1008,7 @@ def gtjaAlpha114(close, high, low, vol, vwap){
 //(RANK(CORR(((HIGH * 0.9) + (CLOSE * 0.1)), MEAN(VOLUME,30), 10))^RANK(CORR(TSRANK(((HIGH + LOW) / 2), 4), TSRANK(VOLUME, 10), 7)))
 
 def gtjaAlpha115(close, high, low, vol){
-    return pow(rowRank(mcorr(high * 0.9 + close * 0.1, mavg(vol, 30), 10), percent=true), rowRank(mcorr(mrank((high + low) / 2, true, 4), mrank(vol, true, 10), 7), percent=true))
+    return pow(rowRank(mcorr(high * 0.9 + close * 0.1, mavg(vol, 30), 10), percent=true), rowRank(mcorr(mrank((high + low) \ 2, true, 4), mrank(vol, true, 10), 7), percent=true))
 }
 
 
@@ -1032,7 +1032,7 @@ def gtjaAlpha117(close, high, low, vol){
 //SUM(HIGH-OPEN,20)/SUM(OPEN-LOW,20)*100
 
 def gtjaAlpha118(open, high, low){
-    return msum(high - open, 20) / msum(open - low, 20) * 100
+    return msum(high - open, 20) \ msum(open - low, 20) * 100
 }
 
 
@@ -1048,7 +1048,7 @@ def gtjaAlpha119(open, vol, vwap){
 //(RANK((VWAP - CLOSE)) / RANK((VWAP + CLOSE)))
 
 def gtjaAlpha120(close, vwap){
-    return rowRank(vwap - close, percent=true) / rowRank(vwap + close, percent=true)
+    return rowRank(vwap - close, percent=true) \ rowRank(vwap + close, percent=true)
 }
 
 
@@ -1065,7 +1065,7 @@ def gtjaAlpha121(vol, vwap){
 
 def gtjaAlpha122(close){
     A = ewmMean(ewmMean(ewmMean(log(close),alpha=2\13),alpha=2\13),alpha=2\13) 
-    return (A - move(A,1)) / move(A,1)
+    return (A - move(A,1)) \ move(A,1)
 }
 
 
@@ -1073,7 +1073,7 @@ def gtjaAlpha122(close){
 //((RANK(CORR(SUM(((HIGH + LOW) / 2), 20), SUM(MEAN(VOLUME,60), 20), 9)) < RANK(CORR(LOW, VOLUME, 6))) * -1)
 
 def gtjaAlpha123(high, low, vol){
-    return (rowRank(mcorr(msum((high + low) / 2, 20), msum(mavg(vol, 60), 20), 9), percent=true) < rowRank(mcorr(low, vol, 6), percent=true)) * (-1)
+    return (rowRank(mcorr(msum((high + low) \ 2, 20), msum(mavg(vol, 60), 20), 9), percent=true) < rowRank(mcorr(low, vol, 6), percent=true)) * (-1)
 }
 
 
@@ -1081,7 +1081,7 @@ def gtjaAlpha123(high, low, vol){
 //(CLOSE - VWAP) / DECAYLINEAR(RANK(TSMAX(CLOSE, 30)),2)
 
 def gtjaAlpha124(close, vwap){
-    return (close - vwap) / mavg(rowRank(mmax(close, 30), percent=true), 1..2)
+    return (close - vwap) \ mavg(rowRank(mmax(close, 30), percent=true), 1..2)
 }
 
 
@@ -1089,7 +1089,7 @@ def gtjaAlpha124(close, vwap){
 //(RANK(DECAYLINEAR(CORR((VWAP), MEAN(VOLUME,80),17), 20)) / RANK(DECAYLINEAR(DELTA(((CLOSE * 0.5) + (VWAP * 0.5)), 3), 16)))
 
 def gtjaAlpha125(close, vol, vwap){
-    return rowRank(mavg(mcorr(vwap, mavg(vol, 80), 17), 1..20), percent=true) / rowRank(mavg(close * 0.5 + vwap * 0.5 - mfirst(close * 0.5 + vwap * 0.5, 4), 1..16), percent=true)
+    return rowRank(mavg(mcorr(vwap, mavg(vol, 80), 17), 1..20), percent=true) \ rowRank(mavg(close * 0.5 + vwap * 0.5 - mfirst(close * 0.5 + vwap * 0.5, 4), 1..16), percent=true)
 }
 
 
@@ -1097,7 +1097,7 @@ def gtjaAlpha125(close, vol, vwap){
 //(CLOSE+HIGH+LOW)/3
 
 def gtjaAlpha126(close, high, low){
-    return (close + high + low) / 3
+    return (close + high + low) \ 3
 }
 
 
@@ -1113,7 +1113,7 @@ def gtjaAlpha127(close){
 //100-(100/(1+SUM(((HIGH+LOW+CLOSE)/3>DELAY((HIGH+LOW+CLOSE)/3,1)?(HIGH+LOW+CLOSE)/3*VOLUME:0),14)/SUM(((HIGH+LOW+CLOSE)/3<DELAY((HIGH+LOW+CLOSE)/3,1)?(HIGH+LOW+CLOSE)/3*VOLUME:0), 14)))
 
 def gtjaAlpha128(close, high, low, vol){
-    return 100 - (100 / (1 + msum(iif((high + low + close) \ 3 > mfirst((high + low + close) \ 3, 2), (high + low + close) \ 3 * vol, 0), 14) \ msum(iif((high + low + close) \ 3 < mfirst((high + low + close) \ 3, 2), (high + low + close) \ 3 * vol, 0), 14)))
+    return 100 - (100 \ (1 + msum(iif((high + low + close) \ 3 > mfirst((high + low + close) \ 3, 2), (high + low + close) \ 3 * vol, 0), 14) \ msum(iif((high + low + close) \ 3 < mfirst((high + low + close) \ 3, 2), (high + low + close) \ 3 * vol, 0), 14)))
 }
 
 
@@ -1169,7 +1169,7 @@ def gtjaAlpha134(close, vol){
 //SMA(DELAY(CLOSE/DELAY(CLOSE,20),1),20,1)
 
 def gtjaAlpha135(close){
-    A = move(close/move(close,20),1)
+    A = move(close\move(close,20),1)
     return ewmMean(A,alpha=1\20)
 }
 
@@ -1231,7 +1231,7 @@ def gtjaAlpha141(high, vol){
 //(((-1 * RANK(TSRANK(CLOSE, 10))) * RANK(DELTA(DELTA(CLOSE, 1), 1))) * RANK(TSRANK((VOLUME /MEAN(VOLUME,20)), 5)))
 
 def gtjaAlpha142(close, vol){
-    return -1 * rowRank(mrank(close, true, 10), percent=true) * rowRank(close - mfirst(close, 2) - mfirst(close - mfirst(close, 2), 2), percent=true) * rowRank(mrank(vol / mavg(vol, 20), true, 5), percent=true)
+    return -1 * rowRank(mrank(close, true, 10), percent=true) * rowRank(close - mfirst(close, 2) - mfirst(close - mfirst(close, 2), 2), percent=true) * rowRank(mrank(vol \ mavg(vol, 20), true, 5), percent=true)
 }
 
 
@@ -1239,7 +1239,7 @@ def gtjaAlpha142(close, vol){
 //CLOSE>DELAY(CLOSE,1)?(CLOSE-DELAY(CLOSE,1))/DELAY(CLOSE,1)*SELF:SELF
 
 def gtjaAlpha143(close){
-    return accumulate(def(x,y){return iif(y>1,(y-1)*x,x)}, (close/move(close,1)).transpose(), take(1,cols(close))).transpose()
+    return accumulate(def(x,y){return iif(y>1,(y-1)*x,x)}, (close\move(close,1)).transpose(), take(1,cols(close))).transpose()
 }
 
 
@@ -1263,9 +1263,9 @@ def gtjaAlpha145(vol){
 //MEAN((CLOSE-DELAY(CLOSE,1))/DELAY(CLOSE,1)-SMA((CLOSE-DELAY(CLOSE,1))/DELAY(CLOSE,1),61,2),20)*(( CLOSE-DELAY(CLOSE,1))/DELAY(CLOSE,1)-SMA((CLOSE-DELAY(CLOSE,1))/DELAY(CLOSE,1),61,2))/SMA(((CLOSE-DELAY(CLOSE,1))/DELAY(CLOSE,1)-((CLOSE-DELAY(CLOSE,1))/DELAY(CLOSE,1)-SMA((CLOSE-DELAY(CLOSE, 1))/DELAY(CLOSE,1),61,2)))^2,60);
 
 def gtjaAlpha146(close){
-    A = (close-move(close,1))/move(close,1)
+    A = (close-move(close,1))\move(close,1)
     B = ewmMean(A,alpha=2\61)
-    return mavg((A - B),20) / mavg(pow(B,2),60)
+    return mavg((A - B),20) \ mavg(pow(B,2),60)
 }
 
 
@@ -1290,7 +1290,7 @@ def gtjaAlpha148(open, vol){
 
 def gtjaAlpha149(close,index_close){
     condition = iif(index_close<move(index_close,1),1,NULL)
-    return mbeta((close/move(close,1)-1)*condition, ((index_close/move(index_close,1)-1)*condition), 252)
+    return mbeta((close\move(close,1)-1)*condition, ((index_close\move(index_close,1)-1)*condition), 252)
 }
 
 
@@ -1298,7 +1298,7 @@ def gtjaAlpha149(close,index_close){
 //(CLOSE+HIGH+LOW)/3*VOLUME
 
 def gtjaAlpha150(close, high, low, vol){
-    return (close + high + low) / 3 * vol
+    return (close + high + low) \ 3 * vol
 }
 
 
@@ -1376,10 +1376,10 @@ def gtjaAlpha158(close,high,low){
 //((CLOSE-SUM(MIN(LOW,DELAY(CLOSE,1)),6))/SUM(MAX(HGIH,DELAY(CLOSE,1))-MIN(LOW,DELAY(CLOSE,1)),6) *12*24+(CLOSE-SUM(MIN(LOW,DELAY(CLOSE,1)),12))/SUM(MAX(HGIH,DELAY(CLOSE,1))-MIN(LOW,DELAY(CLOSE,1)),12)*6*24+(CLOSE-SUM(MIN(LOW,DELAY(CLOSE,1)),24))/SUM(MAX(HGIH,DELAY(CLOSE,1))-MIN(LOW,DELAY(CLOSE,1)),24)*6*24)*100/(6*12+6*24+12*24)
 
 def gtjaAlpha159(close, high, low){
-    tmp1 = (close - msum(min(low, mfirst(close, 2)), 6)) / msum(max(high, mfirst(close, 2)) - min(low, mfirst(close, 2)), 6) * 12 * 24
-    tmp2 = (close - msum(min(low, mfirst(close, 2)), 12)) / msum(max(high, mfirst(close, 2)) - min(low, mfirst(close, 2)), 12) * 6 * 24
-    tmp3 = (close - msum(min(low, mfirst(close, 2)), 24)) / msum(max(high, mfirst(close, 2)) - min(low, mfirst(close, 2)), 24) * 6 * 24
-    return (tmp1 + tmp2 + tmp3) * 100 / (6 * 12 + 6 * 24 + 12 * 24)
+    tmp1 = (close - msum(min(low, mfirst(close, 2)), 6)) \ msum(max(high, mfirst(close, 2)) - min(low, mfirst(close, 2)), 6) * 12 * 24
+    tmp2 = (close - msum(min(low, mfirst(close, 2)), 12)) \ msum(max(high, mfirst(close, 2)) - min(low, mfirst(close, 2)), 12) * 6 * 24
+    tmp3 = (close - msum(min(low, mfirst(close, 2)), 24)) \ msum(max(high, mfirst(close, 2)) - min(low, mfirst(close, 2)), 24) * 6 * 24
+    return (tmp1 + tmp2 + tmp3) * 100 \ (6 * 12 + 6 * 24 + 12 * 24)
 }
 
 
@@ -1459,7 +1459,7 @@ def gtjaAlpha167(close){
 //(-1*VOLUME/MEAN(VOLUME,20))
 
 def gtjaAlpha168(vol){
-    return -1 * vol / mavg(vol, 20)
+    return -1 * vol \ mavg(vol, 20)
 }
 
 
@@ -1478,7 +1478,7 @@ def gtjaAlpha169(close){
 //((((RANK((1 / CLOSE)) * VOLUME) / MEAN(VOLUME,20)) * ((HIGH * RANK((HIGH - CLOSE))) / (SUM(HIGH, 5) / 5))) - RANK((VWAP - DELAY(VWAP, 5))))
 
 def gtjaAlpha170(close, high, vol, vwap){
-    return rowRank(1 / close, percent=true) * vol / mavg(vol, 20) * high * rowRank(high - close, percent=true) / (msum(high, 5) / 5) - rowRank(vwap - mfirst(vwap, 6), percent=true)
+    return rowRank(1 \ close, percent=true) * vol \ mavg(vol, 20) * high * rowRank(high - close, percent=true) \ (msum(high, 5) \ 5) - rowRank(vwap - mfirst(vwap, 6), percent=true)
 }
 
 
@@ -1486,7 +1486,7 @@ def gtjaAlpha170(close, high, vol, vwap){
 //((-1 * ((LOW - CLOSE) * (OPEN^5))) / ((CLOSE - HIGH) * (CLOSE^5)))
 
 def gtjaAlpha171(open, close, high, low){
-    return -1 * (low - close) * pow(open, 5) / ((close - high) * pow(close, 5))
+    return -1 * (low - close) * pow(open, 5) \ ((close - high) * pow(close, 5))
 }
 
 
@@ -1499,7 +1499,7 @@ def gtjaAlpha172(close, high, low){
     TR = max(max(high - low, abs(high - mfirst(close, 2))), abs(low - mfirst(close, 2)))
     sum1 = msum(iif((LD > 0) && (LD > HD), LD, 0), 14) * 100 \ msum(TR, 14)
     sum2 = msum(iif((HD > 0) && (HD > LD), HD, 0), 14) * 100 \ msum(TR, 14)
-    return mavg(abs(sum1 - sum2) / (sum1 + sum2) * 100, 6)
+    return mavg(abs(sum1 - sum2) \ (sum1 + sum2) * 100, 6)
 }
 
 
@@ -1607,7 +1607,7 @@ def gtjaAlpha184(open, close){
 //RANK((-1 * ((1 - (OPEN / CLOSE))^2)))
 
 def gtjaAlpha185(open, close){
-    return rowRank(-1 * pow(1 - open / close, 2), percent=true)
+    return rowRank(-1 * pow(1 - open \ close, 2), percent=true)
 }
 
 
@@ -1618,9 +1618,9 @@ def gtjaAlpha186(close, high, low){
     HD = high - mfirst(high, 2)
     LD = mfirst(low, 2) - low
     TR = max(max(high - low, abs(high - mfirst(close, 2))), abs(low - mfirst(close, 2)))
-    sum1 = msum(iif((LD > 0) && (LD > HD), LD, 0), 14) * 100 / msum(TR, 14)
-    sum2 = msum(iif((HD > 0) && (HD > LD), HD, 0), 14) * 100 / msum(TR, 14)
-    return (mavg(abs(sum1 - sum2) / (sum1 + sum2) * 100, 6) + mfirst(mavg(abs(sum1 - sum2) / (sum1 + sum2) * 100, 6), 7)) / 2
+    sum1 = msum(iif((LD > 0) && (LD > HD), LD, 0), 14) * 100 \ msum(TR, 14)
+    sum2 = msum(iif((HD > 0) && (HD > LD), HD, 0), 14) * 100 \ msum(TR, 14)
+    return (mavg(abs(sum1 - sum2) \ (sum1 + sum2) * 100, 6) + mfirst(mavg(abs(sum1 - sum2) \ (sum1 + sum2) * 100, 6), 7)) \ 2
 }
 
 
@@ -1637,7 +1637,7 @@ def gtjaAlpha187(open, high){
 
 def gtjaAlpha188(high, low){
     A = ewmMean(high-low,alpha=2\11)
-    return (high - low - A) / A * 100
+    return (high - low - A) \ A * 100
 }
 
 
@@ -1653,8 +1653,8 @@ def gtjaAlpha189(close){
 //LOG((COUNT(CLOSE/DELAY(CLOSE)-1>((CLOSE/DELAY(CLOSE,19))^(1/20)-1),20)-1)*(SUMIF(((CLOSE/DELAY(C LOSE)-1-(CLOSE/DELAY(CLOSE,19))^(1/20)-1))^2,20,CLOSE/DELAY(CLOSE)-1<(CLOSE/DELAY(CLOSE,19))^(1/20)- 1))/((COUNT((CLOSE/DELAY(CLOSE)-1<(CLOSE/DELAY(CLOSE,19))^(1/20)-1),20))*(SUMIF((CLOSE/DELAY(CLOS E)-1-((CLOSE/DELAY(CLOSE,19))^(1/20)-1))^2,20,CLOSE/DELAY(CLOSE)-1>(CLOSE/DELAY(CLOSE,19))^(1/20)-1))) )
 
 def gtjaAlpha190(close){
-    A = close/move(close,1)
-    B = pow((close/move(close,19)),1\20)
+    A = close\move(close,1)
+    B = pow((close\move(close,19)),1\20)
     C = (A-1)>(B-1)
     D = (A-1)<(B-1)
     E = mcount(C,20)
@@ -1662,7 +1662,7 @@ def gtjaAlpha190(close){
     F0 = pow(A-1-B-1,2)
     F1 = msum(F0 * D, 20)
     F2 = msum(F0 * C, 20)
-    return log(((E-1) * F1) / (D * F2))
+    return log(((E-1) * F1) \ (D * F2))
 }
 
 
@@ -1670,5 +1670,5 @@ def gtjaAlpha190(close){
 //((CORR(MEAN(VOLUME,20), LOW, 5) + ((HIGH + LOW) / 2)) - CLOSE)
 
 def gtjaAlpha191(close, high, low, vol){
-    return mcorr(mavg(vol, 20), low, 5) + (high + low) / 2 - close
+    return mcorr(mavg(vol, 20), low, 5) + (high + low) \ 2 - close
 }
