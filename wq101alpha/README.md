@@ -2,6 +2,7 @@
 
 In 2015, the formulas of 101 quantitative trading alphas used by WorldQuant were presented in the paper [*101 Formulaic Alphas*](https://arxiv.org/pdf/1601.00991.pdf). To conveniently calculate these 101 alphas in DolphinDB, you can use the functions encapsulated in the module **wq101alpha** ([wq101alpha.dos](src/wq101alpha.dos)).
   
+
 This module has the following advantages over Python:
 
 * Better Performance: DolphinDB outperforms Python by a median of 15.5x. For 27.5% of the alphas, DolphinDB is more than 100 times faster than Python. 
@@ -32,25 +33,25 @@ This module has the following advantages over Python:
 - The following is a list of parameters for alphas defined in the `wq101alpha` module. Each alpha may use a different set of parameters (see [Appendix](#Appendix:-Required-Parameters-for-Each-Alpha)).
 
 
-| Parameters              | Meaning                       | Contains industry information |
-| ----------------------- | ----------------------------- | ----------------------------- |
-| tradetime               | trading hours                 | ×                             |
-| securityid              | security code                 | ×                             |
-| open                    | open price                    | ×                             |
-| close                   | close price                   | ×                             |
-| high                    | high price                    | ×                             |
-| low                     | low price                     | ×                             |
-| vol                     | trading volume                | ×                             |
-| vwap                    | volume-weighted average price | ×                             |
-| cap                     | market capitalization         | √                             |
-| indclass                | industry classification       | √                             |
+| Parameters | Meaning                       | Contains industry information |
+| ---------- | ----------------------------- | ----------------------------- |
+| tradetime  | trading hours                 | ×                             |
+| securityid | security code                 | ×                             |
+| open       | open price                    | ×                             |
+| close      | close price                   | ×                             |
+| high       | high price                    | ×                             |
+| low        | low price                     | ×                             |
+| vol        | trading volume                | ×                             |
+| vwap       | volume-weighted average price | ×                             |
+| cap        | market capitalization         | √                             |
+| indclass   | industry classification       | √                             |
 
 - Two types of alphas are defined in the `wq101alpha` module: alphas with and without industry information.
 
-| Alpha type                   | Input        | Output       | Alpha#                                                                  |
-| ---------------------------- | ------------ | ------------ | ----------------------------------------------------------------------- |
-| with industry information    | table        | table        | 48，56，58，59，63，67，69，70，76，79，80，82，87，89，90，91，93，97，100|
-| without industry information | matrix       | matrix       | all other alphas                                                        |
+| Alpha type                   | Input  | Output | Alpha#                                                                      |
+| ---------------------------- | ------ | ------ | --------------------------------------------------------------------------- |
+| with industry information    | table  | table  | 48，56，58，59，63，67，69，70，76，79，80，82，87，89，90，91，93，97，100 |
+| without industry information | matrix | matrix | all other alphas                                                            |
 
 
 
@@ -66,7 +67,7 @@ The [home] directory is specified by the configuration parameter *home*. (To che
 
 ### 2.2 Data Preparation
 
-You can simulate daily data with [DataSimulation](https://github.com/dolphindb/Tutorials_EN/blob/master/script/factorPractice/DataSimulation.txt) and industry information with [IndustryInfo](helper/infoDataScript.dos) 。
+You can simulate daily data with [DataSimulation](https://dolphindb.net/dolphindb/tutorials_en/-/blob/master/script/factorPractice/DataSimulation.txt) and industry information with [IndustryInfo](helper/infoDataScript.dos) 。
 
 Alternatively, if you already have tables of daily data and industry information, you need to perform an equal join to combine these two tables, and make sure that the column names are consistent with the parameters defined in the module. 
 
@@ -87,7 +88,7 @@ rawData = loadTable("dfs://k_day_level", "k_day")
 infoData = select * from loadTable("dfs://info", "info_data")
 startTime = timestamp(2010.01.01)
 endTime = timestamp(2010.01.31)
-data = prepareData(rawData=rawData, startTime=startTime, endTime=endTime, securityidName="securityid", tradetimeName="tradetime", openName="open", closeName="close", highName="high", lowName="low", volumeName="vol", vwapName="vwap", infoSecurityidName="securityid", capName="cap", indclassName="indclass", infoData=infoData)
+data = prepareData(rawData=rawData, startTime=startTime, endTime=endTime, securityidName="securityid", tradetimeName="tradetime", openName="open", closeName="close", highName="high", lowName="low", volumeName="vol", vwapName="vwap", capName="cap", indclassName="indclass", infoData=infoData, infoSecurityidName="securityid")
 ```
 
 ### 2.3 Calculating Alphas Without Industry Information
@@ -228,43 +229,43 @@ for i in range(1, 102):
 
 The execution time of all 101 alphas can be found in [PerformanceComparison](test/PerformanceCompare.csv). Alphas that have not yet been implemented in Python pandas or whose results are questionable are excluded. 69 alphas are available for comparison (in millisecond):
 
-| Alpha#     | DolphinDB   | Pandas           | Pandas/DDB| Alpha#     | DolphinDB   | Pandas      | Pandas/DDB| 
-| ---------- | ----------- | ---------------- | -------- | ----------- | ----------- | ----------- | ----------| 
-| 1          | 86          | 68,837           | 800.43   |  38         | 91          | 89,487      | 983.38   |
-| 2          | 229         | 2,117            | 9.24     |  40         | 73          | 2,379       | 32.59    |
-| 3          | 140         | 2,018            | 14.41    |  41         | 84          | 11          | 0.13     |
-| 4          | 75          | 89,440           | 1,192.53 |  42         | 97          | 218         | 2.25     | 
-| 5          | 120         | 600              | 5.       |  43         | 91          | 165,954     | 1,823.67 | 
-| 6          | 21          | 1,765            | 84.05    |  44         | 82          | 1,918       | 23.39    | 
-| 7          | 148         | 72,001           | 486.49   |  45         | 170         | 4,853       | 28.55    | 
-| 8          | 112         | 1,513            | 13.51    |  46         | 35          | 57          | 1.62     | 
-| 9          | 50          | 714              | 14.27    |  47         | 252         | 1,156       | 4.59     | 
-| 10         | 128         | 808              | 6.31     |  49         | 33          | 37          | 1.13     | 
-| 11         | 145         | 898              | 6.2      |  50         | 235         | 2,475       | 10.53    | 
-| 12         | 15          | 10               | 0.69     |  51         | 36          | 38          | 1.05     | 
-| 13         | 213         | 1,784            | 8.38     |  52         | 131         | 91,360      | 697.4    | 
-| 14         | 113         | 1,987            | 17.59    |  53         | 29          | 28          | 0.97     | 
-| 15         | 147         | 2,572            | 17.49    |  54         | 175         | 178         | 1.02     | 
-| 16         | 208         | 1,776            | 8.54     |  55         | 216         | 2,997       | 13.88    | 
-| 17         | 177         | 174,055          | 983.36   |  60         | 154         | 72,081      | 468.06   | 
-| 18         | 104         | 2,417            | 23.24    |  61         | 147         | 2,614       | 17.78    | 
-| 19         | 72          | 440              | 6.11     |  62         | 354         | 3,204       | 9.05     | 
-| 20         | 262         | 439              | 1.68     |  64         | 191         | 2,956       | 15.48    | 
-| 21         | 78          | 2,296            | 29.43    |  65         | 181         | 2,968       | 16.4     | 
-| 22         | 97          | 2,358            | 24.31    |  68         | 247         | 81,582      | 330.29   |
-| 24         | 64          | 686              | 10.72    |  74         | 380         | 4,761       | 12.53    | 
-| 25         | 96          | 500              | 5.21     |  75         | 279         | 4,461       | 15.99    |
-| 26         | 61          | 182,340          | 2,989.18 |  78         | 384         | 5,204       | 13.55    |
-| 27         | 226         | 2,573            | 11.38    |  81         | 519         | 61,954      | 119.37   | 
-| 28         | 45          | 2,155            | 47.9     |  83         | 209         | 1,107       | 5.3      |
-| 29         | 406         | 89,515           | 220.48   |  84         | 152         | 80,908      | 532.29   |
-| 30         | 82          | 832              | 10.15    |  85         | 303         | 184,645     | 609.39   | 
-| 32         | 53          | 2,146            | 40.5     |  86         | 123         | 75,681      | 615.3    | 
-| 33         | 88          | 148              | 1.68     |  94         | 169         | 221,036     | 1,307.91 |
-| 34         | 254         | 1,382            | 5.44     |  95         | 287         | 67,899      | 236.58   | 
-| 35         | 131         | 249,748          | 1,906.47 |  99         | 203         | 4,758       | 23.44    |
-| 36         | 388         | 92,303           | 237.89   |  101        | 9           | 20          | 2.2      |
-| 37         | 148         | 1,953            | 13.2     |             |             |             |          |
+| Alpha# | DolphinDB | Pandas  | Pandas/DDB | Alpha# | DolphinDB | Pandas  | Pandas/DDB |
+| ------ | --------- | ------- | ---------- | ------ | --------- | ------- | ---------- |
+| 1      | 86        | 68,837  | 800.43     | 38     | 91        | 89,487  | 983.38     |
+| 2      | 229       | 2,117   | 9.24       | 40     | 73        | 2,379   | 32.59      |
+| 3      | 140       | 2,018   | 14.41      | 41     | 84        | 11      | 0.13       |
+| 4      | 75        | 89,440  | 1,192.53   | 42     | 97        | 218     | 2.25       |
+| 5      | 120       | 600     | 5.         | 43     | 91        | 165,954 | 1,823.67   |
+| 6      | 21        | 1,765   | 84.05      | 44     | 82        | 1,918   | 23.39      |
+| 7      | 148       | 72,001  | 486.49     | 45     | 170       | 4,853   | 28.55      |
+| 8      | 112       | 1,513   | 13.51      | 46     | 35        | 57      | 1.62       |
+| 9      | 50        | 714     | 14.27      | 47     | 252       | 1,156   | 4.59       |
+| 10     | 128       | 808     | 6.31       | 49     | 33        | 37      | 1.13       |
+| 11     | 145       | 898     | 6.2        | 50     | 235       | 2,475   | 10.53      |
+| 12     | 15        | 10      | 0.69       | 51     | 36        | 38      | 1.05       |
+| 13     | 213       | 1,784   | 8.38       | 52     | 131       | 91,360  | 697.4      |
+| 14     | 113       | 1,987   | 17.59      | 53     | 29        | 28      | 0.97       |
+| 15     | 147       | 2,572   | 17.49      | 54     | 175       | 178     | 1.02       |
+| 16     | 208       | 1,776   | 8.54       | 55     | 216       | 2,997   | 13.88      |
+| 17     | 177       | 174,055 | 983.36     | 60     | 154       | 72,081  | 468.06     |
+| 18     | 104       | 2,417   | 23.24      | 61     | 147       | 2,614   | 17.78      |
+| 19     | 72        | 440     | 6.11       | 62     | 354       | 3,204   | 9.05       |
+| 20     | 262       | 439     | 1.68       | 64     | 191       | 2,956   | 15.48      |
+| 21     | 78        | 2,296   | 29.43      | 65     | 181       | 2,968   | 16.4       |
+| 22     | 97        | 2,358   | 24.31      | 68     | 247       | 81,582  | 330.29     |
+| 24     | 64        | 686     | 10.72      | 74     | 380       | 4,761   | 12.53      |
+| 25     | 96        | 500     | 5.21       | 75     | 279       | 4,461   | 15.99      |
+| 26     | 61        | 182,340 | 2,989.18   | 78     | 384       | 5,204   | 13.55      |
+| 27     | 226       | 2,573   | 11.38      | 81     | 519       | 61,954  | 119.37     |
+| 28     | 45        | 2,155   | 47.9       | 83     | 209       | 1,107   | 5.3        |
+| 29     | 406       | 89,515  | 220.48     | 84     | 152       | 80,908  | 532.29     |
+| 30     | 82        | 832     | 10.15      | 85     | 303       | 184,645 | 609.39     |
+| 32     | 53        | 2,146   | 40.5       | 86     | 123       | 75,681  | 615.3      |
+| 33     | 88        | 148     | 1.68       | 94     | 169       | 221,036 | 1,307.91   |
+| 34     | 254       | 1,382   | 5.44       | 95     | 287       | 67,899  | 236.58     |
+| 35     | 131       | 249,748 | 1,906.47   | 99     | 203       | 4,758   | 23.44      |
+| 36     | 388       | 92,303  | 237.89     | 101    | 9         | 20      | 2.2        |
+| 37     | 148       | 1,953   | 13.2       |        |           |         |            |
 
 The result shows that `wq101alpha` in DolphinDB outperforms python pandas. DolphinDB is faster than Python by a median of 15.5x. For 27.5% of the alphas, DolphinDB is more than 100 times faster than python. 
 
@@ -274,19 +275,19 @@ Considering NumPy may have better performance than pandas, we choose 11 alphas t
 
 Performance comparison of DolphinDB and NumPy:
 
-| Alpha#  | DDB  | pandas  | NumPy  | pandas/DDB         | NumPy/DDB         |
-| ------- | ---- | ------- | ------ | ------------------ | ----------------- |
-| 1       | 86   | 68,837  | 418    | 800.4              | 4.9               |
-| 4       | 75   | 89,440  | 54,417 | 1,192.5            | 725.6             |
-| 5       | 120  | 600     | 218    | 5.0                | 1.8               |
-| 7       | 148  | 72,001  | 39,472 | 486.5              | 266.7             |
-| 8       | 112  | 1,513   | 265    | 13.5               | 2.4               |
-| 9       | 50   | 714     | 152    | 14.3               | 3.0               |
-| 17      | 177  | 174,055 | 93,704 | 983.4              | 529.4             |
-| 29      | 406  | 89,515  | 47,100 | 220.5              | 116.0             |
-| 38      | 91   | 89,487  | 46,257 | 983.4              | 508.3             |
-| 52      | 131  | 91,360  | 46,715 | 697.4              | 356.6             |
-| 83      | 209  | 1,107   | 464    | 5.3                | 2.2               |
+| Alpha# | DDB | pandas  | NumPy  | pandas/DDB | NumPy/DDB |
+| ------ | --- | ------- | ------ | ---------- | --------- |
+| 1      | 86  | 68,837  | 418    | 800.4      | 4.9       |
+| 4      | 75  | 89,440  | 54,417 | 1,192.5    | 725.6     |
+| 5      | 120 | 600     | 218    | 5.0        | 1.8       |
+| 7      | 148 | 72,001  | 39,472 | 486.5      | 266.7     |
+| 8      | 112 | 1,513   | 265    | 13.5       | 2.4       |
+| 9      | 50  | 714     | 152    | 14.3       | 3.0       |
+| 17     | 177 | 174,055 | 93,704 | 983.4      | 529.4     |
+| 29     | 406 | 89,515  | 47,100 | 220.5      | 116.0     |
+| 38     | 91  | 89,487  | 46,257 | 983.4      | 508.3     |
+| 52     | 131 | 91,360  | 46,715 | 697.4      | 356.6     |
+| 83     | 209 | 1,107   | 464    | 5.3        | 2.2       |
 
 We can see that while NumPy is faster than pandas, DolphinDB outperforms both. DolphinDB has optimized the implementation of its window functions. In comparison,  NumPy is not optimized for window calculations implemented by `numpy.lib.stride_tricks.sliding_window_view`. 
 
@@ -365,21 +366,21 @@ This tutorial introduces how to calculate 101 alphas with DolphinDB built-in fun
 
 **Alphas with industry information**
 
-| Alpha#             | Parameters                       | Alpha#       | Parameters                      |
-| ------------------ | -------------------------------- | ------------ | ------------------------------- |
-| 48                 | close, indclass                  | 76, 89       | vwap, vol, low, indclass        |
-| 56                 | close, cap                       | 80           | vol, open, high, indclass       |
-| 58, 59             | vwap, vol, indclass              | 82           | vol, open, indclass             |
-| 63, 79             | vwap, vol, open, close, indclass | 90           | vol, close, indclass            |
-| 67                 | vwap, vol, high, indclass        | 97           | vwap, vol, low, indclass        |
-| 69, 70, 87, 91, 93 | vwap, vol, close, indclass       | 100          | vol, close, high, low, indclass |
+| Alpha#             | Parameters                       | Alpha# | Parameters                      |
+| ------------------ | -------------------------------- | ------ | ------------------------------- |
+| 48                 | close, indclass                  | 76, 89 | vwap, vol, low, indclass        |
+| 56                 | close, cap                       | 80     | vol, open, high, indclass       |
+| 58, 59             | vwap, vol, indclass              | 82     | vol, open, indclass             |
+| 63, 79             | vwap, vol, open, close, indclass | 90     | vol, close, indclass            |
+| 67                 | vwap, vol, high, indclass        | 97     | vwap, vol, low, indclass        |
+| 69, 70, 87, 91, 93 | vwap, vol, close, indclass       | 100    | vol, close, high, low, indclass |
 
 **See Also**
 
 - [Module: wqalpha101 module](src/wq101alpha.dos)
 - [101 Formulaic Alphas](https://arxiv.org/pdf/1601.00991.pdf)
 <!----- [DolphinDB 教程：模块](https://gitee.com/dolphindb/Tutorials_CN/blob/master/module_tutorial.md)--->
-- [DataSimulation](https://github.com/dolphindb/Tutorials_EN/blob/master/script/factorPractice/DataSimulation.txt)
+- [DataSimulation](https://dolphindb.net/dolphindb/tutorials_en/-/blob/master/script/factorPractice/DataSimulation.txt)
 - [IndustryInfo](helper/infoDataScript.dos) for industry information simulation
 - [wq101alphaStorage](helper/wq101alphaScript.dos) for the storage of results of alpha calculations
 - [prepare101.dos](helper/prepare101.dos) for the helper module

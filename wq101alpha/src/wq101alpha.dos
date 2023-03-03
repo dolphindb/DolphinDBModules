@@ -31,7 +31,7 @@ def WQAlpha1(close){
 def WQAlpha2(vol, close, open){
     delta = log(vol) - log(mfirst(vol, 3))
     rank1 = rowRank(delta, percent=true)
-    rank2 = rowRank((close - open) / open, percent=true)
+    rank2 = rowRank((close - open) \ open, percent=true)
     return -mcorr(rank1, rank2, 6)
 }
 
@@ -58,7 +58,7 @@ def WQAlpha4(low){
 //(rank((open - (sum(vwap, 10) / 10))) * (-1 * abs(rank((close - vwap)))))
 
 def WQAlpha5(vwap, open, close){
-    rank1 = rowRank((open - (msum(vwap, 10) / 10)), percent=true)
+    rank1 = rowRank((open - (msum(vwap, 10) \ 10)), percent=true)
     rank2 = rowRank((close - vwap), percent=true)
     return rank1 * (-1 * abs(rank2))
 }
@@ -161,7 +161,7 @@ def WQAlpha14(vol, open, close){
 //(-1 * sum(rank(correlation(rank(high), rank(volume), 3)), 3))
 
 def WQAlpha15(vol, high){
-    return -msum(mcorr(rowRank(high, percent=true), rowRank(vol, percent=true), 3), 3)
+    return -msum(rowRank(mcorr(rowRank(high, percent=true), rowRank(vol, percent=true), 3), percent=true), 3)
 }
 
 
@@ -181,7 +181,7 @@ def WQAlpha16(vol, high){
 def WQAlpha17(vol, close){
     rank1 = rowRank(mrank(close, true, 10), percent=true)
     rank2 = rowRank((close - mfirst(close, 2)) - mfirst((close - mfirst(close, 2)), 2), percent=true)
-    rank3 = rowRank(mrank((vol / mavg(vol, 20)), true, 5), percent=true)
+    rank3 = rowRank(mrank((vol \ mavg(vol, 20)), true, 5), percent=true)
     return -rank1 * rank2 * rank3
 }
 
@@ -221,9 +221,9 @@ def WQAlpha20(open, close, high, low){
 //((((sum(close, 8) / 8) + stddev(close, 8)) < (sum(close, 2) / 2)) ? (-1 * 1) : (((sum(close, 2) / 2) < ((sum(close, 8) / 8) - stddev(close, 8))) ? 1 : (((1 < (volume / adv20)) || ((volume / adv20) == 1)) ? 1 : (-1 * 1))))
 
 def WQAlpha21(close, vol){
-    cond1 = (msum(close, 8) / 8 + mstd(close, 8)) < (msum(close, 2) / 2)
-    cond2 = (msum(close, 2) / 2) < (msum(close, 8) / 8 - mstd(close, 8))
-    cond3 = (1 < (vol / mavg(vol, 20))) || (vol / mavg(vol, 20) == 1)
+    cond1 = (msum(close, 8) \ 8 + mstd(close, 8)) < (msum(close, 2) \ 2)
+    cond2 = (msum(close, 2) \ 2) < (msum(close, 8) \ 8 - mstd(close, 8))
+    cond3 = (1 < (vol \ mavg(vol, 20))) || (vol \ mavg(vol, 20) == 1)
     return iif(cond1, -1, iif(cond2, 1, iif(cond3, 1, -1)))
 }
 
@@ -244,7 +244,7 @@ def WQAlpha22(close, vol, high){
 
 def WQAlpha23(high){
     delta = high - mfirst(high, 3)
-    return iif((msum(high, 20) / 20 < high), -delta, 0)
+    return iif((msum(high, 20) \ 20 < high), -delta, 0)
 }
 
 
@@ -253,7 +253,7 @@ def WQAlpha23(high){
 //((((delta((sum(close, 100) / 100), 100) / delay(close, 100)) < 0.05) || ((delta((sum(close, 100) / 100), 100) / delay(close, 100)) == 0.05)) ? (-1 * (close - ts_min(close, 100))) : (-1 * delta(close, 3)))
 
 def WQAlpha24(close){
-    cond = (msum(close, 100) / 100 - mfirst(msum(close, 100) / 100, 101)) / mfirst(close, 101) <= 0.05
+    cond = (msum(close, 100) \ 100 - mfirst(msum(close, 100) \ 100, 101)) \ mfirst(close, 101) <= 0.05
     return iif(cond, -(close - mmin(close, 100)), -(close - mfirst(close, 4)))
 }
 
@@ -281,7 +281,7 @@ def WQAlpha26(vol, high){
 //((0.5 < rank((sum(correlation(rank(volume), rank(vwap), 6), 2) / 2.0))) ? (-1 * 1) : 1)
 
 def WQAlpha27(vol, vwap){
-    return iif(0.5 < rowRank((msum(mcorr(rowRank(vol, percent=true), rowRank(vwap, percent=true), 6), 2) / 2.0), percent=true), -1, 1)
+    return iif(0.5 < rowRank((msum(mcorr(rowRank(vol, percent=true), rowRank(vwap, percent=true), 6), 2) \ 2.0), percent=true), -1, 1)
 }
 
 
@@ -290,8 +290,8 @@ def WQAlpha27(vol, vwap){
 //scale(((correlation(adv20, low, 5) + ((high + low) / 2)) - close))
 
 def WQAlpha28(vol, high, low, close){
-    toscale = mcorr(mavg(vol, 20), low, 5) + ((high + low) / 2) - close
-    return toscale / rowSum(abs(toscale))
+    toscale = mcorr(mavg(vol, 20), low, 5) + ((high + low) \ 2) - close
+    return toscale \ rowSum(abs(toscale))
 }
 
 
@@ -301,7 +301,7 @@ def WQAlpha28(vol, high, low, close){
 
 def WQAlpha29(close){
     toscale = log(mmin(rowRank(rowRank((-rowRank((close - 1 - mfirst(close - 1, 6)), percent=true)), percent=true), percent=true), 2))
-    scale = toscale / rowSum(abs(toscale))
+    scale = toscale \ rowSum(abs(toscale))
     ranks = rowRank(rowRank(scale, percent=true), percent=true)
     return mmin(ranks, 5) + mrank(mfirst(-(ratios(close) - 1), 7), true, 5)
 }
@@ -313,7 +313,7 @@ def WQAlpha29(close){
 
 def WQAlpha30(vol, close){
     rank1 = rowRank(sign(close - mfirst(close, 2)) + sign(mfirst(close, 2) - mfirst(close, 3)) + sign(mfirst(close, 3) - mfirst(close, 4)), percent=true)
-    return (1.0 - rank1) * msum(vol, 5) / msum(vol, 20)
+    return (1.0 - rank1) * msum(vol, 5) \ msum(vol, 20)
 }
 
 
@@ -326,7 +326,7 @@ def WQAlpha31(vol, close, low){
     rank1 = rowRank(rowRank(rowRank(decay_linear, percent=true), percent=true), percent=true)
     rank2 = rowRank(-(close - mfirst(close, 4)), percent=true)
     toscale = mcorr(mavg(vol, 20), low, 12)
-    scale = toscale / rowSum(abs(toscale))
+    scale = toscale \ rowSum(abs(toscale))
     return rank1 + rank2 + sign(scale)
 }
 
@@ -336,10 +336,10 @@ def WQAlpha31(vol, close, low){
 //(scale(((sum(close, 7) / 7) - close)) + (20 * scale(correlation(vwap, delay(close, 5), 230))))
 
 def WQAlpha32(close, vwap){
-    toscale1 = msum(close, 7) / 7 - close
-    scale1 = toscale1 / rowSum(abs(toscale1))
+    toscale1 = msum(close, 7) \ 7 - close
+    scale1 = toscale1 \ rowSum(abs(toscale1))
     toscale2 = mcorr(vwap, mfirst(close, 6), 230)
-    scale2 = toscale2 / rowSum(abs(toscale2))
+    scale2 = toscale2 \ rowSum(abs(toscale2))
     return scale1 + 20 * scale2
 }
 
@@ -349,7 +349,7 @@ def WQAlpha32(close, vwap){
 //rank((-1 * ((1 - (open / close))^1)))
 
 def WQAlpha33(open, close){
-    return rowRank((open / close - 1), percent=true)
+    return rowRank((open \ close - 1), percent=true)
 }
 
 
@@ -358,7 +358,7 @@ def WQAlpha33(open, close){
 //rank(((1 - rank((stddev(returns, 2) / stddev(returns, 5)))) + (1 - rank(delta(close, 1)))))
 
 def WQAlpha34(close){
-    return rowRank(1 - rowRank((mstd(ratios(close) - 1, 2) / mstd(ratios(close) - 1, 5)), percent=true) + 1 - rowRank((close - mfirst(close, 2)), percent=true), percent=true)
+    return rowRank(1 - rowRank((mstd(ratios(close) - 1, 2) \ mstd(ratios(close) - 1, 5)), percent=true) + 1 - rowRank((close - mfirst(close, 2)), percent=true), percent=true)
 }
 
 
@@ -376,7 +376,7 @@ def WQAlpha35(vol, close, high, low){
 //(((((2.21 * rank(correlation((close - open), delay(volume, 1), 15))) + (0.7 * rank((open - close)))) + (0.73 * rank(Ts_Rank(delay((-1 * returns), 6), 5)))) + rank(abs(correlation(vwap, adv20, 6)))) + (0.6 * rank((((sum(close, 200) / 200) - open) * (close - open)))))
 
 def WQAlpha36(vol, open, close, vwap){
-    return 2.21 * rowRank(mcorr((close - open), mfirst(vol, 2), 15), percent=true) + 0.7 * rowRank((open - close), percent=true) + 0.73 * rowRank(mrank(mfirst(-(ratios(close) - 1), 7), true, 5), percent=true) + rowRank(abs(mcorr(vwap, mavg(vol, 20), 6)), percent=true) + 0.6 * rowRank((msum(close, 200) / 200 - open) * (close - open), percent=true)
+    return 2.21 * rowRank(mcorr((close - open), mfirst(vol, 2), 15), percent=true) + 0.7 * rowRank((open - close), percent=true) + 0.73 * rowRank(mrank(mfirst(-(ratios(close) - 1), 7), true, 5), percent=true) + rowRank(abs(mcorr(vwap, mavg(vol, 20), 6)), percent=true) + 0.6 * rowRank((msum(close, 200) \ 200 - open) * (close - open), percent=true)
 }
 
 
@@ -394,7 +394,7 @@ def WQAlpha37(open, close){
 //((-1 * rank(Ts_Rank(close, 10))) * rank((close / open)))
 
 def WQAlpha38(open, close){
-    return -rowRank(mrank(close, true, 10), percent=true) * rowRank((close / open), percent=true)
+    return -rowRank(mrank(close, true, 10), percent=true) * rowRank((close \ open), percent=true)
 }
 
 
@@ -403,7 +403,7 @@ def WQAlpha38(open, close){
 //((-1 * rank((delta(close, 7) * (1 - rank(decay_linear((volume / adv20), 9)))))) * (1 + rank(sum(returns, 250))))
 
 def WQAlpha39(vol, close){
-    decay_linear = mavg((vol / mavg(vol, 20)), 1..9)
+    decay_linear = mavg((vol \ mavg(vol, 20)), 1..9)
     return -rowRank((close - mfirst(close, 8)) * (1 - rowRank(decay_linear, percent=true)), percent=true) * (1 + rowRank(msum(ratios(close - 1), 250), percent=true))
 }
 
@@ -427,7 +427,7 @@ def WQAlpha41(high, low, vwap){
 //(rank((vwap - close)) / rank((vwap + close)))
 
 def WQAlpha42(vwap, close){
-    return rowRank((vwap - close), percent=true) / rowRank((vwap + close), percent=true)
+    return rowRank((vwap - close), percent=true) \ rowRank((vwap + close), percent=true)
 }
 
 
@@ -436,7 +436,7 @@ def WQAlpha42(vwap, close){
 //(ts_rank((volume / adv20), 20) * ts_rank((-1 * delta(close, 7)), 8))
 
 def WQAlpha43(vol, close){
-    return mrank((vol / mavg(vol, 20)), true, 20) * mrank(-(close - mfirst(close, 8)), true, 8)
+    return mrank((vol \ mavg(vol, 20)), true, 20) * mrank(-(close - mfirst(close, 8)), true, 8)
 }
 
 
@@ -454,7 +454,7 @@ def WQAlpha44(vol, high){
 //(-1 * ((rank((sum(delay(close, 5), 20) / 20)) * correlation(close, volume, 2)) * rank(correlation(sum(close, 5), sum(close, 20), 2))))
 
 def WQAlpha45(vol, close){
-    return -rowRank(msum(mfirst(close, 6), 20) / 20, percent=true) * mcorr(close, vol, 2) * rowRank(mcorr(msum(close, 5), msum(close, 20), 2), percent=true)
+    return -rowRank(msum(mfirst(close, 6), 20) \ 20, percent=true) * mcorr(close, vol, 2) * rowRank(mcorr(msum(close, 5), msum(close, 20), 2), percent=true)
 }
 
 
@@ -463,7 +463,7 @@ def WQAlpha45(vol, close){
 //((0.25 < (((delay(close, 20) - delay(close, 10)) / 10) - ((delay(close, 10) - close) / 10))) ? (-1 * 1) : (((((delay(close, 20) - delay(close, 10)) / 10) - ((delay(close, 10) - close) / 10)) < 0) ? 1 : ((-1 * 1) * (close - delay(close, 1)))))
 
 def WQAlpha46(close){
-    cond = (mfirst(close, 21) - mfirst(close, 11)) / 10 - (mfirst(close, 11) - close) / 10
+    cond = (mfirst(close, 21) - mfirst(close, 11)) \ 10 - (mfirst(close, 11) - close) \ 10
     return iif(0.25 < cond, -1, iif(cond < 0, 1, (mfirst(close, 2) - close)))
 }
 
@@ -473,7 +473,7 @@ def WQAlpha46(close){
 //((((rank((1 / close)) * volume) / adv20) * ((high * rank((high - close))) / (sum(high, 5) / 5))) - rank((vwap - delay(vwap, 5))))
 
 def WQAlpha47(vol, close, high, vwap){
-    return rowRank(1 / close, percent=true) * vol / mavg(vol, 20) * (high * rowRank(high - close, percent=true) / (msum(high, 5) / 5)) - rowRank(vwap - mfirst(vwap, 6), percent=true)
+    return rowRank(1 \ close, percent=true) * vol \ mavg(vol, 20) * (high * rowRank(high - close, percent=true) \ (msum(high, 5) \ 5)) - rowRank(vwap - mfirst(vwap, 6), percent=true)
 }
 
 
@@ -482,7 +482,7 @@ def WQAlpha47(vol, close, high, vwap){
 //(((((delay(close, 20) - delay(close, 10)) / 10) - ((delay(close, 10) - close) / 10)) < (-1 * 0.1)) ? 1 : ((-1 * 1) * (close - delay(close, 1))))
 
 def WQAlpha49(close){
-    cond = ((mfirst(close, 21) - mfirst(close, 11)) / 10 - (mfirst(close, 11) - close) / 10) < -0.1
+    cond = ((mfirst(close, 21) - mfirst(close, 11)) \ 10 - (mfirst(close, 11) - close) \ 10) < -0.1
     return iif(cond, 1, mfirst(close, 2) - close)
 }
 
@@ -501,7 +501,7 @@ def WQAlpha50(vol, vwap){
 //(((((delay(close, 20) - delay(close, 10)) / 10) - ((delay(close, 10) - close) / 10)) < (-1 * 0.05)) ? 1 : ((-1 * 1) * (close - delay(close, 1))))
 
 def WQAlpha51(close){
-    cond = (mfirst(close, 21) - mfirst(close, 11)) / 10 - (mfirst(close, 11) - close) / 10 < -0.05
+    cond = (mfirst(close, 21) - mfirst(close, 11)) \ 10 - (mfirst(close, 11) - close) \ 10 < -0.05
     return iif(cond, 1, -(close - mfirst(close, 2)))
 }
 
@@ -511,7 +511,7 @@ def WQAlpha51(close){
 //((((-1 * ts_min(low, 5)) + delay(ts_min(low, 5), 5)) * rank(((sum(returns, 240) - sum(returns, 20)) / 220))) * ts_rank(volume, 5))
 
 def WQAlpha52(vol, close, low){
-    return (-mmin(low, 5) + mfirst(mmin(low, 5), 6)) * rowRank((msum(ratios(close) - 1, 240) - msum(ratios(close) - 1, 220)) / 220, percent=true) * mrank(vol, true, 5)
+    return (-mmin(low, 5) + mfirst(mmin(low, 5), 6)) * rowRank((msum(ratios(close) - 1, 240) - msum(ratios(close) - 1, 220)) \ 220, percent=true) * mrank(vol, true, 5)
 }
 
 
@@ -520,7 +520,7 @@ def WQAlpha52(vol, close, low){
 //(-1 * delta((((close - low) - (high - close)) / (close - low)), 9))
 
 def WQAlpha53(close, high, low){
-    return -(((close - low) - (high - close)) / (close - low) - mfirst(((close - low) - (high - close)) / (close - low), 10))
+    return -(((close - low) - (high - close)) \ (close - low) - mfirst(((close - low) - (high - close)) \ (close - low), 10))
 }
 
 
@@ -529,7 +529,7 @@ def WQAlpha53(close, high, low){
 //((-1 * ((low - close) * (open^5))) / ((low - high) * (close^5)))
 
 def WQAlpha54(open, close, high, low){
-    return -(low - close) * pow(open, 5) / ((low - high) * pow(close, 5))
+    return -(low - close) * pow(open, 5) \ ((low - high) * pow(close, 5))
 }
 
 
@@ -538,7 +538,7 @@ def WQAlpha54(open, close, high, low){
 //(-1 * correlation(rank(((close - ts_min(low, 12)) / (ts_max(high, 12) - ts_min(low, 12)))), rank(volume), 6))
 
 def WQAlpha55(vol, close, high, low){
-    return -mcorr(rowRank((close - mmin(low, 12)) / (mmax(high, 12) - mmin(low, 12)), percent=true), rowRank(vol, percent=true), 6)
+    return -mcorr(rowRank((close - mmin(low, 12)) \ (mmax(high, 12) - mmin(low, 12)), percent=true), rowRank(vol, percent=true), 6)
 }
 
 
@@ -547,7 +547,7 @@ def WQAlpha55(vol, close, high, low){
 //(0 - (1 * ((close - vwap) / decay_linear(rank(ts_argmax(close, 30)), 2))))
 
 def WQAlpha57(close, vwap){
-    return -(close - vwap) / mavg(rowRank(mimax(close, 30), percent=true), 1..2)
+    return -(close - vwap) \ mavg(rowRank(mimax(close, 30), percent=true), 1..2)
 }
 
 
@@ -556,10 +556,10 @@ def WQAlpha57(close, vwap){
 //(0 - (1 * ((2 * scale(rank(((((close - low) - (high - close)) / (high - low)) * volume)))) - scale(rank(ts_argmax(close, 10))))))
 
 def WQAlpha60(vol, close, high, low){
-    toscale1 = rowRank(((close - low) - (high - close)) / (high - low) * vol, percent=true)
-    scale1 = toscale1 / rowSum(abs(toscale1))
+    toscale1 = rowRank(((close - low) - (high - close)) \ (high - low) * vol, percent=true)
+    scale1 = toscale1 \ rowSum(abs(toscale1))
     toscale2 = rowRank(mimax(close, 10), percent=true)
-    scale2 = toscale2 / rowSum(abs(toscale2))
+    scale2 = toscale2 \ rowSum(abs(toscale2))
     return -(2 * scale1 - scale2)
 }
 
@@ -578,7 +578,7 @@ def WQAlpha61(vol, vwap){
 //((rank(correlation(vwap, sum(adv20, 22.4101), 9.91009)) < rank(((rank(open) + rank(open)) < (rank(((high + low) / 2)) + rank(high))))) * -1)
 
 def WQAlpha62(vol, vwap, open, high, low){
-    return (rowRank(mcorr(vwap, msum(mavg(vol, 20), 22), 10), percent=true) < rowRank((rowRank(open, percent=true) + rowRank(open, percent=true)) < (rowRank((high + low) / 2, percent=true) + rowRank(high, percent=true)), percent=true)) * (-1)
+    return (rowRank(mcorr(vwap, msum(mavg(vol, 20), 22), 10), percent=true) < rowRank((rowRank(open, percent=true) + rowRank(open, percent=true)) < (rowRank((high + low) \ 2, percent=true) + rowRank(high, percent=true)), percent=true)) * (-1)
 }
 
 
@@ -588,7 +588,7 @@ def WQAlpha62(vol, vwap, open, high, low){
 
 def WQAlpha64(vol, vwap, open, high, low){
     rank1 = rowRank(mcorr(msum(open * 0.178404 + low * (1 - 0.178404), 13), msum(mavg(vol, 120), 13), 17), percent=true)
-    deltax = (high + low) / 2 * 0.178404 + vwap * (1 - 0.178404)
+    deltax = (high + low) \ 2 * 0.178404 + vwap * (1 - 0.178404)
     rank2 = rowRank(deltax - mfirst(deltax, 5), percent=true)
     return (rank1 < rank2) * (-1)
 }
@@ -610,7 +610,7 @@ def WQAlpha65(vol, vwap, open){
 //((rank(decay_linear(delta(vwap, 3.51013), 7.23052)) + Ts_Rank(decay_linear(((((low * 0.96633) + (low * (1 - 0.96633))) - vwap) / (open - ((high + low) / 2))), 11.4157), 6.72611)) * -1)
 
 def WQAlpha66(vwap, high, low, open){
-    return (rowRank(mavg(vwap - mfirst(vwap, 5), 1..7), percent=true) + mrank(mavg((low - vwap) / (open - (high - low) / 2), 1..11), true, 11)) * (-1)
+    return (rowRank(mavg(vwap - mfirst(vwap, 5), 1..7), percent=true) + mrank(mavg((low - vwap) \ (open - (high - low) \ 2), 1..11), true, 11)) * (-1)
 }
 
 
@@ -644,9 +644,9 @@ def WQAlpha71(vol, vwap, close, open, low){
 //(rank(decay_linear(correlation(((high + low) / 2), adv40, 8.93345), 10.1519)) / rank(decay_linear(correlation(Ts_Rank(vwap, 3.72469), Ts_Rank(volume, 18.5188), 6.86671), 2.95011)))
 
 def WQAlpha72(vol, vwap, high, low){
-    rank1 = rowRank(mavg(mcorr((high + low) / 2, mavg(vol, 40), 9), 1..10), percent=true)
+    rank1 = rowRank(mavg(mcorr((high + low) \ 2, mavg(vol, 40), 9), 1..10), percent=true)
     rank2 = rowRank(mavg(mcorr(mrank(vwap, true, 4), mrank(vol, true, 19), 7), 1..3), percent=true)
-    return rank1 / rank2
+    return rank1 \ rank2
 }
 
 
@@ -658,7 +658,7 @@ def WQAlpha73(vwap, open, low){
     rank1 = rowRank(mavg(vwap - mfirst(vwap, 6), 1..3), percent=true)
     deltax = open * 0.147155 + low * (1 - 0.147155)
     delta = deltax - mfirst(deltax, 3)
-    rank2 = mrank(mavg(delta / deltax * (-1), 1..3), true, 17)
+    rank2 = mrank(mavg(delta \ deltax * (-1), 1..3), true, 17)
     return max(rank1, rank2) * (-1)
 }
 
@@ -688,8 +688,8 @@ def WQAlpha75(vol, vwap, low){
 //min(rank(decay_linear(((((high + low) / 2) + high) - (vwap + high)), 20.0451)), rank(decay_linear(correlation(((high + low) / 2), adv40, 3.1614), 5.64125)))
 
 def WQAlpha77(vol, vwap, high, low){
-    rank1 = rowRank(mavg((high + low) / 2 + high - (vwap + high), 1..20), percent=true)
-    rank2 = rowRank(mavg(mcorr((high + low) / 2, mavg(vol, 40), 3), 1..6), percent=true)
+    rank1 = rowRank(mavg((high + low) \ 2 + high - (vwap + high), 1..20), percent=true)
+    rank2 = rowRank(mavg(mcorr((high + low) \ 2, mavg(vol, 40), 3), 1..6), percent=true)
     return min(rank1, rank2)
 }
 
@@ -721,7 +721,7 @@ def WQAlpha81(vol, vwap){
 //((rank(delay(((high - low) / (sum(close, 5) / 5)), 2)) * rank(rank(volume))) / (((high - low) / (sum(close, 5) / 5)) / (vwap - close)))
 
 def WQAlpha83(vol, vwap, close, high, low){
-    return rowRank(mfirst((high - low) / (msum(close, 5) / 5), 3), percent=true) * rowRank(rowRank(vol, percent=true), percent=true) / (((high - low) / (msum(close, 5) / 5)) / (vwap - close))
+    return rowRank(mfirst((high - low) \ (msum(close, 5) \ 5), 3), percent=true) * rowRank(rowRank(vol, percent=true), percent=true) \ (((high - low) \ (msum(close, 5) \ 5)) \ (vwap - close))
 }
 
 
@@ -740,7 +740,7 @@ def WQAlpha84(vwap, close){
 
 def WQAlpha85(vol, close, high, low){
     rank1 = rowRank(mcorr(high * 0.876703 + close * (1 - 0.876703), mavg(vol, 30), 10), percent=true)
-    rank2 = rowRank(mcorr(mrank((high + low) / 2, true, 4), mrank(vol, true, 10), 7), percent=true)
+    rank2 = rowRank(mcorr(mrank((high + low) \ 2, true, 4), mrank(vol, true, 10), 7), percent=true)
     return pow(rank1, rank2)
 }
 
@@ -772,7 +772,7 @@ def WQAlpha88(vol, open, close, high, low){
 //min(Ts_Rank(decay_linear(((((high + low) / 2) + close) < (low + open)), 14.7221), 18.8683), Ts_Rank(decay_linear(correlation(rank(low), rank(adv30), 7.58555), 6.94024), 6.80584))
 
 def WQAlpha92(vol, open, close, high, low){
-    rank1 = mrank(mavg(((high + low) / 2 + close) < (low + open), 1..15), true, 19)
+    rank1 = mrank(mavg(((high + low) \ 2 + close) < (low + open), 1..15), true, 19)
     rank2 = mrank(mavg(mcorr(rowRank(low, percent=true), rowRank(mavg(vol, 30), percent=true), 8), 1..7), true, 7)
     return min(rank1, rank2)
 }
@@ -795,7 +795,7 @@ def WQAlpha94(vol, vwap){
 
 def WQAlpha95(vol, open, high, low){
     rank1 = rowRank(open - mmin(open, 12), percent=true)
-    rank2 = mrank(pow(rowRank(mcorr(msum((high + low) / 2, 19), msum(mavg(vol, 40), 19), 13), percent=true), 5), true, 12)
+    rank2 = mrank(pow(rowRank(mcorr(msum((high + low) \ 2, 19), msum(mavg(vol, 40), 19), 13), percent=true), 5), true, 12)
     return rank1 < rank2
 }
 
@@ -825,7 +825,7 @@ def WQAlpha98(vwap, open, vol){
 //((rank(correlation(sum(((high + low) / 2), 19.8975), sum(adv60, 19.8975), 8.8136)) < rank(correlation(low, volume, 6.28259))) * -1)
 
 def WQAlpha99(vol, high, low){
-    rank1 = rowRank(mcorr(msum((high + low) / 2, 20), msum(mavg(vol, 60), 20), 9), percent=true)
+    rank1 = rowRank(mcorr(msum((high + low) \ 2, 20), msum(mavg(vol, 60), 20), 9), percent=true)
     rank2 = rowRank(mcorr(low, vol, 6), percent=true)
     return (rank1 < rank2) * (-1)
 }
@@ -836,7 +836,7 @@ def WQAlpha99(vol, high, low){
 //((close - open) / ((high - low) + .001))
 
 def WQAlpha101(close, open, high, low){
-    return ((close - open) / (high - low + 0.001));
+    return ((close - open) \ (high - low + 0.001));
 }
 
 
@@ -852,10 +852,10 @@ def WQAlpha101(close, open, high, low){
 //(indneutralize(((correlation(delta(close, 1), delta(delay(close, 1), 1), 250) * delta(close, 1)) / close), IndClass.subindustry) / sum(((delta(close, 1) / delay(close, 1))^2), 250))
 
 def WQAlpha48(mutable t){
-    update t set x = mcorr(close - mfirst(close, 2), mfirst(close, 2) - mfirst(mfirst(close, 2), 2), 250) * (close - mfirst(close, 2)) / close,
-        tmpsum = msum(pow((close - mfirst(close, 2)) / mfirst(close, 2), 2), 250) context by securityid
+    update t set x = mcorr(close - mfirst(close, 2), mfirst(close, 2) - mfirst(mfirst(close, 2), 2), 250) * (close - mfirst(close, 2)) \ close,
+        tmpsum = msum(pow((close - mfirst(close, 2)) \ mfirst(close, 2), 2), 250) context by securityid
     update t set tmpavg = avg(x) context by tradetime, indclass
-    return select tradetime, securityid, `alpha48 as factorname, (x - tmpavg) / tmpsum as val from t
+    return select tradetime, securityid, `alpha48 as factorname, (x - tmpavg) \ tmpsum as val from t
 }
 
 
@@ -864,7 +864,7 @@ def WQAlpha48(mutable t){
 //(0 - (1 * (rank((sum(returns, 10) / sum(sum(returns, 2), 3))) * rank((returns * cap)))))
 
 def WQAlpha56(mutable t){
-    update t set tmp1 = msum(ratios(close) - 1, 10) / msum(msum(ratios(close) - 1, 2), 3), tmp2 = (ratios(close) - 1) * cap context by securityid
+    update t set tmp1 = msum(ratios(close) - 1, 10) \ msum(msum(ratios(close) - 1, 2), 3), tmp2 = (ratios(close) - 1) * cap context by securityid
     return select tradetime, securityid, `alpha56 as factorname, -rank(tmp1) * rank(tmp2) as val from t context by tradetime
 }
 
@@ -1044,7 +1044,7 @@ def WQAlpha93(mutable t){
     update t set tmpavg = avg(vwap) context by tradetime, indclass
     update t set trank = mrank(mavg(mcorr(vwap - tmpavg, mavg(vol, 81), 17), 1..20), true, 8),
         decay = mavg(close * 0.524434 + vwap * (1 - 0.524434) - mfirst(close * 0.524434 + vwap * (1 - 0.524434), 4), 1..16) context by securityid
-    return select tradetime, securityid, `alpha93 as factorname, trank / float(rank(decay, percent=true)) as val from t context by tradetime
+    return select tradetime, securityid, `alpha93 as factorname, trank \ float(rank(decay, percent=true)) as val from t context by tradetime
 }
 
 

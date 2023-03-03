@@ -2,7 +2,7 @@
 *  @ brief  
 *  This script provides all necessary functions to prepare panel data for module wq101alpha.
 *  @ Author: DolphinDB
-*  @ Last modification time: 2022.10.14
+*  @ Last modification time: 2022.12.16
 *  @ DolphinDB server version: 2.00.8
 *  @ FileName: prepare101.dos
 */
@@ -16,14 +16,18 @@ module prepare101
 //and return an in-memory table that matches the field names in this module for subsequent use.
 //User must fill in rawData, startTime, endTime. "infoData" is the table that relates to industry classification.
 
-def prepareData(rawData, startTime, endTime, securityidName=NULL, tradetimeName=NULL, openName=NULL, closeName=NULL, highName=NULL, lowName=NULL, volumeName=NULL, vwapName=NULL, infoSecurityidName=NULL, capName=NULL, indclassName=NULL, infoData=NULL){
-    officialNames = `securityid`tradetime`open`close`high`low`vol`vwap`securityid`cap`indclass
-    userNames = [securityidName, tradetimeName, openName, closeName, highName, lowName, volumeName, vwapName, infoSecurityidName, capName, indclassName]
+def prepareData(rawData, startTime, endTime, securityidName=NULL, tradetimeName=NULL, openName=NULL, closeName=NULL, highName=NULL, lowName=NULL, volumeName=NULL, vwapName=NULL, capName=NULL, indclassName=NULL, infoData=NULL, infoSecurityidName=NULL){
+    officialNames = `securityid`tradetime`open`close`high`low`vol`vwap`cap`indclass`securityid
+    userNames = [securityidName, tradetimeName, openName, closeName, highName, lowName, volumeName, vwapName, capName, indclassName, infoSecurityidName]
 
     namesMain = dict(STRING,STRING)
     namesInfo = dict(STRING,STRING)
 
-    for (i in 0:8){
+    if (eqObj(infoData, NULL)){
+        num = 10
+    }else{ num = 8 }
+
+    for (i in 0:num){
         // By default there will be 8 fields in rawData
         if (userNames[i] != NULL) namesMain[officialNames[i]] = userNames[i]
     }
@@ -31,7 +35,7 @@ def prepareData(rawData, startTime, endTime, securityidName=NULL, tradetimeName=
     colsMain = sqlColAlias(sqlCol(namesMain.values()), namesMain.keys())
     whereCondition = expr(startTime, <=, sqlCol(tradetimeName), <=, endTime)
     data = sql(select=colsMain, from=rawData, where=whereCondition)
-
+    
     if (eqObj(infoData, NULL))  return data.eval()
 
     for (i in 8:11) {
@@ -42,7 +46,7 @@ def prepareData(rawData, startTime, endTime, securityidName=NULL, tradetimeName=
     colsInfo = sqlColAlias(sqlCol(namesInfo.values()), namesInfo.keys())
     info = sql(select=colsInfo, from=infoData)
 
-    return select * from ej(data.eval(), info.eval(), `securityid)
+    return select * from ej(data.eval() as data, info.eval() as info, `securityid)
 }
 
 

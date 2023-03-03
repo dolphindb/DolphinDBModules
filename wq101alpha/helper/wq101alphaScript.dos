@@ -2,7 +2,7 @@
 *  @ brief  
 *  This script calculates all 101 alpha factors and save them into database.
 *  @ Author: DolphinDB
-*  @ Last modification time: 2022.09.01
+*  @ Last modification time: 2022.12.16
 *  @ DolphinDB server version: 2.00.7
 *  @ FileName: wq101alphaScript.dos
 */
@@ -51,7 +51,7 @@ rawData = loadTable("dfs://k_day_level", "k_day")
 infoData = select * from loadTable("dfs://info", "info_data")
 startTime = timestamp(2010.01.01)
 endTime = timestamp(2010.01.31)
-data = prepareData(rawData=rawData, startTime=startTime, endTime=endTime, securityidName="securityid", tradetimeName="tradetime", openName="open", closeName="close", highName="high", lowName="low", volumeName="vol", vwapName="vwap", infoSecurityidName="securityid", capName="cap", indclassName="indclass", infoData=infoData)
+data = prepareData(rawData=rawData, startTime=startTime, endTime=endTime, securityidName="securityid", tradetimeName="tradetime", openName="open", closeName="close", highName="high", lowName="low", volumeName="vol", vwapName="vwap", capName="cap", indclassName="indclass", infoData=infoData, infoSecurityidName="securityid")
 
 
 //Calculate and save factors
