@@ -4,14 +4,13 @@ MyTT是一个简单易用的Python库，它将通达信、同花顺、文华麦�
 
 为了方便用户在DolphinDB中计算这些技术指标，我们使用DolphinDB脚本实现了MyTT中包含的指标函数，并封装在DolphinDB mytt module中。 相比于Python中的MyTT库，DolphinDB mytt module中的计算函数不仅在批处理中性能有大幅提升，而且支持DolphinDB的流式增量计算引擎，可以直接用于实时流计算场景。
 
-因为DolphinDB mytt module是基于DolphinDB V1.30.18和DolphinDB V2.00.6开发的，所以建议用户使用DolphinDB V1.30.18和DolphinDB V2.00.6及以上版本运行mytt指标库中的函数。在DolphinDB V1.30.19和DolphinDB V2.00.7支持了`BARSLAST`, `BARSLASTCOUNT`, `TOPRANGE`, `LOWRANGE`函数在流式增量计算引擎中的使用。
+因为DolphinDB mytt module是基于DolphinDB V1.30.18和DolphinDB V2.00.6开发的，所以建议用户使用DolphinDB V1.30.18和DolphinDB V2.00.6及以上版本运行mytt指标库中的函数。在DolphinDB V1.30.19和DolphinDB V2.00.7支持了`BARSLAST`, `BARSLASTCOUNT`, `TOPRANGE`, `LOWRANGE`函数在流式增量计算引擎中的使用。在DolphinDB V1.30.21和DolphinDB V2.00.9中`CROSS`函数与DolphinDB内置变量名冲突，函数名修改为`CROSS_`。
 
 匹配不同DolphinDB版本的mytt module：
 
 * V1.30.18, V2.00.6: [mytt.dos](./src/1.30.18or2.00.6/mytt.dos)
 * V1.30.19, V2.00.7: [mytt.dos](./src/1.30.19or2.00.7/mytt.dos)
-
-> 如果DolpinDB版本大于V1.30.19或V2.00.7，选择支持V1.30.19, V2.00.7版本的mytt.dos。
+* V1.30.21, V2.00.9: [mytt.dos](./src/1.30.21or2.00.9/mytt.dos)
 
 本教程包含内容：
 
@@ -164,72 +163,72 @@ Python MyTT库中的`AVEDEV`函数耗时为25000ms，是DolphinDB mytt module中
 
 测试结果如下表所示：
 
-| 序号  | 函数            | Python（ms） | DolphinDB（ms） | 运行时间比 |
-|-----|---------------|------------|---------------|-------|
-| 1   | RD            | 296        | 16            | 18    |
-| 2   | RET           | 243        | 13            | 18    |
-| 3   | ABS           | 229        | 15            | 15    |
-| 4   | LN            | 253        | 25            | 10    |
-| 5   | POW           | 311        | 30            | 10    |
-| 6   | SQRT          | 248        | 19            | 13    |
-| 7   | MAX           | 390        | 34            | 11    |
-| 8   | MIN           | 373        | 29            | 12    |
-| 9   | IF            | 282        | 21            | 13    |
-| 10  | REF           | 740        | 17            | 43    |
-| 11  | DIFF          | 662        | 22            | 30    |
-| 12  | STD           | 1,263      | 24            | 98    |
-| 13  | SUM           | 1,297      | 22            | 58    |
-| 14  | CONST         | 258        | 22            | 11    |
-| 15  | HHV           | 1,207      | 30            | 40    |
-| 16  | LLV           | 1,218      | 31            | 39    |
-| 17  | HHVBARS       | 2,952      | 41            | 72    |
-| 18  | LLVBARS       | 2,878      | 38            | 75    |
-| 19  | MA            | 1,220      | 24            | 50    |
-| 20  | EMA           | 1,171      | 26            | 45    |
-| 21  | SMA           | 1,199      | 28            | 42    |
-| 22  | WMA           | 4,322      | 20            | 216   |
-| 23  | DMA           | 1,123      | 27            | 41    |
-| 24  | AVEDEV        | 176,652    | 32            | 5,520 |
-| 25  | SLOPE         | 53,703     | 29            | 1,851 |
-| 26  | FORCAST       | 60,321     | 38            | 1,587 |
-| 27  | LAST          | 4,132      | 38            | 108   |
-| 28  | COUNT         | 1,249      | 20            | 62    |
-| 29  | EVERY         | 1,267      | 28            | 45    |
-| 30  | EXIST         | 1,490      | 22            | 67    |
-| 31  | BARSLAST      | 559        | 18            | 31    |
-| 32  | BARSLASTCOUNT | 607        | 17            | 35    |
-| 33  | CROSS         | 2,088      | 80            | 26    |
-| 34  | LONGCROSS     | 6,019      | 94            | 64    |
-| 35  | VALUEWHEN     | 968        | 27            | 35    |
-| 36  | BETWEEN       | 489        | 42            | 11    |
-| 37  | TOPRANGE      | 3,647      | 37            | 99    |
-| 38  | LOWRANGE      | 3,703      | 36            | 103   |
-| 39  | MACD          | 3,060      | 86            | 35    |
-| 40  | KDJ           | 4,705      | 144           | 32    |
-| 41  | RSI           | 2,539      | 103           | 24    |
-| 42  | WR            | 5,632      | 166           | 33    |
-| 43  | BIAS          | 5,318      | 135           | 39    |
-| 44  | BOLL          | 3,067      | 90            | 34    |
-| 45  | PSY           | 2,596      | 82            | 31    |
-| 46  | CCI           | 163,681    | 76            | 2,153 |
-| 47  | ATR           | 2,281      | 101           | 22    |
-| 48  | BBI           | 3,667      | 66            | 55    |
-| 49  | DMI           | 6,181      | 250           | 24    |
-| 50  | TAQ           | 2,292      | 64            | 35    |
-| 51  | KTN           | 3,170      | 164           | 19    |
-| 52  | TRIX          | 4,329      | 97            | 44    |
-| 53  | VR            | 2,732      | 117           | 23    |
-| 54  | EMV           | 4,437      | 132           | 33    |
-| 55  | DPO           | 2,455      | 59            | 41    |
-| 56  | BRAR          | 4,909      | 156           | 31    |
-| 57  | DFMA          | 2,890      | 52            | 55    |
-| 58  | MTM           | 1,659      | 43            | 38    |
-| 59  | MASS          | 4,602      | 99            | 46    |
-| 60  | ROC           | 2,000      | 63            | 31    |
-| 61  | EXPMA         | 1,900      | 49            | 38    |
-| 62  | OBV           | 1,790      | 94            | 19    |
-| 63  | MFI           | 3,488      | 158           | 22    |
-| 64  | ASI           | 4,173      | 316           | 13    |
+| 序号 | 函数          | Python（ms） | DolphinDB（ms） | 运行时间比 |
+| ---- | ------------- | ------------ | --------------- | ---------- |
+| 1    | RD            | 296          | 16              | 18         |
+| 2    | RET           | 243          | 13              | 18         |
+| 3    | ABS           | 229          | 15              | 15         |
+| 4    | LN            | 253          | 25              | 10         |
+| 5    | POW           | 311          | 30              | 10         |
+| 6    | SQRT          | 248          | 19              | 13         |
+| 7    | MAX           | 390          | 34              | 11         |
+| 8    | MIN           | 373          | 29              | 12         |
+| 9    | IF            | 282          | 21              | 13         |
+| 10   | REF           | 740          | 17              | 43         |
+| 11   | DIFF          | 662          | 22              | 30         |
+| 12   | STD           | 1,263        | 24              | 98         |
+| 13   | SUM           | 1,297        | 22              | 58         |
+| 14   | CONST         | 258          | 22              | 11         |
+| 15   | HHV           | 1,207        | 30              | 40         |
+| 16   | LLV           | 1,218        | 31              | 39         |
+| 17   | HHVBARS       | 2,952        | 41              | 72         |
+| 18   | LLVBARS       | 2,878        | 38              | 75         |
+| 19   | MA            | 1,220        | 24              | 50         |
+| 20   | EMA           | 1,171        | 26              | 45         |
+| 21   | SMA           | 1,199        | 28              | 42         |
+| 22   | WMA           | 4,322        | 20              | 216        |
+| 23   | DMA           | 1,123        | 27              | 41         |
+| 24   | AVEDEV        | 176,652      | 32              | 5,520      |
+| 25   | SLOPE         | 53,703       | 29              | 1,851      |
+| 26   | FORCAST       | 60,321       | 38              | 1,587      |
+| 27   | LAST          | 4,132        | 38              | 108        |
+| 28   | COUNT         | 1,249        | 20              | 62         |
+| 29   | EVERY         | 1,267        | 28              | 45         |
+| 30   | EXIST         | 1,490        | 22              | 67         |
+| 31   | BARSLAST      | 559          | 18              | 31         |
+| 32   | BARSLASTCOUNT | 607          | 17              | 35         |
+| 33   | CROSS_        | 2,088        | 80              | 26         |
+| 34   | LONGCROSS     | 6,019        | 94              | 64         |
+| 35   | VALUEWHEN     | 968          | 27              | 35         |
+| 36   | BETWEEN       | 489          | 42              | 11         |
+| 37   | TOPRANGE      | 3,647        | 37              | 99         |
+| 38   | LOWRANGE      | 3,703        | 36              | 103        |
+| 39   | MACD          | 3,060        | 86              | 35         |
+| 40   | KDJ           | 4,705        | 144             | 32         |
+| 41   | RSI           | 2,539        | 103             | 24         |
+| 42   | WR            | 5,632        | 166             | 33         |
+| 43   | BIAS          | 5,318        | 135             | 39         |
+| 44   | BOLL          | 3,067        | 90              | 34         |
+| 45   | PSY           | 2,596        | 82              | 31         |
+| 46   | CCI           | 163,681      | 76              | 2,153      |
+| 47   | ATR           | 2,281        | 101             | 22         |
+| 48   | BBI           | 3,667        | 66              | 55         |
+| 49   | DMI           | 6,181        | 250             | 24         |
+| 50   | TAQ           | 2,292        | 64              | 35         |
+| 51   | KTN           | 3,170        | 164             | 19         |
+| 52   | TRIX          | 4,329        | 97              | 44         |
+| 53   | VR            | 2,732        | 117             | 23         |
+| 54   | EMV           | 4,437        | 132             | 33         |
+| 55   | DPO           | 2,455        | 59              | 41         |
+| 56   | BRAR          | 4,909        | 156             | 31         |
+| 57   | DFMA          | 2,890        | 52              | 55         |
+| 58   | MTM           | 1,659        | 43              | 38         |
+| 59   | MASS          | 4,602        | 99              | 46         |
+| 60   | ROC           | 2,000        | 63              | 31         |
+| 61   | EXPMA         | 1,900        | 49              | 38         |
+| 62   | OBV           | 1,790        | 94              | 19         |
+| 63   | MFI           | 3,488        | 158             | 22         |
+| 64   | ASI           | 4,173        | 316             | 13         |
 
 从测试结果分析可知：
 
@@ -255,12 +254,12 @@ RSI = select symbol, tradedate, mytt::RSI(close, N=24) as `RSI from data context
 
 **结果有差异的函数**
 
-* ```CROSS, LONGCROSS```
+* ```CROSS_, LONGCROSS```
 
 **原因**
 
 * 浮点数精度问题
-* 对于CROSS和LONGCROSS函数，在浮点数比较上，DolphinDB mytt module中的处理比Python MyTT库更加严谨。DolphinDB mytt module中首先会对浮点数round保留小数点后6位，然后再进行大小判断，而MyTT中并没有类似处理，因此对于相同大小的浮点数，Python的判别可能会出错，如下图所示：
+* 对于CROSS_和LONGCROSS函数，在浮点数比较上，DolphinDB mytt module中的处理比Python MyTT库更加严谨。DolphinDB mytt module中首先会对浮点数round保留小数点后6位，然后再进行大小判断，而MyTT中并没有类似处理，因此对于相同大小的浮点数，Python的判别可能会出错，如下图所示：
 
 ![](./images/python_compare.png)
 
@@ -403,8 +402,8 @@ subscribeTable(tableName="snapshotStream", actionName="aggr1min", offset=-1, han
 | BARSLAST      | BARSLAST(S)          | 序列S是BOOL型，统计上一次条件成立到当前的周期                                                        |
 | BARSLASTCOUNT | BARSLASTCOUNT(S)     | 序列S是BOOL型，统计连续满足条件的周期数                                                           |
 | BARSSINCEN    | BARSSINCEN(S, N)     | 序列S是BOOL型，统计滚动周期N内第一次满足条件到当前的周期数                                                 |
-| CROSS         | CROSS(S1, S2)        | 判断两个序列是否交叉的函数，判断向上金叉穿越 CROSS(MA(C,5),MA(C,10)) ，判断向下死叉穿越 CROSS(MA(C,10),MA(C,5)) |
-| LONGCROSS     | LONGCROSS(S1, S2, N) | 判断两个序列是否在个持一定周期后再交叉的函数，判断两个序列是否再个持N周期后再交叉，N = 1时等同于CROSS(S1, S2)                 |
+| CROSS_        | CROSS_(S1, S2)       | 判断两个序列是否交叉的函数，判断向上金叉穿越 CROSS\_(MA(C,5),MA(C,10)) ，判断向下死叉穿越 CROSS\_(MA(C,10),MA(C,5)) |
+| LONGCROSS     | LONGCROSS(S1, S2, N) | 判断两个序列是否在个持一定周期后再交叉的函数，判断两个序列是否再个持N周期后再交叉，N = 1时等同于CROSS_(S1, S2)                |
 | VALUEWHEN     | VALUEWHEN(S, X)      | 解决当S条件成立时,取X的当前值,否则取S的上个成立时对应的X值                                                 |
 | BETWEEN       | BETWEEN(S, A, B)     | 判断S序列是否介于A和B之间的函数，当S处于A和B之间时为真，包括 A<S<B 或 A>S>B                                  |
 | TOPRANGE      | TOPRANGE(S)    | 统计S序列的某个元素是近多少周期内的最大值                                                            |

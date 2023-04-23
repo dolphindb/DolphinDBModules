@@ -1,0 +1,843 @@
+module mytt
+
+/**
+DolphinDB实现通达信的指标计算
+module to support Python MyTT Library
+DolphinDB Inc.
+DolphinDB server version: 1.30.21 2023.02.15/2.00.9 2023.02.15
+Last modification time: 2023.04.23
+*/
+
+//---------------------------------------------0级：核心工具函数---------------
+@state
+def myttCompare(func, arg1, arg2) {
+	return ::nullCompare(func, round(arg1, 6), round(arg2, 6)).nullFill(false)
+}
+
+/*
+ * 取四舍五入函数
+ * :param N: 序列或数值。
+ * :param D: 四舍五入的N位小数，默认值是3
+ * :return N_: 处理后的值。
+*/
+@state
+def RD(N, D = 3) {
+	return ::round(N, D)
+}
+
+/*
+ * 求序列倒数第N个值
+ * :param S: 序列。
+ * :param N: 倒数第N个值，默认值是1。
+ * :return N_: 取出的倒数第N个值。
+*/
+def RET(S, N = 1) {
+	return S[::size(S) - N]
+}
+
+/*
+ * 取绝对值函数
+ * :param S: 序列或数值。
+ * :return S_: 取绝对值以后的序列或数值。
+*/
+@state
+def ABS(S) {
+	return ::abs(S)
+}
+
+/*
+ * 求底是e的自然对数
+ * :param S: 序列或数值。
+ * :return S_: 计算底是e的自然对数以后的序列或数值。
+*/
+@state
+def LN(S) {
+	return ::log(S)
+}
+
+/*
+ * 求S的N次方函数
+ * :param S: 序列或数值。
+ * :param N: 求N次方。
+ * :return S_: 序列或数值，计算S的N次方的结果。
+*/
+@state
+def POW(S, N) {
+	return ::pow(S, N)
+}
+
+/*
+ * 求平方根函数
+ * :param S: 序列或数值。
+ * :return S_: 序列或数值，计算平方根后的结果。
+*/
+@state
+def SQRT(S) {
+	return ::sqrt(S)
+}
+
+/*
+ * 比较两个序列的大小，给出大的序列。
+ * :param S1: 序列。
+ * :param S2: 序列。
+ * :return S_: 配对比较，取大的序列的结果。
+*/
+@state
+def MAX(S1, S2) {
+	return ::iif(::nullCompare(>, S1, S2), S1, S2)
+}
+
+/*
+ * 比较两个序列的大小函数，给出小的序列。
+ * :param S1: 序列。
+ * :param S2: 序列。
+ * :return S_: 配对比较，取小的序列的结果。
+*/
+@state
+def MIN(S1, S2) {
+	return ::iif(::nullCompare(<, S1, S2), S1, S2)
+}
+
+/*
+ * BOOL判断函数，if S == True return A else B。
+ * :param S: 序列，BOOL型。
+ * :param A: 序列。
+ * :param B: 序列。
+ * :return S_: BOOL判断，取True的序列的结果。
+*/
+@state
+def IF(S, A, B) {
+	return ::iif(S, A, B)
+}
+
+/*
+ * 序列平移函数
+ * :param S: 序列。
+ * :param N: 数值，需要平移的窗口长度。
+ * :return S_: 平移以后的序列。
+*/
+@state
+def REF(S, N = 1) {
+	return ::move(S, N)
+}
+
+/*
+ * 计算差分函数
+ * :param S: 序列。
+ * :param N: 数值，需要差分的窗口，默认是1。
+ * :return S_: 差分以后的序列。
+*/
+@state
+def DIFF(S, N = 1) {
+	return S-::move(S, N)
+}
+
+/*
+ * 计算滚动标准差函数
+ * :param S: 序列。
+ * :param N: 数值，需要滚动的窗口，在窗口内计算标准差。
+ * :return S_: 计算滚动标准差以后的序列。
+*/
+@state
+def STD(S, N) {
+	return ::mstdp(S, N)
+}
+
+/*
+ * 计算滚动求和函数
+ * :param S: 序列。
+ * :param N: 数值，需要滚动的窗口，在窗口内计算总和
+ * :return S_: 计算滚动求和以后的序列。
+*/
+@state
+def SUM(S, N) {
+	return talib(msum, S, N)
+}
+
+/*
+ * 取序列的最后一个值返回的常数序列
+ * :param S: 序列。
+ * :return S_: 序列最后一个值组成的常数向量。
+*/
+def CONST(S) {
+	return ::array(S, initialSize = ::size(S), defaultValue = ::last(S))
+}
+
+/*
+ * 计算滚动最大值
+ * :param S: 序列。
+ * :param N: 数值或序列，需要滚动的窗口，在窗口内计算最大值。
+ * :return S_: 计算滚动窗口内最大值以后的序列。
+*/
+@state
+def HHV(S, N) {
+	return ::mmax(S, N)
+}
+
+/*
+ * 计算滚动最小值
+ * :param S: 序列。
+ * :param N: 数值或序列，需要滚动的窗口，在窗口内计算最小值。
+ * :return S_: 计算滚动窗口内最小值以后的序列。
+*/
+@state
+def LLV(S, N) {
+	return ::mmin(S, N)
+}
+
+/*
+ * 计算滚动周期内最大值到目前的长度
+ * :param S: 序列。
+ * :param N: 数值，需要滚动的窗口，在窗口内计算最大值到目前的长度。
+ * :return S_: 序列，计算滚动窗口内最大值到目前的距离的序列。
+*/
+@state
+def HHVBARS(S, N) {
+	return move(reverse(mimax(reverse(S),N)),N-1)
+}
+
+/*
+ * 计算滚动周期内最小值到目前的长度
+ * :param S: 序列。
+ * :param N: 数值，需要滚动的窗口，在窗口内计算最小值到目前的长度。
+ * :return S_: 序列，计算滚动窗口内最小值到目前的距离序列。
+*/
+@state
+def LLVBARS(S, N) {
+	return move(reverse(mimin(reverse(S),N)),N-1)
+}
+
+/*
+ * 计算简单移动平均函数
+ * :param S: 序列。
+ * :param N: 数值，需要滚动的窗口，在窗口内计算平均值。
+ * :return S_: 序列，计算滚动窗口内平均值序列。
+*/
+@state
+def MA(S, N) {
+	return talib(::sma, S, N)
+}
+
+/*
+ * 计算滚动周期内指数平均，为了精度 S>4*N  EMA至少需要120周期，平滑指数alpha=2/(span+1)
+ * :param S: 序列。
+ * :param N: 数值，需要滚动的窗口，在窗口内计算指数平均值。
+ * :return S_: 序列，计算滚动窗口内指数平均值序列。
+*/
+@state
+def EMA(S, N) {
+	return ::ewmMean(S, span = N, adjust = false)
+}
+
+/*
+ * 计算指数平滑法，至少需要120周期才精确 (雪球180周期)  alpha=M/N，N为平滑窗口的长度
+ * :param S: 序列。
+ * :param N: 数值，需要滚动的窗口，在窗口内计算指数平均值。
+ * :param M: 数值，默认1。
+ * :return S_: 序列，计算滚动窗口内指数平均值序列。
+*/
+@state
+def SMA(S, N, M = 1) {
+	return ::ewmMean(S, alpha = M \ N, adjust = false)
+}
+
+/*
+ * 计算N日加权移动平均，Yn = (1*X1+2*X2+3*X3+...+n*Xn)/(1+2+3+...+n)。
+ * :param S: 序列。
+ * :param N: 数值，需要滚动的窗口，在窗口内计算N日加权平均值。
+ * :return S_: 序列，计算滚动窗口内N日加权平均值序列。
+*/
+@state
+def WMA(S, N) {
+	return ::wma(S, N)
+}
+
+/*
+ * 计算动态加权移动平均
+ * :param S: 序列。
+ * :param A: 数值或序列，需要滚动的窗口，在窗口内计算动态加权平均值（A作平滑因子,必须 0<A<1）。
+ * :return S_: 序列，计算滚动窗口内动态加权平均值序列。
+*/
+@state
+def DMA(S, A) {
+	return ::ewmMean(S, alpha = A, adjust = false)
+}
+
+/*
+ * 计算滚动周期内平均绝对偏差
+ * :param S: 序列。
+ * :param N: 数值，需要滚动的窗口，在窗口内计算指数平均绝对偏差。
+ * :return S_: 序列，计算滚动窗口内平均绝对偏差序列。
+*/
+@state
+def AVEDEV(S, N) {
+	return ::mmad(S, N)
+}
+
+/*
+ * 计算滚动周期内一元线性回归的斜率
+ * :param S: 序列。
+ * :param N: 数值，需要滚动的窗口，在窗口内计算一元回归的斜率。
+ * :return S_: 序列，计算滚动窗口内一元线性回归的斜率序列。
+*/
+@state
+def SLOPE(S, N) {
+	return ::linearTimeTrend(S, N)[1]
+}
+
+/*
+ * 计算滚动周期内一元线性回归的预测值
+ * :param S: 序列。
+ * :param N: 数值，需要滚动的窗口，在窗口内计算一元回归的预测。
+ * :return S_: 序列，计算滚动窗口内一元线性回归的预测序列。
+*/
+@state
+def FORCAST(S, N) {
+	intercpt, slope = ::linearTimeTrend(S, N)
+	return (N - 1) * slope + intercpt
+}
+
+/*
+ * BOOL判断函数,从前A日到前B日一直满足S_BOOL条件, 要求A>B & A>0 & B>=0，由于LAST与dolphindb内置变量名冲突，故函数名改为LAST_
+ * :param S: 序列，BOOL型。
+ * :param A: 数值，需要滚动的第一个窗口。
+ * :param B: 数值，需要滚动的第二个窗口。
+ * :return S_: 序列，比较是否前A日到前B日一直满足S_BOOL条件的BOOL序列。
+*/
+@state
+def LAST_(S, A, B) {
+	return ::move(::mprod(S, A - B + 1)$BOOL, B).nullFill(true)
+}
+
+
+//--------------------------------1级：应用层函数(通过0级核心函数实现）使用方法请参考通达信---------------
+
+/*
+ * 统计滚动周期内有多少天是条件成立的。
+ * :param S: 序列，BOOL型。
+ * :param N: 数值，需要滚动的窗口，在窗口内统计有多少天是条件成立的。
+ * :return S_: 序列，统计好的滚动窗口内条件成功的天数的序列。
+*/
+@state
+def COUNT(S, N) {
+	return ::msum(S, N)
+}
+
+/*
+ * EVERY函数统计窗口内是否都是满足条件的。
+ * :param S: 序列，BOOL型。
+ * :param N: 数值，需要滚动的窗口，在窗口内统计是否条件都成立。
+ * :return S_: 序列，BOOL型，统计好的滚动窗口内是否都满足条件。
+*/
+@state
+def EVERY(S, N) {
+	return (::mprod(S, N)$BOOL).nullFill(false)
+}
+
+/*
+ * EXIST函数解决需要滚动统计窗口内是否存在满足条件的。
+ * :param S: 序列，BOOL型。
+ * :param N: 数值，需要滚动的窗口，在窗口内统计是否存在条件成立。
+ * :return S_: 序列，BOOL型，统计好的滚动窗口内是否存在满足条件。
+*/
+@state
+def EXIST(S, N) {
+	return ::msum(S, N) > 0
+}
+
+/*
+ * 进行满足上一次条件的统计函数，统计序列中上一次满足条件到现在的天数。
+ * :param S: 序列，BOOL型。
+ * :return S_: 序列，统计好的序列内中上一次满足条件到现在的天数。。
+*/
+@state
+def BARSLAST(S) {
+	return ::cumPositiveStreak(::not(S))
+}
+
+/*
+ * 进行连续满足条件的统计函数，统计序列中连续满足条件的天数。
+ * :param S: 序列，BOOL型。
+ * :return S_: 序列，统计好的序列内中连续满足条件的天数。。
+*/
+@state
+def BARSLASTCOUNT(S) {
+	return ::cumPositiveStreak(S)
+}
+
+/*
+ * 判断两个序列是否交叉的函数，判断向上金叉穿越 CROSS_(MA(C,5),MA(C,10))  判断向下死叉穿越 CROSS_(MA(C,10),MA(C,5))。
+ * 由于CROSS与dolphindb内置变量名冲突，故函数名改为CROSS_
+ * :param S1: 序列。
+ * :param S2: 序列。
+ * :return S_: 序列，BOOL型，S1是否向上交叉S2。
+*/
+@state
+def CROSS_(S1, S2) {
+	return ::not(myttCompare(>, ::prev(S1), ::prev(S2))) && myttCompare(>, S1, S2)
+}
+
+/*
+ * 判断两个序列是否在个持一定周期后再交叉的函数，判断两个序列是否再个持N周期后再交叉，N=1时等同于CROSS_(S1, S2)。
+ * :param S1: 序列。
+ * :param S2: 序列。
+ * :param N: 两个序列个持不交叉的周期数。
+ * :return S_: 序列，BOOL型，S1是否个持周期后向上交叉S2。
+*/
+@state
+def LONGCROSS(S1, S2, N) {
+	return LAST_(myttCompare(<, S1, S2), N, 1) and (myttCompare(>, S1, S2))
+}
+
+/*
+ * 通信达VALUEWHEN函数，解决当S条件成立时,取X的当前值,否则取S的上个成立时对应的X值。
+ * :param S: 序列，BOOL型。
+ * :param X: 序列。
+ * :return S_: 序列，S成立时对应的X的值的序列。
+*/
+@state
+def VALUEWHEN(S, X) {
+	return ::iif(S, X, NULL).ffill()
+}
+
+/*
+ * 判断S序列是否介于A和B之间的函数，当S处于A和B之间时为真，包括 A<S<B 或 A>S>B。
+ * :param S: 序列。
+ * :param A: 序列。
+ * :param B: 序列。
+ * :return S_: 序列，BOOL型，S介于A和B之间为True否则为False。
+*/
+@state
+def BETWEEN(S, A, B) {
+	return ((A < S) and (S < B)) or ((A > S) and (S > B))
+}
+
+/*
+ * 统计S序列的某个元素是近多少周期内的最大值，TOPRANGE(HIGH)表示当前最高价是近多少周期内最高价的最大值。
+ * :param S: 序列。
+ * :return S_: 序列，INT型，表示S序列的某个元素是近多少周期内的最大值。
+*/
+@state
+def TOPRANGE(S) {
+	return ::topRange(S)
+}
+
+/*
+ * 统计S序列的某个元素是近多少周期内的最小值，LOWRANGE(LOW)表示当前最低价是近多少周期内最低价的最小值。
+ * :param S: 序列。
+ * :return S_: 序列，INT型，表示S序列的某个元素是近多少周期内的最小值。
+*/
+@state
+def LOWRANGE(S) {
+	return ::lowRange(S)
+}
+
+
+//-----------------------------------------2级：技术指标函数(全部通过0级，1级函数实现）---------------
+
+/*
+ * MACD函数，平滑异同平均线（MACD），MACD指标是运用快速（短期）和慢速（长期）移动平均线及其聚合与分离的征兆，加以双重平滑运算。
+ * 而根据移动平均线原理发展出来的MACD，一则去除了移动平均线频繁发出假信号的缺陷，二则保留了移动平均线的效果，
+ * 因此，MACD指标具有均线趋势性、稳重性、安定性等特点，是用来研判买卖股票的时机，预测股票价格涨跌的技术分析指标 。
+ * :param CLOSE: 序列，如收盘价序列（CLOSE）。
+ * :param SHORT_: 数值，默认值是12。
+ * :param LONG_: 数值，默认值是26。
+ * :param M: 数值，默认值是9。
+ * :return DIF,DEA, MACD: 3个序列。
+*/
+@state
+def MACD(CLOSE, SHORT_ = 12, LONG_ = 26, M = 9) {
+	DIF = EMA(CLOSE, SHORT_) - EMA(CLOSE, LONG_)
+	DEA = EMA(DIF, M)
+	MACD = (DIF - DEA) * 2
+	return RD(DIF, 3), RD(DEA, 3), RD(MACD, 3)
+}
+
+/*
+ * KDJ函数，计算通信达的KDJ指标。
+ * :param CLOSE: 序列，如收盘价序列（CLOSE）。
+ * :param HIGH: 序列，如最高价序列（HIGH）。
+ * :param LOW: 序列，如最低价序列（LOW）。
+ * :param N: 数值，默认值是9。
+ * :param M1: 数值，默认值是3。
+ * :param M2: 数值，默认值是3。
+ * :return K,D, J: 3个序列。
+*/
+@state
+def KDJ(CLOSE, HIGH, LOW, N = 9, M1 = 3, M2 = 3) {
+	RSV = (CLOSE - LLV(LOW, N)) \ (HHV(HIGH, N) - LLV(LOW, N)) * 100
+	K = EMA(RSV, (M1 * 2 - 1))
+	D = EMA(K, (M2 * 2 - 1))
+	J = K * 3 - D * 2
+	return K, D, J
+}
+
+/*
+ * RSI函数，计算通信达的RSI指标。
+ * :param CLOSE: 序列，如收盘价序列（CLOSE）。
+ * :param N: 数值，默认值是24。
+*/
+@state
+def RSI(CLOSE, N = 24) {
+	DIF = CLOSE - REF(CLOSE, 1)
+	return RD(SMA(MAX(DIF, 0), N, 1) \ SMA(ABS(DIF), N, 1) * 100, 3)
+}
+
+/*
+ * WR函数，计算通信达威廉指标。
+ * :param CLOSE: 序列，如收盘价序列（CLOSE）。
+ * :param HIGH: 序列，如最高价序列（HIGH）。
+ * :param LOW: 序列，如最低价序列（LOW）。
+ * :param N: 数值，默认值是10。
+ * :param N1: 数值，默认值是6。
+ * :return WR, WR1: 2个序列。
+*/
+@state
+def WR(CLOSE, HIGH, LOW, N = 10, N1 = 6) {
+	WR = (HHV(HIGH, N) - CLOSE) \ (HHV(HIGH, N) - LLV(LOW, N)) * 100
+	WR1 = (HHV(HIGH, N1) - CLOSE) \ (HHV(HIGH, N1) - LLV(LOW, N1)) * 100
+	return RD(WR, 3), RD(WR1, 3)
+}
+
+/*
+ * BIAS函数，计算通信达的BIAS指标。
+ * :param CLOSE: 序列，如收盘价序列（CLOSE）。
+ * :param L1: 数值，默认值是6。
+ * :param L2: 数值，默认值是12。
+ * :param L3: 数值，默认值是24。
+ * :return BIAS1，BIAS2，BIAS3: 3个序列。
+*/
+@state
+def BIAS(CLOSE, L1 = 6, L2 = 12, L3 = 24) {
+	BIAS1 = (CLOSE - MA(CLOSE, L1)) \ MA(CLOSE, L1) * 100
+	BIAS2 = (CLOSE - MA(CLOSE, L2)) \ MA(CLOSE, L2) * 100
+	BIAS3 = (CLOSE - MA(CLOSE, L3)) \ MA(CLOSE, L3) * 100
+	return RD(BIAS1, 3), RD(BIAS2, 3), RD(BIAS3, 3)
+}
+
+/*
+ * BOLL函数，计算通信达的BOLL指标。
+ * :param CLOSE: 序列，如收盘价序列（CLOSE）。
+ * :param N: 数值，默认值是20。
+ * :param P: 数值，默认值是2。
+ * :return UPPER，MID，LOWER: 3个序列。
+*/
+@state
+def BOLL(CLOSE, N = 20, P = 2) {
+	MID = MA(CLOSE, N)
+	UPPER = MID + STD(CLOSE, N) * P
+	LOWER = MID - STD(CLOSE, N) * P
+	return RD(UPPER, 3), RD(MID, 3), RD(LOWER, 3)
+}
+
+/*
+ * PSY函数，计算通信达的PSY指标。
+ * :param CLOSE: 序列，如收盘价序列（CLOSE）。
+ * :param N: 数值，默认值是12。
+ * :param M: 数值，默认值是6。
+ * :return PSY，PSYMA: 2个序列。
+*/
+@state
+def PSY(CLOSE, N = 12, M = 6) {
+	PSY = COUNT(nullCompare(>, CLOSE, REF(CLOSE, 1)), N) \ N * 100
+	PSYMA = MA(PSY, M)
+	return RD(PSY, 3), RD(PSYMA, 3)
+}
+
+/*
+ * CCI函数，计算通信达的CCI指标。
+ * :param CLOSE: 序列，如收盘价序列（CLOSE）。
+ * :param HIGH: 序列，如最高价序列（HIGH）。
+ * :param LOW: 序列，如最低价序列（LOW）。。
+ * :param N: 数值，默认值是14。
+ * :return CCI: 1个序列。
+*/
+@state
+def CCI(CLOSE, HIGH, LOW, N = 14) {
+	TP = (HIGH + LOW + CLOSE) \ 3
+	return (TP - MA(TP, N)) \ (0.015 * AVEDEV(TP, N))
+}
+
+/*
+ * ATR函数，计算通信达的ATR指标。
+ * :param CLOSE: 序列，如收盘价序列（CLOSE）。
+ * :param HIGH: 序列，如最高价序列（HIGH）。
+ * :param LOW: 序列，如最低价序列（LOW）。
+ * :param N: 数值，默认值是20。
+ * :return ATR: 1个序列，真实波动N日平均值。
+*/
+@state
+def ATR(CLOSE, HIGH, LOW, N = 20) {
+	TR = MAX(MAX(HIGH - LOW, ABS(REF(CLOSE, 1) - HIGH)), ABS(REF(CLOSE, 1) - LOW))
+	return MA(TR, N)
+}
+
+/*
+ * BBI函数，计算通信达的BBI指标。
+ * :param CLOSE: 序列，如收盘价序列（CLOSE）。
+ * :param M1: 数值，默认值是3。
+ * :param M2: 数值，默认值是6。
+ * :param M3: 数值，默认值是12。
+ * :param M4: 数值，默认值是20。
+ * :return BBI: 1个序列，BBI多空指标。
+*/
+@state
+def BBI(CLOSE, M1 = 3, M2 = 6, M3 = 12, M4 = 20) {
+	return (MA(CLOSE, M1) + MA(CLOSE, M2) + MA(CLOSE, M3) + MA(CLOSE, M4)) \ 4
+}
+
+/*
+ * DMI函数，计算通信达的DMI指标。
+ * :param CLOSE: 序列，如收盘价序列（CLOSE）。
+ * :param HIGH: 序列，如最高价序列（HIGH）。
+ * :param LOW: 序列，如最低价序列（LOW）。
+ * :param M1: 数值，默认值是14。
+ * :param M2: 数值，默认值是6。
+ * :return PDI, MDI, ADX, ADXR: 4个序列，动向指标。
+*/
+@state
+def DMI(CLOSE, HIGH, LOW, M1 = 14, M2 = 6) {
+	TR = SUM(MAX(MAX(HIGH - LOW, ABS(HIGH - REF(CLOSE, 1))), ABS(LOW - REF(CLOSE, 1))), M1)
+	HD = HIGH - REF(HIGH, 1)
+	LD = REF(LOW, 1) - LOW
+	DMP = SUM(IF(myttCompare(>, HD, 0) and myttCompare(>, HD, LD), HD, 0), M1)
+	DMM = SUM(IF(myttCompare(>, LD, 0) and myttCompare(>, LD, HD), LD, 0), M1)
+	PDI = DMP * 100 \ TR
+	MDI = DMM * 100 \ TR
+	ADX = MA(ABS(MDI - PDI) \ (PDI + MDI) * 100, M2)
+	ADXR = (ADX + REF(ADX, M2)) \ 2
+	return PDI, MDI, ADX, ADXR
+}
+
+/*
+ * TAQ函数，计算通信达的TAQ指标。
+ * :param HIGH: 序列，如最高价序列（HIGH）。
+ * :param LOW: 序列，如最低价序列（LOW）。
+ * :param N: 数值。
+ * :return UP, MID, DOWN: 3个序列，唐安奇通道(海龟)交易指标，大道至简，能穿越牛熊。
+*/
+@state
+def TAQ(HIGH, LOW, N) {
+	UP = HHV(HIGH, N)
+	DOWN = LLV(LOW, N)
+	MID = (UP + DOWN) \ 2
+	return UP, MID, DOWN
+}
+
+/*
+ * KTN函数，计算通信达的KTN指标。
+ * :param CLOSE: 序列，如收盘价序列（CLOSE）。
+ * :param HIGH: 序列，如最高价序列（HIGH）。
+ * :param LOW: 序列，如最低价序列（LOW）。
+ * :param N: 数值，默认值是20。
+ * :param M: 数值，默认值是10。
+ * :return UPPER, MID, LOWER: 3个序列，肯特纳交易通道, N选20日，ATR选10日。
+*/
+@state
+def KTN(CLOSE, HIGH, LOW, N = 20, M = 10) {
+	MID = EMA((HIGH + LOW + CLOSE) \ 3, N)
+	ATRN = ATR(CLOSE, HIGH, LOW, M)
+	UPPER = MID + 2 * ATRN
+	LOWER = MID - 2 * ATRN
+	return UPPER, MID, LOWER
+}
+
+/*
+ * TRIX函数，计算通信达的TRIX指标。
+ * :param CLOSE: 序列，如收盘价序列（CLOSE）。
+ * :param M1: 数值，默认值是12。
+ * :param M2: 数值，默认值是20。
+ * :return TRIX, TRMA: 2个序列，三重指数平滑平均线。
+*/
+@state
+def TRIX(CLOSE, M1 = 12, M2 = 20) {
+	TR = EMA(EMA(EMA(CLOSE, M1), M1), M1)
+	TRIX = (TR - REF(TR, 1)) \ REF(TR, 1) * 100
+	TRMA = MA(TRIX, M2)
+	return TRIX, TRMA
+}
+
+/*
+ * VR函数，计算通信达的VR指标。
+ * :param CLOSE: 序列，如收盘价序列（CLOSE）。
+ * :param VOL: 序列，如交易量（VOL）。
+ * :param M1: 数值，默认值是26。
+ * :return VR: 1个序列，VR容量比率。
+*/
+@state
+def VR(CLOSE, VOL, M1 = 26) {
+	LC = REF(CLOSE, 1)
+	return SUM(IF( myttCompare(>, CLOSE, LC), VOL, 0), M1) \ SUM(IF( myttCompare(<=, CLOSE, LC), VOL, 0), M1) * 100
+}
+
+/*
+ * EMV函数，计算通信达的EMV指标。
+ * :param HIGH: 序列，如最高价序列（HIGH）。
+ * :param LOW: 序列，如最低价序列（LOW）。
+ * :param VOL: 序列，如交易量（VOL）。
+ * :param N: 数值，默认值是14。
+ * :param M: 数值，默认值是9。
+ * :return EMV, MAEMV: 2个序列，简易波动指标。
+*/
+@state
+def EMV(HIGH, LOW, VOL, N = 14, M = 9) {
+	VOLUME = MA(VOL, N) \ VOL
+	MID = 100 * (HIGH + LOW - REF(HIGH + LOW, 1)) \ (HIGH + LOW)
+	EMV = MA(MID * VOLUME * (HIGH - LOW) \ MA(HIGH - LOW, N), N)
+	MAEMV = MA(EMV, M)
+	return EMV, MAEMV
+}
+
+/*
+ * DPO函数，计算通信达的DPO指标。
+ * :param CLOSE: 序列，如收盘价序列（CLOSE）。
+ * :param M1: 数值，20。
+ * :param M2: 数值，默认值是10。
+ * :param M3: 数值，默认值是6。
+ * :return DPO, MADPO: 2个序列，区间震荡线。
+*/
+@state
+def DPO(CLOSE, M1 = 20, M2 = 10, M3 = 6) {
+	DPO = CLOSE - REF(MA(CLOSE, M1), M2)
+	MADPO = MA(DPO, M3)
+	return DPO, MADPO
+}
+
+/*
+ * BRAR函数，计算通信达的BRAR指标。
+ * :param OPEN: 序列，如开盘价序列（OPEN）。
+ * :param CLOSE: 序列，如收盘价序列（CLOSE）。
+ * :param HIGH: 序列，如最高价序列（HIGH）。
+ * :param LOW: 序列，如最低价序列（LOW）。
+ * :param M1: 数值，默认值是26。
+ * :return AR, BR: 2个序列，BRAR-ARBR 情绪指标。
+*/
+@state
+def BRAR(OPEN, CLOSE, HIGH, LOW, M1 = 26) {
+	AR = SUM(HIGH - OPEN, M1) \ SUM(OPEN - LOW, M1) * 100
+	BR = SUM(MAX(0, HIGH - REF(CLOSE, 1)), M1) \ SUM(MAX(0, REF(CLOSE, 1) - LOW), M1) * 100
+	return AR, BR
+}
+
+/*
+ * DFMA函数，计算通信达的DFMA指标。
+ * :param CLOSE: 序列，如收盘价序列（CLOSE）。
+ * :param N1: 数值，默认值是10。
+ * :param N1: 数值，默认值是50。
+ * :param M: 数值，默认值是10。
+ * :return DIF, DIFMA: 2个序列，平行线差指标 通达信指标叫DMA 同花顺叫新DMA。
+*/
+@state
+def DFMA(CLOSE, N1 = 10, N2 = 50, M = 10) {
+	DIF = MA(CLOSE, N1) - MA(CLOSE, N2)
+	DIFMA = MA(DIF, M)
+	return DIF, DIFMA
+}
+
+/*
+ * MTM函数，计算通信达的MTM指标。
+ * :param CLOSE: 序列，如收盘价序列（CLOSE）。
+ * :param N: 数值，默认值是12。
+ * :param M: 数值，默认值是6。
+ * :return MTM, MTMMA: 2个序列，动量指标。
+*/
+@state
+def MTM(CLOSE, N = 12, M = 6) {
+	MTM = CLOSE - REF(CLOSE, N)
+	MTMMA = MA(MTM, M)
+	return MTM, MTMMA
+}
+
+/*
+ * MASS函数，计算通信达的MASS指标。
+ * :param HIGH: 序列，如最高价序列（HIGH）。
+ * :param LOW: 序列，如最低价序列（LOW）。
+ * :param N1: 数值，默认值是9。
+ * :param N2: 数值，默认值是25。
+ * :param M: 数值，默认值是6。
+ * :return MASS, MA_MASS: 2个序列，梅斯线。
+*/
+@state
+def MASS(HIGH, LOW, N1 = 9, N2 = 25, M = 6) {
+	MASS = SUM(MA(HIGH - LOW, N1) \ MA(MA(HIGH - LOW, N1), N1), N2)
+	MA_MASS = MA(MASS, M)
+	return MASS, MA_MASS
+}
+
+/*
+ * ROC函数，计算通信达的ROC指标。
+ * :param CLOSE: 序列，如收盘价序列（CLOSE）。
+ * :param N: 数值，默认值是12。
+ * :param M: 数值，默认值是6。
+ * :return ROC, MAROC: 2个序列，变动率指标。
+*/
+@state
+def ROC(CLOSE, N = 12, M = 6) {
+	ROC = 100 * (CLOSE - REF(CLOSE, N)) \ REF(CLOSE, N)
+	MAROC = MA(ROC, M)
+	return ROC, MAROC
+}
+
+/*
+ * EXPMA函数，计算通信达的EXMPA指标。
+ * :param CLOSE: 序列，如收盘价序列（CLOSE）。
+ * :param N1: 数值，默认值是12。
+ * :param N2: 数值，默认值是50。
+ * :return EMA(CLOSE, N1), EMA(CLOSE, N2): 2个序列，EMA指数平均数指标。
+*/
+@state
+def EXPMA(CLOSE, N1 = 12, N2 = 50) {
+	return EMA(CLOSE, N1), EMA(CLOSE, N2)
+}
+
+/*
+ * OBV函数，计算通信达的OBV指标。
+ * :param CLOSE: 序列，如收盘价序列（CLOSE）。
+ * :param VOL: 序列，如交易量序列（VOL）。
+ * :return OBV ：1个序列，能量潮指标。
+*/
+@state
+def OBV(CLOSE, VOL) {
+	return ::cumsum(IF(myttCompare(>, CLOSE, REF(CLOSE, 1)), VOL, IF(myttCompare(<, CLOSE, REF(CLOSE, 1)),-VOL ,0))) \ 10000
+}
+
+/*
+ * MFI函数，计算通信达的MFI指标。
+ * :param CLOSE: 序列，如收盘价序列（CLOSE）。
+ * :param HIGH: 序列，如最高价序列（HIGH）。
+ * :param LOW: 序列，如最低价序列（LOW）。
+ * :param VOL: 序列，如交易量（VOL）。
+ * :param N: 数值，默认值是14。
+ * :return MFI: 1个序列，成交量的RSI指标。
+*/
+@state
+def MFI(CLOSE, HIGH, LOW, VOL, N = 14) {
+	TYP = (HIGH + LOW + CLOSE) \ 3
+	V1 = SUM(IF(myttCompare(>, TYP, REF(TYP, 1)) , TYP * VOL, 0), N) \ SUM(IF(myttCompare(<, TYP, REF(TYP, 1)) , TYP * VOL, 0), N)
+	return 100 - (100 \ (1 + V1))
+}
+
+/*
+ * ASI函数，计算通信达的ASI指标。
+ * :param OPEN: 序列，如开盘价序列（OPEN）。
+ * :param CLOSE: 序列，如收盘价序列（CLOSE）。
+ * :param HIGH: 序列，如最高价序列（HIGH）。
+ * :param LOW: 序列，如最低价序列（LOW）。
+ * :param M1: 数值，默认值是26。
+ * :param M2: 数值，默认值是10。
+ * :return ASI, ASIT: 2个序列，振动升降指标。
+*/
+@state
+def ASI(OPEN, CLOSE, HIGH, LOW, M1 = 26, M2 = 10) {
+	LC = REF(CLOSE, 1)
+	AA = ABS(HIGH - LC)
+	BB = ABS(LOW - LC)
+	CC = ABS(HIGH - REF(LOW, 1))
+	DD = ABS(LC - REF(OPEN, 1))
+	R = IF(AA>BB and AA>CC, AA + BB \ 2 + DD \ 4, IF(BB>CC and BB>AA, BB + AA \ 2 + DD \ 4, CC + DD \ 4))
+	X = (CLOSE - LC + (CLOSE - OPEN) \ 2 + LC - REF(OPEN, 1))
+	SI = 16 * X \ R * MAX(AA, BB)
+	ASI = SUM(SI, M1)
+	ASIT = MA(ASI, M2)
+	return ASI, ASIT
+}
