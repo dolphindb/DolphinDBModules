@@ -4,8 +4,8 @@
 *  and divides the functions into three categories according to their features.
 *  The development of this module is based on day level data.
 *  @ Author: DolphinDB
-*  @ Last modification time: 2022.04.18
-*  @ DolphinDB server version: 2.00.9
+*  @ Last modification time: 2022.10.14
+*  @ DolphinDB server version: 2.00.8
 *  @ FileName: wq101alpha.dos
 */
 
@@ -816,7 +816,7 @@ def WQAlpha96(vol, vwap, close){
 //(rank(decay_linear(correlation(vwap, sum(adv5, 26.4719), 4.58418), 7.18088)) - rank(decay_linear(Ts_Rank(Ts_ArgMin(correlation(rank(open), rank(adv15), 20.8187), 8.62571), 6.95668), 8.07206)))
 
 def WQAlpha98(vwap, open, vol){
-    return rowRank(X=mavg(mcorr(vwap, msum(mavg(vol, 5), 26), 5), 1..7), percent=true) - rowRank(X=mavg(mrank(9 - mimin(mcorr(rowRank(X=open, percent=true), rowRank(X=mavg(vol, 15), percent=true), 21), 9), true, 7), 1..8), percent=true)
+	return rowRank(X=mavg(mcorr(vwap, msum(mavg(vol, 5), 26), 5), 1..7), percent=true) - rowRank(X=mavg(mrank(9 - mimin(mcorr(rowRank(X=open, percent=true), rowRank(X=mavg(vol, 15), percent=true), 21), 9), true, 7), 1..8), percent=true)
 }
 
 
@@ -843,19 +843,19 @@ def WQAlpha101(close, open, high, low){
 
 //2. Factors with industry classification information:
 //The calculation process includes industry neutralization and requires complex operations such as context by.
-//These factors take panel data as parameters and return panel data.
+//These factors take in-memory tables as parameters and return in-memory tables.
 //Industry classification standards are not uniform. In order to facilitate generalization, we make certain adjustments to the formula.
 //In this module, levels of classification are ignored; instead calculations applies directly to all bits of the industry classification.
 //These factors are alpha 48,56,58,59,63,67,69,70,76,79,80,82,87,89,90,91,93,97,100.
 
-
 //alpha 48
 //(indneutralize(((correlation(delta(close, 1), delta(delay(close, 1), 1), 250) * delta(close, 1)) / close), IndClass.subindustry) / sum(((delta(close, 1) / delay(close, 1))^2), 250))
 
-def WQAlpha48(close, indclass){
-    x = mcorr(close - mfirst(close, 2), mfirst(close, 2) - mfirst(mfirst(close, 2), 2), 250) * (close - mfirst(close, 2)) \ close
-    tmpsum = msum(pow((close - mfirst(close, 2)) \ mfirst(close, 2), 2), 250)
-    return byRow(contextby{demean, , indclass.row(0)}, x) \ tmpsum
+def WQAlpha48(mutable t){
+    update t set x = mcorr(close - mfirst(close, 2), mfirst(close, 2) - mfirst(mfirst(close, 2), 2), 250) * (close - mfirst(close, 2)) \ close,
+        tmpsum = msum(pow((close - mfirst(close, 2)) \ mfirst(close, 2), 2), 250) context by securityid
+    update t set tmpavg = avg(x) context by tradetime, indclass
+    return select tradetime, securityid, `alpha48 as factorname, (x - tmpavg) \ tmpsum as val from t
 }
 
 
@@ -863,10 +863,9 @@ def WQAlpha48(close, indclass){
 //alpha 56
 //(0 - (1 * (rank((sum(returns, 10) / sum(sum(returns, 2), 3))) * rank((returns * cap)))))
 
-def WQAlpha56(close, cap){
-    tmp1 = msum(ratios(close) - 1, 10) \ msum(msum(ratios(close) - 1, 2), 3)
-    tmp2 = each(mul, (ratios(close) - 1), cap.row(0))
-    return (-rowRank(tmp1) * rowRank(tmp2))
+def WQAlpha56(mutable t){
+    update t set tmp1 = msum(ratios(close) - 1, 10) \ msum(msum(ratios(close) - 1, 2), 3), tmp2 = (ratios(close) - 1) * cap context by securityid
+    return select tradetime, securityid, `alpha56 as factorname, -rank(tmp1) * rank(tmp2) as val from t context by tradetime
 }
 
 
@@ -874,9 +873,9 @@ def WQAlpha56(close, cap){
 //alpha 58
 //(-1 * Ts_Rank(decay_linear(correlation(IndNeutralize(vwap, IndClass.sector), volume, 3.92795), 7.89291), 5.50322))
 
-def WQAlpha58(vol, vwap, indclass){
-    tmp = byRow(contextby{demean, , indclass.row(0)}, vwap)
-    return -mrank(mavg(mcorr(tmp, vol, 4), 1..8), true, 6)
+def WQAlpha58(mutable t){
+    update t set tmpavg = avg(vwap) context by tradetime, indclass
+    return select tradetime, securityid, `alpha58 as factorname, -mrank(mavg(mcorr(vwap - tmpavg, vol, 4), 1..8), true, 6) as val from t context by securityid
 }
 
 
@@ -884,9 +883,9 @@ def WQAlpha58(vol, vwap, indclass){
 //alpha 59
 //(-1 * Ts_Rank(decay_linear(correlation(IndNeutralize(((vwap * 0.728317) + (vwap * (1 - 0.728317))), IndClass.industry), volume, 4.25197), 16.2289), 8.19648))
 
-def WQAlpha59(vol, vwap, indclass){
-    tmp = byRow(contextby{demean, , indclass.row(0)}, vwap * 0.728317 + vwap * (1 - 0.728317))
-    return -mrank(mavg(mcorr(tmp, vol, 4), 1..16), true, 8)
+def WQAlpha59(mutable t){
+    update t set tmpavg = avg(vwap * 0.728317 + vwap * (1 - 0.728317)) context by tradetime, indclass
+    return select tradetime, securityid, `alpha59 as factorname, -mrank(mavg(mcorr(vwap * 0.728317 + vwap * (1 - 0.728317) - tmpavg, vol, 4), 1..16), true, 8) as val from t context by securityid
 }
 
 
@@ -894,11 +893,11 @@ def WQAlpha59(vol, vwap, indclass){
 //alpha 63
 //((rank(decay_linear(delta(IndNeutralize(close, IndClass.industry), 2.25164), 8.22237)) - rank(decay_linear(correlation(((vwap * 0.318108) + (open * (1 - 0.318108))), sum(adv180, 37.2467), 13.557), 12.2883))) * -1)
 
-def WQAlpha63(vol, open, close, vwap, indclass){
-    tmp = byRow(contextby{demean, , indclass.row(0)}, close)
-    decay1 = mavg(tmp - mfirst(tmp, 3), 1..8)
-    decay2 = mavg(mcorr(vwap * 0.318108 + open * (1 - 0.318108), msum(mavg(vol, 180), 37), 14), 1..12)
-    return ((rowRank(decay1, percent=true) - rowRank(decay2, percent=true)) * (-1))
+def WQAlpha63(mutable t){
+    update t set tmpavg = avg(close) context by tradetime, indclass
+    update t set decay1 = mavg(close - tmpavg - mfirst(close - tmpavg, 3), 1..8),
+        decay2 = mavg(mcorr(vwap * 0.318108 + open * (1 - 0.318108), msum(mavg(vol, 180), 37), 14), 1..12) context by securityid
+    return select tradetime, securityid, `alpha63 as factorname, (rank(decay1, percent=true) - rank(decay2, percent=true)) * (-1) as val from t context by tradetime
 }
 
 
@@ -906,11 +905,13 @@ def WQAlpha63(vol, open, close, vwap, indclass){
 //alpha 67
 //((rank((high - ts_min(high, 2.14593)))^rank(correlation(IndNeutralize(vwap, IndClass.sector), IndNeutralize(adv20, IndClass.subindustry), 6.02936))) * -1)
 
-def WQAlpha67(vol, high, vwap, indclass){
-    tmp_vwap = byRow(contextby{demean, , indclass.row(0)}, vwap)
-    tmp_adv = byRow(contextby{demean, , indclass.row(0)}, mavg(vol, 20))
-    tmpcorr = mcorr(tmp_vwap, tmp_adv, 6)
-    return (pow(rowRank((high - mmin(high, 2)), percent=true), rowRank(tmpcorr, percent=true)) * (-1))
+def WQAlpha67(mutable t){
+    update t set tmpavg_vwap = avg(vwap) context by tradetime, indclass
+    update t set adv20 = mavg(vol, 20),
+        tmphigh = high - mmin(high, 2) context by securityid
+    update t set tmpavg_adv = avg(adv20) context by tradetime, indclass
+    update t set tmpcorr = mcorr(vwap - tmpavg_vwap, adv20 - tmpavg_adv, 6) context by securityid
+    return select tradetime, securityid, `alpha67 as factorname, pow(rank(tmphigh, percent=true), rank(tmpcorr, percent=true)) * (-1) as val from t context by tradetime
 }
 
 
@@ -918,11 +919,11 @@ def WQAlpha67(vol, high, vwap, indclass){
 //alpha 69
 //((rank(ts_max(delta(IndNeutralize(vwap, IndClass.industry), 2.72412), 4.79344))^Ts_Rank(correlation(((close * 0.490655) + (vwap * (1 - 0.490655))), adv20, 4.92416), 9.0615)) * -1)
 
-def WQAlpha69(vol, close, vwap, indclass){
-    tmp = byRow(contextby{demean, , indclass.row(0)}, vwap)
-    tmpmax = mmax(tmp - mfirst(tmp, 4), 5)
-    trank = mrank(mcorr(close * 0.490655 + vwap * (1 - 0.490655), mavg(vol, 20), 5), true, 9)
-    return (pow(rowRank(tmpmax, percent=true), trank) * (-1))
+def WQAlpha69(mutable t){
+    update t set tmpavg = avg(vwap) context by tradetime, indclass
+    update t set tmpmax = mmax(vwap - tmpavg - mfirst(vwap - tmpavg, 4), 5),
+        trank = mrank(mcorr(close * 0.490655 + vwap * (1 - 0.490655), mavg(vol, 20), 5), true, 9) context by securityid
+    return select tradetime, securityid, `alpha69 as factorname, pow(rank(tmpmax, percent=true), trank) * (-1) as val from t context by tradetime
 }
 
 
@@ -930,11 +931,11 @@ def WQAlpha69(vol, close, vwap, indclass){
 //alpha 70
 //((rank(delta(vwap, 1.29456))^Ts_Rank(correlation(IndNeutralize(close, IndClass.industry), adv50, 17.8256), 17.9171)) * -1)
 
-def WQAlpha70(vol, close, vwap, indclass){
-    tmp = byRow(contextby{demean, , indclass.row(0)}, close)
-    tmpdelta = vwap - mfirst(vwap, 2)
-    trank = mrank(mcorr(tmp, mavg(vol, 50), 18), true, 18)
-    return (pow(rowRank(tmpdelta, percent=true), trank) * (-1))
+def WQAlpha70(mutable t){
+    update t set tmpavg = avg(close) context by tradetime, indclass
+    update t set tmpdelta = vwap - mfirst(vwap, 2),
+        trank = mrank(mcorr(close - tmpavg, mavg(vol, 50), 18), true, 18) context by securityid
+    return select tradetime, securityid, `alpha70 as factorname, pow(rank(tmpdelta, percent=true), trank) * (-1) as val from t context by tradetime
 }
 
 
@@ -942,12 +943,12 @@ def WQAlpha70(vol, close, vwap, indclass){
 //alpha 76
 //(max(rank(decay_linear(delta(vwap, 1.24383), 11.8259)), Ts_Rank(decay_linear(Ts_Rank(correlation(IndNeutralize(low, IndClass.sector), adv81, 8.14941), 19.569), 17.1543), 19.383)) * -1)
 
-def WQAlpha76(vol, low, vwap, indclass){
-    tmp = byRow(contextby{demean, , indclass.row(0)}, low)
-    decay = mavg(vwap - mfirst(vwap, 2), 1..12)
-    trank = mrank(mavg(mrank(mcorr(tmp, mavg(vol, 81), 8), true, 20), 1..17), true, 19)
-    tmprank = rowRank(decay, percent=true)
-    return (max(tmprank, trank) * (-1))
+def WQAlpha76(mutable t){
+    update t set tmpavg = avg(low) context by tradetime, indclass
+    update t set decay = mavg(vwap - mfirst(vwap, 2), 1..12),
+        trank = mrank(mavg(mrank(mcorr(low - tmpavg, mavg(vol, 81), 8), true, 20), 1..17), true, 19) context by securityid
+    update t set tmprank = rank(decay, percent=true) context by tradetime
+    return select tradetime, securityid, `alpha76 as factorname, max(tmprank, trank) * (-1) as val from t
 }
 
 
@@ -955,11 +956,11 @@ def WQAlpha76(vol, low, vwap, indclass){
 //alpha 79
 //(rank(delta(IndNeutralize(((close * 0.60733) + (open * (1 - 0.60733))), IndClass.sector), 1.23438)) < rank(correlation(Ts_Rank(vwap, 3.60973), Ts_Rank(adv150, 9.18637), 14.6644)))
 
-def WQAlpha79(vol, open, close, vwap, indclass){
-    tmpavg = byRow(contextby{avg, , indclass.row(0)}, close * 0.60733 + open * (1 - 0.60733))
-    delta = tmpavg - mfirst(tmpavg, 2)
-    tmpcorr = mcorr(mrank(vwap, true, 4), mrank(mavg(vol, 150), true, 9), 15)
-    return (rowRank(delta, percent=true) < rowRank(tmpcorr, percent=true))
+def WQAlpha79(mutable t){
+    update t set tmpavg = avg(close * 0.60733 + open * (1 - 0.60733)) context by tradetime, indclass
+    update t set delta = tmpavg - mfirst(tmpavg, 2),
+        tmpcorr = mcorr(mrank(vwap, true, 4), mrank(mavg(vol, 150), true, 9), 15) context by securityid
+    return select tradetime, securityid, `alpha79 as factorname, rank(delta, percent=true) < rank(tmpcorr, percent=true) as val from t context by tradetime
 }
 
 
@@ -967,11 +968,11 @@ def WQAlpha79(vol, open, close, vwap, indclass){
 //alpha 80
 //((rank(Sign(delta(IndNeutralize(((open * 0.868128) + (high * (1 - 0.868128))), IndClass.industry), 4.04545)))^Ts_Rank(correlation(high, adv10, 5.11456), 5.53756)) * -1)
 
-def WQAlpha80(vol, open, high, indclass){
-    tmpavg = byRow(contextby{avg, , indclass.row(0)}, open * 0.868128 + high * (1 - 0.868128))
-    signdelta = sign(tmpavg - mfirst(tmpavg, 5))
-    trank = mrank(mcorr(high, mavg(vol, 10), 5), true, 6)
-    return pow(rowRank(signdelta, percent=true), trank)
+def WQAlpha80(mutable t){
+    update t set tmpavg = avg(open * 0.868128 + high * (1 - 0.868128)) context by tradetime, indclass
+    update t set signdelta = sign(tmpavg - mfirst(tmpavg, 5)),
+        trank = mrank(mcorr(high, mavg(vol, 10), 5), true, 6) context by securityid
+    return select tradetime, securityid, `alpha80 as factorname, pow(rank(signdelta, percent=true), trank) as val from t context by tradetime
 }
 
 
@@ -979,12 +980,11 @@ def WQAlpha80(vol, open, high, indclass){
 //alpha 82
 //(min(rank(decay_linear(delta(open, 1.46063), 14.8717)), Ts_Rank(decay_linear(correlation(IndNeutralize(volume, IndClass.sector), ((open * 0.634196) + (open * (1 - 0.634196))), 17.4842), 6.92131), 13.4283)) * -1)
 
-
-def WQAlpha82(vol, open, indclass){
-    tmp = byRow(contextby{demean, , indclass.row(0)}, vol)
-    decay = mavg(open - mfirst(open, 2), 1..15)
-    trank = mrank(mavg(mcorr(tmp, open * 0.634196 + open * (1 - 0.634196), 17), 1..7), true, 13)
-    return min(rowRank(decay, percent=true), trank) * (-1)
+def WQAlpha82(mutable t){
+    update t set tmpavg = avg(vol) context by tradetime, indclass
+    update t set decay = mavg(open - mfirst(open, 2), 1..15),
+        trank = mrank(mavg(mcorr(vol - tmpavg, open * 0.634196 + open * (1 - 0.634196), 17), 1..7), true, 13) context by securityid
+    return select tradetime, securityid, `alpha82 as factorname, min(rank(decay, percent=true), trank) * (-1) as val from t context by tradetime
 }
 
 
@@ -992,13 +992,12 @@ def WQAlpha82(vol, open, indclass){
 //alpha 87
 //(max(rank(decay_linear(delta(((close * 0.369701) + (vwap * (1 - 0.369701))), 1.91233), 2.65461)), Ts_Rank(decay_linear(abs(correlation(IndNeutralize(adv81, IndClass.industry), close, 13.4132)), 4.89768), 14.4535)) * -1)
 
-
-def WQAlpha87(vol, close, vwap, indclass){
-    adv81 = mavg(vol, 81)
-    decay = mavg(close * 0.369701 + vwap * (1 - 0.369701) - mfirst(close * 0.369701 + vwap * (1 - 0.369701), 3), 1..3)
-    tmp = byRow(contextby{demean, , indclass.row(0)}, adv81)
-    trank = mrank(mavg(abs(mcorr(tmp, close, 13)), 1..5), true, 14)
-    return max(rowRank(decay, percent=true), trank) * (-1)
+def WQAlpha87(mutable t){
+    update t set adv81 = mavg(vol, 81),
+        decay = mavg(close * 0.369701 + vwap * (1 - 0.369701) - mfirst(close * 0.369701 + vwap * (1 - 0.369701), 3), 1..3) context by securityid
+    update t set tmpavg = avg(adv81) context by tradetime, indclass
+    update t set trank = mrank(mavg(abs(mcorr(adv81 - tmpavg, close, 13)), 1..5), true, 14) context by securityid
+    return select tradetime, securityid, `alpha87 as factorname, max(rank(decay, percent=true), trank) * (-1) as val from t context by tradetime
 }
 
 
@@ -1006,9 +1005,9 @@ def WQAlpha87(vol, close, vwap, indclass){
 //alpha 89
 //(Ts_Rank(decay_linear(correlation(((low * 0.967285) + (low * (1 - 0.967285))), adv10, 6.94279), 5.51607), 3.79744) - Ts_Rank(decay_linear(delta(IndNeutralize(vwap, IndClass.industry), 3.48158), 10.1466), 15.3012))
 
-def WQAlpha89(vol, low, vwap, indclass){
-    tmp = byRow(contextby{demean, , indclass.row(0)}, vwap)
-    return mrank(mavg(mcorr(low * 0.967285 + low * (1 - 0.967285), mavg(vol, 10), 7), 1..6), true, 4) - mrank(mavg(tmp- mfirst(tmp, 4), 1..10), true, 15)
+def WQAlpha89(mutable t){
+    update t set tmpavg = avg(vwap) context by tradetime, indclass
+    return select tradetime, securityid, `alpha89 as factorname, mrank(mavg(mcorr(low * 0.967285 + low * (1 - 0.967285), mavg(vol, 10), 7), 1..6), true, 4) - mrank(mavg(vwap - tmpavg - mfirst(vwap - tmpavg, 4), 1..10), true, 15) as val from t context by securityid
 }
 
 
@@ -1016,12 +1015,12 @@ def WQAlpha89(vol, low, vwap, indclass){
 //alpha 90
 //((rank((close - ts_max(close, 4.66719)))^Ts_Rank(correlation(IndNeutralize(adv40, IndClass.subindustry), low, 5.38375), 3.21856)) * -1)
 
-def WQAlpha90(vol, low, close, indclass){
-    adv40 = mavg(vol, 40)
-    tmpclose = close - mmax(close, 5)
-    tmp = byRow(contextby{demean, , indclass.row(0)}, adv40)
-    trank = mrank(mcorr(tmp, low, 5), true, 3)
-    return (pow(rowRank(tmpclose, percent=true), trank) * (-1))
+def WQAlpha90(mutable t){
+    update t set adv40 = mavg(vol, 40),
+        tmpclose = close - mmax(close, 5) context by securityid
+    update t set tmpavg = avg(adv40) context by tradetime, indclass
+    update t set trank = mrank(mcorr(adv40 - tmpavg, low, 5), true, 3) context by securityid
+    return select tradetime, securityid, `alpha90 as factorname, pow(rank(tmpclose, percent=true), trank) * (-1) as val from t context by tradetime
 }
 
 
@@ -1029,11 +1028,11 @@ def WQAlpha90(vol, low, close, indclass){
 //alpha 91
 //((Ts_Rank(decay_linear(decay_linear(correlation(IndNeutralize(close, IndClass.industry), volume, 9.74928), 16.398), 3.83219), 4.8667) - rank(decay_linear(correlation(vwap, adv30, 4.01303), 2.6809))) * -1)
 
-def WQAlpha91(vol, close, vwap, indclass){
-    tmp = byRow(contextby{demean, , indclass.row(0)}, close)
-    trank = mrank(mavg(mavg(mcorr(tmp, vol, 10), 1..16), 1..4), true, 5)
-    decay = mavg(mcorr(vwap, mavg(vol, 30), 4), 1..3)
-    return trank - rowRank(decay, percent=true)
+def WQAlpha91(mutable t){
+    update t set tmpavg = avg(close) context by tradetime, indclass
+    update t set trank = mrank(mavg(mavg(mcorr(close - tmpavg, vol, 10), 1..16), 1..4), true, 5),
+        decay = mavg(mcorr(vwap, mavg(vol, 30), 4), 1..3) context by securityid
+    return select tradetime, securityid, `alpha91 as factorname, trank - rank(decay, percent=true) as val from t context by tradetime
 }
 
 
@@ -1041,11 +1040,11 @@ def WQAlpha91(vol, close, vwap, indclass){
 //alpha 93
 //(Ts_Rank(decay_linear(correlation(IndNeutralize(vwap, IndClass.industry), adv81, 17.4193), 19.848), 7.54455) / rank(decay_linear(delta(((close * 0.524434) + (vwap * (1 - 0.524434))), 2.77377), 16.2664)))
 
-def WQAlpha93(vol, close, vwap, indclass){
-    tmp = byRow(contextby{demean, , indclass.row(0)}, vwap)
-    trank = mrank(mavg(mcorr(tmp, mavg(vol, 81), 17), 1..20), true, 8)
-    decay = mavg(close * 0.524434 + vwap * (1 - 0.524434) - mfirst(close * 0.524434 + vwap * (1 - 0.524434), 4), 1..16) 
-    return trank \ float(rowRank(decay, percent=true))
+def WQAlpha93(mutable t){
+    update t set tmpavg = avg(vwap) context by tradetime, indclass
+    update t set trank = mrank(mavg(mcorr(vwap - tmpavg, mavg(vol, 81), 17), 1..20), true, 8),
+        decay = mavg(close * 0.524434 + vwap * (1 - 0.524434) - mfirst(close * 0.524434 + vwap * (1 - 0.524434), 4), 1..16) context by securityid
+    return select tradetime, securityid, `alpha93 as factorname, trank \ float(rank(decay, percent=true)) as val from t context by tradetime
 }
 
 
@@ -1053,12 +1052,11 @@ def WQAlpha93(vol, close, vwap, indclass){
 //alpha 97
 //((rank(decay_linear(delta(IndNeutralize(((low * 0.721001) + (vwap * (1 - 0.721001))), IndClass.industry), 3.3705), 20.4523)) - Ts_Rank(decay_linear(Ts_Rank(correlation(Ts_Rank(low, 7.87871), Ts_Rank(adv60, 17.255), 4.97547), 18.5925), 15.7152), 6.71659)) * -1)
 
-def WQAlpha97(vol, low, vwap, indclass){
-    tmp = low * 0.721001 + vwap * (1 - 0.721001)
-    tmpavg = byRow(contextby{avg, , indclass.row(0)}, tmp)
-    decay = mavg(tmp - tmpavg - mfirst(tmp - tmpavg, 4), 1..20)
-    trank = mrank(mavg(mrank(mcorr(mrank(low, true, 8), mrank(mavg(vol, 60), true, 17), 5), true, 19), 1..16), true, 7) 
-    return (rowRank(decay, percent=true) - trank) * (-1)
+def WQAlpha97(mutable t){
+    update t set tmpavg = avg(low * 0.721001 + vwap * (1 - 0.721001)) context by tradetime, indclass
+    update t set decay = mavg(low * 0.721001 + vwap * (1 - 0.721001) - tmpavg - mfirst(low * 0.721001 + vwap * (1 - 0.721001) - tmpavg, 4), 1..20),
+        trank = mrank(mavg(mrank(mcorr(mrank(low, true, 8), mrank(mavg(vol, 60), true, 17), 5), true, 19), 1..16), true, 7) context by securityid
+    return select tradetime, securityid, `alpha97 as factorname, (rank(decay, percent=true) - trank) * (-1) as val from t context by tradetime
 }
 
 
@@ -1066,15 +1064,13 @@ def WQAlpha97(vol, low, vwap, indclass){
 //alpha 100
 //(0 - (1 * (((1.5 * scale(indneutralize(indneutralize(rank(((((close - low) - (high - close)) / (high - low)) * volume)), IndClass.subindustry), IndClass.subindustry))) - scale(indneutralize((correlation(close, rank(adv20), 5) - rank(ts_argmin(close, 30))), IndClass.subindustry))) * (volume / adv20))))
 
-def WQAlpha100(vol, high, low, close, indclass){
-    tmprank = rowRank(((close - low - (high - close)) / (high - low) * vol), percent=true)
-    ind1 = byRow(contextby{demean, , indclass.row(0)}, tmprank)
-    ind2 = byRow(contextby{demean, , indclass.row(0)}, ind1)
-    adv20 = mavg(vol, 20)
-    argmin = mimin(close, 30)
-    rank1 = rowRank(adv20, percent=true)
-    rank2 = rowRank(argmin, percent=true)
-    x = mcorr(close, rank1, 5) - rank2
-    ind3 = byRow(contextby{demean, , indclass.row(0)}, x)
-    return -(each(div, 1.5 * ind2, sum(abs(ind2))) - each(div, ind3, sum(abs(ind3))))*(vol \ adv20)
+def WQAlpha100(mutable t){
+    update t set tmprank = rank((close - low - (high - close)) / (high - low) * vol, percent=true) context by tradetime
+    update t set ind1 = tmprank - avg(tmprank) context by tradetime, indclass
+    update t set ind2 = ind1 - avg(ind1) context by tradetime, indclass
+    update t set adv20 = mavg(vol, 20), argmin = mimin(close, 30) context by securityid
+    update t set rank1 = rank(adv20, percent=true), rank2 = rank(argmin, percent=true) context by tradetime
+    update t set x = mcorr(close, rank1, 5) - rank2 context by securityid
+    update t set ind3 = x - avg(x) context by tradetime, indclass
+    return select tradetime, securityid, `alpha100 as factorname, -((1.5 * ind2 / sum(abs(ind2)) - ind3 / sum(abs(ind3))) * (vol / adv20)) as val from t context by securityid
 }

@@ -7,9 +7,7 @@
 * 批流一体：模块中定义的因子函数，既可以用于历史计算，又可以用于流式增量计算。
 * 实现简单：直接使用论文中所列公式实现，无需用户自定义函数，便于用户后续自行修改以产生定制化因子。
 
-> 本教程包含的所有代码兼容 DolphinDB 2.00.9，1.30.21 及以上版本。
->
-> 本教程保留了适配 2.00.8 版本的文件，并以  _2.00.8 为后缀。
+> 本教程包含的所有代码兼容 DolphinDB 2.00.8，1.30.20 及以上版本。
 
 本教程包含内容：
 
@@ -17,8 +15,11 @@
 - [2. 使用范例](#2-使用范例)
   - [2.1 环境配置](#21-环境配置)
   - [2.2 数据准备](#22-数据准备)
-  - [2.3 矩阵入参计算行业因子与非行业因子](#23-矩阵入参计算行业因子与非行业因子)
+  - [2.3 矩阵入参计算的非行业因子](#23-矩阵入参计算的非行业因子)
+  - [2.4 表入参计算行业信息因子](#24-表入参计算行业信息因子)
 - [3. 因子的存储](#3-因子的存储)
+  - [3.1 矩阵格式的因子存储](#31-矩阵格式的因子存储)
+  - [3.2 表形式的因子存储](#32-表形式的因子存储)
 - [4. 性能对比](#4-性能对比)
   - [4.1 DolphinDB 与 Python Pandas 性能对比](#41-dolphindb-与-python-pandas-性能对比)
   - [4.2 DolphinDB 与 Python numpy 的性能对比](#42-dolphindb-与-python-numpy-的性能对比)
@@ -50,13 +51,14 @@
 | cap                     | 市值               | √                  |
 | indclass                | 行业类型           | √                  |
 
-- 在之前的版本中，由于包含行业信息的因子计算步骤与不含行业信息的因子有所不同，wq101alpha 模块中根据入参字段是否包括行业信息字段，将因子分为了两类：行业信息因子和非行业信息因子。
-- 当前版本已经统一了行业信息因子和非行业信息因子的输入输出均为矩阵类型。
+- 由于包含行业信息的因子计算步骤与不含行业信息的因子有所不同，wq101alpha 模块 中根据入参字段是否包括行业信息字段，将因子分为了两类：行业信息因子和非行业信息因子：
 
-| 因子类型       | 输入数据类型 | 输出数据类型 | 因子序号                                                     |
-| -------------- | ------------ | ------------ | ------------------------------------------------------------ |
-| 行业信息因子   | 矩阵         | 矩阵         | 48，56，58，59，63，67，69，70，76，79，80，82，87，89，90，91，93，97，100 |
-| 非行业信息因子 | 矩阵         | 矩阵         | 其余所有因子                                                 |
+| 因子类型       | 输入数据类型 | 输出数据类型 | 因子序号                                                                    |
+| -------------- | ------------ | ------------ | --------------------------------------------------------------------------- |
+| 行业信息因子   | 表           | 表           | 48，56，58，59，63，67，69，70，76，79，80，82，87，89，90，91，93，97，100 |
+| 非行业信息因子 | 矩阵         | 矩阵         | 其余所有因子                                                                |
+
+
 
 ## 2. 使用范例
 
@@ -90,9 +92,11 @@ endTime = timestamp(2010.01.31)
 data = prepareData(rawData=rawData, startTime=startTime, endTime=endTime, securityidName="securityid", tradetimeName="tradetime", openName="open", closeName="close", highName="high", lowName="low", volumeName="vol", vwapName="vwap", capName="cap", indclassName="indclass", infoData=infoData, infoSecurityidName="securityid")
 ```
 
-### 2.3 矩阵入参计算行业因子与非行业因子
+### 2.3 矩阵入参计算的非行业因子
 
-在当前版本的 wq101alpha 模块中，全部因子都会运用到横向与纵向的计算。用户需先准备矩阵，再调用对应的 WQAlpha# 函数，返回的结果也同为矩阵。由于不同因子计算时用到的参数不同，用户需通过查询 [附录1-因子入参一览表](#81-附录1-因子入参一览表) 来确定所需的参数。
+
+
+在 wq101alpha 模块中，大多数因子计算都涉及横向与纵向的计算。对于这样的因子，用户需先准备矩阵，再调用对应的 WQAlpha# 函数，返回的结果为矩阵。由于不同因子计算时用到的参数不同，用户需通过查询 [附录1-因子入参一览表](#81-附录1-因子入参一览表) 来确定所需的参数。
 
 计算方法如下：
 
@@ -134,11 +138,40 @@ res = calAlpha1(data, startTime, endTime)
 >
 > 用户可以按需灵活选取调用方法。
 
-> 对于行业信息因子，论文中用了多种行业分类，如IndClass.subindustry，IndClass.industry, IndClass.sector等，为了简便起见，本模块统一只用IndClass这一个字段做行业中性化。
+### 2.4 表入参计算行业信息因子
+
+少部分因子涉及到了股票的行业分类信息。对于这些因子，用户需以表入参，返回的结果也为数据表。以 world quant alpha 第48 号因子为例：
+
+```c++
+use wq101alpha
+
+res = WQAlpha48(data)
+```
+
+亦可使用 [辅助准备模块 prepare101.dos](helper/prepare101.dos) 中的计算函数。
+
+```c++
+def calAlpha48(data, startTime, endTime){
+    input = select * from data where tradetime between startTime : endTime
+    return WQAlpha48(input)
+}
+//调用方法如下：
+use prepare101
+
+res = calAlpha48(data, startTime, endTime)
+```
+
+> 论文中用了多种行业分类，如IndClass.subindustry，IndClass.industry, IndClass.sector等，为了简便起见，本模块统一只用IndClass这一个字段做行业中性化。
+
+
 
 ## 3. 因子的存储
 
-因子的存储可以参考[因子最佳实践中的因子存储章节](https://gitee.com/dolphindb/Tutorials_CN/blob/master/best_practice_for_factor_calculation.md#5-%E5%9B%A0%E5%AD%90%E7%9A%84%E5%AD%98%E5%82%A8%E5%92%8C%E6%9F%A5%E8%AF%A2)。wq101alpha 模块计算的因子返回的数据均为矩阵格式，本章节将以宽表形式存储因子为例，完整代码可参考[Alpha101计算存储全流程代码汇总](helper/wq101alphaScript.dos)。
+因子的存储可以参考[因子最佳实践中的因子存储章节](https://gitee.com/dolphindb/Tutorials_CN/blob/master/best_practice_for_factor_calculation.md#5-%E5%9B%A0%E5%AD%90%E7%9A%84%E5%AD%98%E5%82%A8%E5%92%8C%E6%9F%A5%E8%AF%A2)。wq101alpha 模块计算的因子返回的数据格式有矩阵及表两种形式，本章节将以宽表形式存储因子为例，完整代码可参考[Alpha101计算存储全流程代码汇总](helper/wq101alphaScript.dos)。
+
+
+
+### 3.1 矩阵格式的因子存储
 
 存储面板数据，需要先将面板数据转换为表，而后进行存储。以第 1 号因子为例，计算并存储因子，示例代码如下：
 
@@ -151,6 +184,22 @@ writePanelInWideTable(res, `alpha1)
 ```
 
 其中 `writePanelInWideTable` 的实现可见 [Alpha101计算存储全流程代码汇总](helper/wq101alphaScript.dos)。
+
+### 3.2 表形式的因子存储
+
+`wq101alpha` 模块中返回的表为纵表，可以直接存入单值模型（纵表）。若要将其存入宽表，可以用 [`pivot by`](https://www.dolphindb.cn/cn/help/200/SQLStatements/pivotBy.html) 将纵表重新排列（`tradetime`，`factorname` 为行，`securityid` 为列）。以第 101 号因子为例，代码如下：
+
+```c++
+// 计算world quant alpha 101号因子，得到的纵表存储在res中
+res = calAlpha101(data, startTime, endTime)
+
+// 将res转换成表并存储在因子宽表中
+writeLongInWideTable(res)
+```
+
+其中 `writeLongInWideTable` 的实现可见 [Alpha101计算存储全流程代码汇总](helper/wq101alphaScript.dos)。
+
+
 
 ## 4. 性能对比
 
@@ -213,7 +262,7 @@ for i in range(1, 102):
     except Exception:
         times.append('error')
 
-```
+``` 
 
 
 
