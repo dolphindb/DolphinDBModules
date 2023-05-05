@@ -25,7 +25,7 @@ The ops module is delivered with DolphinDB server 1.30.19/2.00.7 or higher. The 
 
 You can also download the ops module [here](https://github.com/dolphindb/DolphinDBModules/blob/master/ops/src/ops.dos).  Place the module file under the directory `[home]/modules` on the controller and data nodes in your cluster. The `[home]` directory is specified by the configuration parameter *home*, which you can check with the function `getHomeDir()`.
 
-For more information about DolphinDB modules, see [tutorial: Modules]([./module_tutorial.md](https://github.com/dolphindb/Tutorials_EN/blob/master/module_tutorial_EN.md)).
+For more information about DolphinDB modules, see [tutorial: Modules](https://github.com/dolphindb/Tutorials_EN/blob/master/module_tutorial_EN.md).
 
 ## 2. Calling Module Functions
 
