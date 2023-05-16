@@ -1341,7 +1341,7 @@ def calAlpha62(data, startTime, endTime){
 
 def calAlpha63(data, startTime, endTime){
     input = prepare63(data, startTime, endTime)
-    return wq101alpha::WQAlpha63(input.vol, input.open, input.close, input.vwap, indclass)
+    return wq101alpha::WQAlpha63(input.vol, input.open, input.close, input.vwap, input.indclass)
 }
 
 
