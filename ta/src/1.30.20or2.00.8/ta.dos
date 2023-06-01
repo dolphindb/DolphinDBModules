@@ -1,0 +1,660 @@
+module ta
+
+/**
+module to support Python TA-Lib
+DolphinDB Inc.
+DolphinDB server version: 1.30.20 2022.09.28/2.00.8 2022.09.28
+Last modification time: 2022.12.20
+*/
+
+/**
+ * var: Variance of Population
+ */
+@state
+def var(close, timePeriod=5, nbdev=1){
+	mobs = talib(mcount, close, timePeriod)
+	return talib(mvar, close, timePeriod) * (mobs - 1) \ mobs
+}
+
+/**
+ * stddev: Standard Deviation of Population
+ */
+@state
+def stddev(close, timePeriod=5, nbdev=1){
+	return sqrt(var(close, timePeriod, nbdev)) * nbdev
+}
+
+/**
+ * beta: Beta
+ */
+@state
+def beta(high, low, timePeriod=5){
+	return talib(mbeta, low.ratios() - 1, high.ratios() - 1, timePeriod)
+}
+
+/**
+ * Simple Moving Average
+ * http://www.tadoc.org/indicator/SMA.htm
+ */
+@state
+def sma(close, timePeriod=30){
+	return ::sma(close, timePeriod)
+}
+
+/**
+ * ema: Exponential Moving Average
+ * http://www.tadoc.org/indicator/EMA.htm
+ * https://www.fmlabs.com/reference/default.htm?url=ExpMA.htm
+ */
+@state
+def ema(close, timePeriod=30) {
+	return ::ema(close, timePeriod)
+}
+
+/**
+ * Weighted Moving Average
+ * http://www.tadoc.org/indicator/WMA.htm
+ */
+@state
+def wma(close, timePeriod=30){
+	return ::wma(close, timePeriod)
+}
+
+/**
+ * dema: Double Exponential Moving Average
+ * http://www.tadoc.org/indicator/DEMA.htm
+ * https://www.fmlabs.com/reference/default.htm?url=DEMA.htm
+ */
+@state
+def dema(close, timePeriod=30){
+	return ::dema(close, timePeriod)
+}
+
+/**
+ * tema: Triple Exponential Moving Average
+ * http://www.tadoc.org/indicator/TEMA.htm
+ */
+@state
+def tema(close, timePeriod=30){
+	return ::tema(close, timePeriod)
+}
+
+/**
+ * Triangular Moving Average
+ * http://www.tadoc.org/indicator/TRIMA.htm
+ */
+@state
+def trima(close, timePeriod=30){
+	return ::trima(close, timePeriod)
+}
+
+/**
+ * kama: Kaufman's Adaptative Moving Average
+ * http://www.tadoc.org/indicator/KAMA.htm
+ */
+@state
+def kama(close, timePeriod=30){
+	return ::kama(close, timePeriod)
+}
+
+/**
+ * Triple Exponential Moving Average
+ * EMA1(x,Period) = EMA(x,Period)
+ * EMA2(x,Period) = EMA(EMA1(x,Period),Period)
+ * GD(x,Period,vFactor) = (EMA1(x,Period)*(1+vFactor)) - (EMA2(x,Period)*vFactor)
+ * T3 = GD (GD ( GD(t, Period, vFactor), Period, vFactor), Period, vFactor);
+ * http://www.tadoc.org/indicator/T3.htm
+ */
+@state
+def t3(close, timePeriod=5, vfactor=0){
+	return  ::t3(close, timePeriod, vfactor)
+}
+
+/**
+ * ma: Moving average
+ * 0: Simple Moving Average
+ * 1: Exponential Moving Average
+ * 2: Weighted Moving Average
+ * 3: Double Exponential Moving Average
+ * 4: Triple Exponential Moving Average
+ * 5: Triangular Moving Average
+ * 6: Kaufman Adaptive Moving Average
+ * 7: MESA Adaptive Moving Average
+ * 8: Triple Generalized Double Exponential Moving Average
+ */
+@state
+def ma(close, timePeriod=30, maType=0){
+ 	return ::ma(close, timePeriod, maType)
+}
+
+/**
+ * bBands: Bollinger Bands
+ * http://www.tadoc.org/indicator/BBANDS.htm
+ * https://www.fmlabs.com/reference/default.htm?url=Bollinger.htm
+ */
+@state
+def bBands(close, timePeriod=5, nbdevUp=2, nbdevDn=2, maType=0){
+	mid = ma(close, timePeriod, maType)
+	md = stddev(close, timePeriod, 1)
+	return (mid + nbdevUp * md, mid, mid - nbdevDn * md)
+}
+
+/**
+ * rsi: Relative Strength Index
+ * https://www.fmlabs.com/reference/default.htm?url=SAR.htm
+ * https://www.investopedia.com/investing/momentum-and-relative-strength-index/
+ */
+@state
+def rsi(close, timePeriod=14) {
+	 deltaClose = deltas(close)
+	 up = iif(nullCompare(>, deltaClose, 0), deltaClose, 0)
+	 down = iif(nullCompare(>, deltaClose, 0), 0, -deltaClose)
+	 upAvg = wilder(up, timePeriod)
+	 downAvg = wilder(down, timePeriod)
+	 return 100.0 * upAvg / (upAvg + downAvg)
+}
+
+/**
+ * stochf: Stochastic Oscillator Fast
+ * https://www.fmlabs.com/reference/default.htm?url=StochasticOscillator.htm
+ */
+@state
+def stochf(high, low, close, fastkPeriod=5, fastdPeriod=3, fastdMatype=0) {
+	high_, low_, close_ = talibNull(high, low, close)
+	lowestLow = talib(mmin, low_, fastkPeriod)
+	fastk = (close_ - lowestLow) \ (talib(mmax, high_, fastkPeriod) - lowestLow) * 100
+	fastd = ma(fastk, fastdPeriod, fastdMatype)
+	fastk_, fastd_ = talibNull(fastk, fastd)
+	return fastk_, fastd_
+}
+
+/**
+ * stoch: Stochastic Oscillator Slow
+ * https://www.fmlabs.com/reference/default.htm?url=StochasticOscillator.htm
+ */
+@state
+def stoch(high, low, close, fastkPeriod=5, slowkPeriod=3, slowkMatype=0, slowdPeriod=3, slowdMatype=0) {
+	fastk, slowk = stochf(high, low, close, fastkPeriod, slowkPeriod, slowkMatype)
+	slowd = ma(slowk, slowdPeriod, slowdMatype)
+	return talibNull(slowk, slowd)
+}
+
+/**
+ * stochrsi: Stochastic RSI
+ * https://www.fmlabs.com/reference/default.htm?url=StochRSI.htm
+ */
+@state
+def stochRsi(real, timePeriod=14, fastkPeriod=5, fastdPeriod=3, fastdMatype=0) {
+	rsidx = rsi(real, timePeriod)
+	return stochf(rsidx, rsidx, rsidx, fastkPeriod, fastdPeriod, fastdMatype)
+}
+
+/**
+ * trix: Triple Exponential Average
+ * https://www.investopedia.com/articles/technical/02/092402.asp
+ */
+@state
+def trix(close, timePeriod=30) {
+	return (ema(ema(ema(close, timePeriod), timePeriod), timePeriod).ratios()-1)*100
+}
+
+/**
+ * correl: Pearson's Correlation Coefficient (r)
+ */
+@state
+def correl(high, low, timePeriod=30){
+	high_, low_ = talibNull(high, low)
+	return talib(mcorr, high, low, timePeriod)
+}
+
+/**
+ * linearreg_slope: Linear Regression Slope
+ */
+@state
+def linearreg_slope(close, timePeriod=14){
+	return linearTimeTrend(close, timePeriod)[1]
+}
+
+/**
+ * linearreg_intercept: Linear Regression Intercept
+ */
+@state
+def linearreg_intercept(close, timePeriod=14){
+	return linearTimeTrend(close, timePeriod)[0]
+}
+
+/**
+ * linearreg_angle: Linear Regression Angle
+ */
+@state
+def linearreg_angle(close, timePeriod=14){
+	return rad2deg(atan(linearreg_slope(close, timePeriod)))
+}
+
+/**
+ * linearreg: Linear Regression
+ */
+@state
+def linearreg(close, timePeriod=14){
+	sumB = timePeriod * (timePeriod - 1) \ 2
+	varB = (timePeriod - 1) * timePeriod * (2 * timePeriod - 1) \ 6 - sumB*sumB/timePeriod
+	linearreg_intercept, linearreg_slop = linearTimeTrend(close, timePeriod)
+	return linearreg_intercept + linearreg_slop*(sumB/timePeriod) + linearreg_slop*varB*((timePeriod - 1)/varB - sumB/timePeriod/varB)
+}
+
+/**
+ * tsf: Time Series Forecast
+ */
+ @state
+def tsf(close, timePeriod=14){
+	sumB = timePeriod * (timePeriod - 1) \ 2
+	varB = (timePeriod - 1) * timePeriod * (2 * timePeriod - 1) \ 6 - sumB * sumB / timePeriod
+	linearreg_intercept, linearreg_slop = linearTimeTrend(close, timePeriod)
+	return linearreg_intercept + linearreg_slop * (sumB / timePeriod) + linearreg_slop * varB * (timePeriod / varB - sumB / timePeriod / varB)
+}
+
+/**
+ *  bop: Balance Of Power
+ */
+@state
+def bop(open, high, low, close){
+	open_, high_, low_, close_ = talibNull(open, high, low, close)
+	diff = high_ - low_
+	return iif(diff > 0, (close_ - open_) \ diff, 0.0)
+}
+
+/**
+ * Comodity Channel Index (Momentum Indicators)
+ * https://www.fmlabs.com/reference/default.htm?url=CCI.htm
+ */
+@state
+def cci(high, low, close, timePeriod=14){
+	high_, low_, close_ = talibNull(high, low, close)
+	tp= (high_ + low_ + close_) / 3.0
+	return(tp - talib(mavg, tp, timePeriod)) / (0.015 * talib(mmad, tp, timePeriod))
+}
+
+/**
+ * trange:  true range
+ */
+@state
+def trange(high, low, close){
+	return trueRange(high, low, close)
+}
+
+/**
+ * plus_dm : positive directional movement
+ * https://www.investopedia.com/articles/technical/02/050602.asp
+ */
+@state
+def plus_dm(high, low, timePeriod=14){
+	highDelta = deltas(high)
+	lowDelta = -deltas(low)
+	tmp = iif(highDelta > lowDelta && highDelta > 0, highDelta, 0)
+	diffP = iif(nullCompare(<, high, tmp) == NULL, NULL, tmp)
+	return wilder(diffP, timePeriod) * timePeriod
+}
+
+/**
+ * plus_di : positive directional indicator
+ * https://www.fmlabs.com/reference/default.htm?url=DI.htm
+ */
+@state
+def plus_di(high, low, close, timePeriod=14){
+	high_, low_, close_ = talibNull(high, low, close)
+	highDelta = deltas(high_)
+	lowDelta = -deltas(low_)
+	tmp = iif(highDelta > lowDelta && highDelta > 0, highDelta, 0)
+	diffP = iif(nullCompare(<, high_, tmp) == NULL, NULL, tmp)
+	rangeP = trueRange(high_, low_, close_)
+	return 100.0 * wilder(diffP, timePeriod) / wilder(rangeP, timePeriod)
+}
+
+
+/**
+ *  minus_dm: Minus Directional Movement
+ *  https://www.fmlabs.com/reference/default.htm?url=di.htm
+ */
+@state
+def minus_dm(high, low, timePeriod=14){
+	high_, low_ = talibNull(high, low)
+	highDelta = deltas(high_)
+	lowDelta = -deltas(low_)
+	tmp = iif(lowDelta > highDelta && lowDelta > 0, lowDelta, 0)
+	diffP = iif(nullCompare(<, low_, tmp) == NULL, NULL, tmp)
+	return wilder(diffP, timePeriod) * timePeriod
+}
+
+/**
+ *  minus_di: Minus Directional Indicator
+ *  https://www.fmlabs.com/reference/default.htm?url=di.htm
+ */
+@state
+def minus_di(high, low, close, timePeriod=14){
+	high_, low_, close_ = talibNull(high, low, close)
+	highDelta = deltas(high_)
+	lowDelta = -deltas(low_)
+	tmp = iif(lowDelta > highDelta && lowDelta > 0, lowDelta, 0)
+	diffP = iif(nullCompare(<, low_, tmp) == NULL, NULL, tmp)
+	rangeP = trueRange(high_, low_, close_)
+	return 100.0 * wilder(diffP, timePeriod) / wilder(rangeP, timePeriod)
+}
+
+/**
+ * Directional Movement Index (Momentum Indicators)
+ * https://www.fmlabs.com/reference/default.htm?url=DX.htm
+ */
+@state
+def dx(high, low, close, timePeriod=14){
+	high_, low_, close_ = talibNull(high, low, close)
+	highDelta = deltas(high_)
+	lowDelta = -deltas(low_)
+	tmp1  = iif(lowDelta>highDelta && lowDelta>0, lowDelta, 0.0)
+	diffM = iif(nullCompare(<, high_, tmp1) == NULL, NULL, tmp1)
+	tmp2 = iif((highDelta > lowDelta && highDelta > 0), highDelta, 0)
+	diffP = iif(nullCompare(<, low_, tmp2) == NULL, NULL, tmp2)
+	mdm = wilder(diffM, timePeriod)
+	pdm =  wilder(diffP, timePeriod)
+	return 100.0 * abs(mdm - pdm) / (mdm + pdm)
+}
+
+/**
+ * adx : average directional movement index
+ * https://www.investopedia.com/terms/a/adx.asp
+ */
+@state
+def adx(high, low, close, timePeriod=14){
+	dxv = dx(high, low, close, timePeriod)
+	return  wilder(dxv, timePeriod)
+}
+
+/**
+ * adxr : average directional movement index rating
+ * https://www.marketvolume.com/technicalanalysis/adxr.asp
+ */
+@state
+def adxr(high, low, close, timePeriod=14){
+	adxVal = adx(high, low, close, timePeriod)
+	return (adxVal + adxVal.move(timePeriod - 1)) / 2.0
+}
+
+/**
+ * Chande Momentual Oscillator (Momentum Indicators)
+ * https://www.fmlabs.com/reference/default.htm?url=CMO.htm
+ */
+@state
+def cmo(close, timePeriod=14){
+	deltaClose = deltas(close)
+	loss = iif(nullCompare(<, deltaClose, 0),-deltaClose, 0)
+	gain = iif(nullCompare(>, deltaClose, 0), deltaClose, 0)
+	lossAvg = wilder(loss, timePeriod)
+	gainAvg = wilder(gain, timePeriod)
+	return (gainAvg - lossAvg) \ (gainAvg + lossAvg) *100.0
+}
+
+/**
+ * Moving Average Convergence / Divergence
+ * https://www.fmlabs.com/reference/default.htm?url=MACD.htm
+ */
+def macd(close, fastPeriod=12, slowPeriod=26, signalPeriod=9){
+	if (fastPeriod == 0 && slowPeriod == 0) {
+		inSlowPeriod = 26
+		close_ = talibNull(close, talib(mcount, close, 15))[0]
+		fastResult = gema(close_, 12, 0.15)
+		slowResult = gema(close, 26, 0.075)
+		diff = fastResult - slowResult
+	}
+	else {
+		inSlowPeriod = max(fastPeriod, slowPeriod)
+		inFastPeriod = min(fastPeriod, slowPeriod)
+		diffPeriod = inSlowPeriod - inFastPeriod
+		diff = ema(talibNull(close, talib(mcount, close, diffPeriod+1))[0], inFastPeriod) - ema(close, inSlowPeriod)
+	}
+	dea = ema(diff, signalPeriod)
+	return (diff, dea, diff - dea)
+}
+
+/**
+ *  macdExt : MACD with controllable MA type
+ *  http://www.tadoc.org/indicator/MACD.htm
+ */
+@state
+def macdExt(close, fastPeriod=12, fastMaType=0, slowPeriod=26, slowMaType=0, signalPeriod=9, signalMaType=0){
+	inSlowPeriod = max(fastPeriod, slowPeriod)
+	inFastPeriod = min(fastPeriod, slowPeriod)
+	diffPeriod = inSlowPeriod - inFastPeriod
+	diff = ma(talibNull(close,talib(mcount, close,diffPeriod + 1))[0], inFastPeriod, fastMaType) - ma(close, inSlowPeriod, slowMaType)
+	dea = ma(diff, signalPeriod, signalMaType)
+	diff_, dea_ = talibNull(diff, dea)
+	return (diff_, dea_, diff_ - dea_)
+}
+
+
+/**
+ *  macdFix: Moving Average Convergence/Divergence Fix 12/26
+ *  https://mrjbq7.github.io/ta-lib/func_groups/momentum_indicators.html
+ */
+def macdFix(close, signalPeriod=9){
+	return macd(close, 0, 0, signalPeriod)
+}
+
+/**
+ * midPrice: midpoint Price over period
+ */
+@state
+def midPrice(high, low, timePeriod=14){
+	return (talib(mmax, high, timePeriod) + talib(mmin, low, timePeriod)) / 2.0
+}
+
+/**
+* midPoint: midPoint over period
+*/
+@state
+def midPoint(close, timePeriod=14){
+	return (talib(mmax, close, timePeriod) + talib(mmin, close, timePeriod)) / 2.0
+}
+
+/**
+ * mom : momentum
+ * https://www.fmlabs.com/reference/default.htm?url=Momentum.htm
+ */
+@state
+def mom(close, timePeriod=10){
+	return close - talib(move, close, timePeriod)
+}
+
+/**
+ * roc : rate of change
+ * https://www.investopedia.com/terms/p/pricerateofchange.asp
+ */
+@state
+def roc(close, timePeriod=10){
+	return (close \ talib(move, close, timePeriod) - 1) * 100
+}
+
+/**
+ * rocp : rate of change percentage
+ * https://www.fmlabs.com/reference/default.htm?url=RateOfChange.htm
+ */
+@state
+def rocp(close, timePeriod=10){
+	return close \ talib(move, close, timePeriod) - 1.0
+}
+
+/**
+ * rocr : rate of change ratio
+ * https://www.investopedia.com/terms/p/pricerateofchange.asp
+ */
+@state
+def rocr(close, timePeriod=10){
+	return close \ talib(move, close, timePeriod)
+}
+
+/**
+ * rocr100 : rate of change ratio 100 scale
+ * https://www.investopedia.com/terms/p/pricerateofchange.asp
+ */
+@state
+def rocr100(close, timePeriod=10){
+	return rocr(close, timePeriod) * 100
+}
+
+/**
+ * ppo : percentage price oscillator
+ * https://www.fmlabs.com/reference/default.htm?url=PriceOscillatorPct.htm
+ */
+@state
+def ppo(close, fastPeriod=12, slowPeriod=26, maType=0){
+	fast = ma(close, min(fastPeriod, slowPeriod), maType)
+	slow = ma(close, max(fastPeriod, slowPeriod), maType)
+	return (fast - slow) / slow * 100
+}
+
+/**
+* mavp: moving average with variable period
+*/
+def mavp(close, periods, minPeriod=2, maxPeriod=30, maType=0){
+	n = close.size()
+	if(periods.size() != n) throw "The lengths of close and periods are inconsistent."
+	b = close.ifirstNot()
+	if(b + maxPeriod > n) return array(DOUBLE, n, n, NULL)
+	tmpPeriods = periods
+	tmpPeriods[periods > maxPeriod] = maxPeriod
+	tmpPeriods[periods < minPeriod] = minPeriod
+	grp = groups(tmpPeriods)
+	rs = array(DOUBLE, n, n, NULL)
+	for(period in grp.keys()){
+		indexes = grp[period]
+		rs[indexes] = ma(close, period, maType)[indexes]
+	}
+	return rs.fill!(:(b +maxPeriod - 1), NULL)
+}
+
+/**
+ * apo : absolute price oscillator
+ * https://library.tradingtechnologies.com/trade/chrt-ti-absolute-price-oscillator.html
+ */
+@state
+def apo(close, fastPeriod=12, slowPeriod=26, maType=0){
+	return ma(close, fastPeriod, maType) - ma(close, slowPeriod, maType)
+}
+
+/**
+ * aroon : aroon indicator
+ * https://www.investopedia.com/terms/a/aroon.asp
+ */
+@state
+def aroon(high, low, timePeriod=14){
+	return (100.0 / timePeriod * talib(mimin, low, timePeriod + 1)),( 100.0 / timePeriod * talib(mimax, high, timePeriod + 1))
+}
+
+/**
+ * aroonOsc : aroon oscillator
+ * https://www.investopedia.com/terms/a/aroonoscillator.asp
+ */
+def aroonOsc(high, low, timePeriod=14){
+	n = high.size()
+	b = ifirstNot([high, low])
+	if (b < 0 ||  timePeriod > n) return array(DOUBLE, n, n, NULL)
+	return fill!(100.0/timePeriod * (moving(x -> size(x) - imax(x.reverse())-1, high, timePeriod + 1) - moving(x -> size(x) - imin(x.reverse())-1, low, timePeriod + 1)), timePeriod - 1 + 0:b, NULL)
+
+}
+
+/**
+ * ULTOSC - Ultimate Oscillator
+ * https://www.investopedia.com/terms/u/ultimateoscillator.asp
+ */
+@state
+def ultOsc(high, low, close, timePeriod1=7, timePeriod2=14, timePeriod3=28){
+	pc = talib(move,close, 1)
+	lowMin = min(low, pc)
+	bp = close - lowMin
+	tr = max(high, pc) -  lowMin
+	return (4.0 * talib(msum, bp, timePeriod1) / talib(msum, tr, timePeriod1) +
+	                   2.0 * talib(msum, bp, timePeriod2)/talib(msum, tr, timePeriod2) +
+	                   1.0 * talib(msum, bp, timePeriod3)/talib(msum, tr, timePeriod3)) * (100.0 / 7)
+}
+
+/**
+ * WILLR - Williams' %R
+ * https://www.fmlabs.com/reference/default.htm?url=WilliamsR.htm
+ */
+@state
+def willr(high, low, close, timePeriod=14){
+	high_, low_, close_ = talibNull(high, low ,close)
+	hh = talib(mmax, high_, timePeriod)
+	ll = talib(mmin, low_, timePeriod)
+	return -100 * (hh - close_) / (hh - ll)
+}
+
+/**
+ * AD - Chaikin A/D Line
+ * https://www.fmlabs.com/reference/default.htm?url=AccumDist.htm
+ */
+@state
+def ad(high, low, close, volume){
+	return cumsum((close * 2 - low - high) / (high - low) * volume)
+}
+
+/**
+ * OBV - On Balance Volume
+ * https://www.fmlabs.com/reference/default.htm?url=OBV.htm
+ */
+def obv(close, volume){
+	tmp = close.deltas()
+	ind=iif(tmp == 0, 0, iif(nullCompare(>, tmp, 0), 1,  -1))
+	b = ifirstNot([close, volume])
+	if (b > 0) ind[b] = 1
+	return cumsum(ind * volume)
+}
+
+@state
+def avgPrice(open, high, low, close) {
+	return (open + high + low + close) / 4.0
+}
+
+@state
+def medPrice(high, low) {
+	return (high + low) / 2.0
+}
+
+@state
+def typPrice(high, low, close) {
+	return (high + low + close) / 3.0
+}
+
+@state
+def wclPrice(high, low, close) {
+	return (close * 2.0 + high + low) / 4.0
+}
+
+/**
+ * atr :  Average True Range
+ */
+@state
+def atr(high, low, close, timePeriod=14) {
+	tr = trueRange(high, low, close)
+	return wilder(tr, timePeriod)
+}
+
+
+/**
+ *  natr: Normalized  Average True Range
+ */
+@state
+def natr(high, low, close, timePeriod=14) {
+	return atr(high, low, close, timePeriod) / close * 100.0
+}
+
+/**
+ *  mfi: Money Flow Index
+ *  https://www.fmlabs.com/reference/default.htm?url=MoneyFlowIndex.htm
+ */
+@state
+def mfi(high, low, close, volume, timePeriod=14){
+	tp = (high + low + close) / 3.0
+	deltasTp = deltas(tp)
+	pos = iif(nullCompare(>, deltasTp, 0), tp, 0)
+	neg = iif(nullCompare(<, deltasTp, 0), tp, 0)
+	return talib(msum, pos * volume, timePeriod) * 100 / (talib(msum, pos * volume , timePeriod) + talib(msum, neg * volume , timePeriod))
+}
