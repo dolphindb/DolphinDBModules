@@ -662,12 +662,14 @@ def aroon(high, low, timePeriod){
  * aroonOsc : aroon oscillator 
  * https://www.investopedia.com/terms/a/aroonoscillator.asp
  */
-def aroonOsc(high, low, timePeriod){
+def aroonOsc(high, low, timePeriod=14){
 	n = high.size()
-	b = ifirstNot([high, low])	
+	b = ifirstNot([high, low])
 	if (b < 0 ||  timePeriod > n) return array(DOUBLE, n, n, NULL)
-	return fill!(100.0/timePeriod * (moving(x -> size(x)-imax(x.reverse())-1, high, timePeriod + 1) - moving(x -> size(x)-imin(x.reverse())-1, low, timePeriod + 1)), timePeriod - 1 + 0:b, NULL)
+	return fill!(100.0/timePeriod * (moving(defg(x){return size(x) - imax(x.reverse())-1}, high, timePeriod + 1) - moving(defg(x){return size(x) - imin(x.reverse())-1}, low, timePeriod + 1)), timePeriod - 1 + 0:b, NULL)
+
 }
+
 /**
  * ULTOSC - Ultimate Oscillator
  * https://www.investopedia.com/terms/u/ultimateoscillator.asp

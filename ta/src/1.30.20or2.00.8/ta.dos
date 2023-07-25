@@ -4,7 +4,7 @@ module ta
 module to support Python TA-Lib
 DolphinDB Inc.
 DolphinDB server version: 1.30.20 2022.09.28/2.00.8 2022.09.28
-Last modification time: 2022.12.20
+Last modification time: 2023.07.25
 */
 
 /**
@@ -174,9 +174,16 @@ def stochf(high, low, close, fastkPeriod=5, fastdPeriod=3, fastdMatype=0) {
  */
 @state
 def stoch(high, low, close, fastkPeriod=5, slowkPeriod=3, slowkMatype=0, slowdPeriod=3, slowdMatype=0) {
-	fastk, slowk = stochf(high, low, close, fastkPeriod, slowkPeriod, slowkMatype)
+//	fastk, slowk = stochf(high, low, close, fastkPeriod, slowkPeriod, slowkMatype)
+	high_, low_, close_ = talibNull(high, low, close)
+	lowestLow = talib(mmin, low_, fastkPeriod)
+	fastk = (close_ - lowestLow) \ (talib(mmax, high_, fastkPeriod) - lowestLow) * 100
+	fastd = ma(fastk, slowkPeriod, slowkMatype)
+	fastk_, slowk = talibNull(fastk, fastd)
+	
 	slowd = ma(slowk, slowdPeriod, slowdMatype)
-	return talibNull(slowk, slowd)
+	res1, res2 = talibNull(slowk, slowd)
+	return res1, res2
 }
 
 /**
@@ -186,7 +193,13 @@ def stoch(high, low, close, fastkPeriod=5, slowkPeriod=3, slowkMatype=0, slowdPe
 @state
 def stochRsi(real, timePeriod=14, fastkPeriod=5, fastdPeriod=3, fastdMatype=0) {
 	rsidx = rsi(real, timePeriod)
-	return stochf(rsidx, rsidx, rsidx, fastkPeriod, fastdPeriod, fastdMatype)
+//	return stochf(rsidx, rsidx, rsidx, fastkPeriod, fastdPeriod, fastdMatype)
+	high_, low_, close_ = talibNull(rsidx, rsidx, rsidx)
+	lowestLow = talib(mmin, low_, fastkPeriod)
+	fastk = (close_ - lowestLow) \ (talib(mmax, high_, fastkPeriod) - lowestLow) * 100
+	fastd = ma(fastk, fastdPeriod, fastdMatype)
+	fastk_, fastd_ = talibNull(fastk, fastd)
+	return fastk_, fastd_
 }
 
 /**
@@ -396,6 +409,7 @@ def cmo(close, timePeriod=14){
  * Moving Average Convergence / Divergence
  * https://www.fmlabs.com/reference/default.htm?url=MACD.htm
  */
+@state
 def macd(close, fastPeriod=12, slowPeriod=26, signalPeriod=9){
 	if (fastPeriod == 0 && slowPeriod == 0) {
 		inSlowPeriod = 26
@@ -434,8 +448,16 @@ def macdExt(close, fastPeriod=12, fastMaType=0, slowPeriod=26, slowMaType=0, sig
  *  macdFix: Moving Average Convergence/Divergence Fix 12/26
  *  https://mrjbq7.github.io/ta-lib/func_groups/momentum_indicators.html
  */
+@state
 def macdFix(close, signalPeriod=9){
-	return macd(close, 0, 0, signalPeriod)
+//	return macd(close, 0, 0, signalPeriod)
+	inSlowPeriod = 26
+	close_ = talibNull(close, talib(mcount, close, 15))[0]
+	fastResult = gema(close_, 12, 0.15)
+	slowResult = gema(close, 26, 0.075)
+	diff = fastResult - slowResult
+	dea = ema(diff, signalPeriod)
+	return (diff, dea, diff - dea)
 }
 
 /**
