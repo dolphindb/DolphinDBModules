@@ -1,0 +1,19 @@
+module DolphinDBModules::easyTLDataImport::tbSchema::entrustCsvSchema
+
+def entrustCsvSchemaSZ(day){
+	if(day < 2016.05.07){
+		name = `ApplSeqNum`SecurityID`TradeTime`Price`OrderQty`OrderType`Side`ChannelNo`LocalTime`SeqNo
+		typeString = `INT`SYMBOL`TIME`DOUBLE`INT`SYMBOL`SYMBOL`INT`TIME`INT
+	}else{
+		name = `ChannelNo`ApplSeqNum`MDStreamID`SecurityID`SecurityIDSource`Price`OrderQty`Side`TradeTime`OrderType`LocalTime`SeqNo
+		typeString = `INT`LONG`SYMBOL`SYMBOL`SYMBOL`DOUBLE`INT`INT`TIME`INT`TIME`INT
+	}
+	return table(name, typeString)
+}
+
+def entrustCsvSchemaSH(){
+	name = `DataStatus`ApplSeqNum`ChannelNo`SecurityID`TradeTime`OrderType`OrderNO`Price`OrderQty`Side`BizIndex`LocalTime`SeqNo
+	typeString = `INT`LONG`INT`SYMBOL`TIME`SYMBOL`INT`DOUBLE`INT`SYMBOL`INT`TIME`INT
+	return table(name, typeString)	
+}
+

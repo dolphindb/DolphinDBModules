@@ -1,0 +1,7 @@
+module DolphinDBModules::easyTLDataImport::tbSchema::orderQueueCsvSchema
+
+def orderQueueCsvSchema(){
+	name = `TradeTime`SecurityID`ImageStatus`Side`NoPriceLevel`PrcLvlOperator`Price`Volume`NumOrders`NoOrders`OrderQty1`OrderQty2`OrderQty3`OrderQty4`OrderQty5`OrderQty6`OrderQty7`OrderQty8`OrderQty9`OrderQty10`OrderQty11`OrderQty12`OrderQty13`OrderQty14`OrderQty15`OrderQty16`OrderQty17`OrderQty18`OrderQty19`OrderQty20`OrderQty21`OrderQty22`OrderQty23`OrderQty24`OrderQty25`OrderQty26`OrderQty27`OrderQty28`OrderQty29`OrderQty30`OrderQty31`OrderQty32`OrderQty33`OrderQty34`OrderQty35`OrderQty36`OrderQty37`OrderQty38`OrderQty39`OrderQty40`OrderQty41`OrderQty42`OrderQty43`OrderQty44`OrderQty45`OrderQty46`OrderQty47`OrderQty48`OrderQty49`OrderQty50`LocalTime`SeqNo
+	typeString = `TIME`SYMBOL`INT`SYMBOL`INT`INT`DOUBLE`INT`INT`INT join take(`INT, 50) join `TIME`INT
+	return table(name, typeString)
+}

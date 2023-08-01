@@ -1,0 +1,276 @@
+module DolphinDBModules::easyTLDataImport::loadOneDayData::loadOneDaySnapshot
+
+use DolphinDBModules::easyTLDataImport::tbSchema::snapshotCsvSchema
+use DolphinDBModules::easyTLDataImport::tbSchema::orderQueueCsvSchema
+
+// 把 snapshotTB 和 orderTB 两张表根据 hashBucket(securityID, hashNum) 的分组，将哈希值为 nums 的股票进行 left join，将结果写入 dbName 数据库的 tbName 表里
+def joinSnapOrder(nums, securityID, snapshotTB, orderTB, dbName, tbName, hashNum=50){
+	hashValue = hashBucket(securityID, hashNum)
+	for(num in nums){
+		ids = securityID[hashValue==num]
+		tempData1 = select * from snapshotTB where SecurityID in ids
+		tempData2 = select * from orderTB where SecurityID in ids
+		tempData1 = lj(tempData1, tempData2, `TradeTime`SecurityID`ImageStatus)
+		tempData1 = sql(select=each(sqlCol, loadTable(dbName, tbName).colNames()), from=tempData1).eval()
+		loadTable(dbName, tbName).append!(tempData1)		//添加数据！
+		tempData1 = NULL
+		tempData2 = NULL	
+	}
+}
+
+/** 导入一天深交所数据 */
+def loadOneDaySnapshotSZ(csvFiles, day, dbName, tbName, merge=true){
+	if(day < 2016.05.07){	// 2016.05.06 之前的数据
+		csvNames = ["MarketData.csv", "OrderQueue.csv"]
+		if(each(endsWith{csvFiles}, csvNames).sum().sum() >= size(csvNames)){	// 检查数据文件是否存在
+			// 快照数据
+			csvPath = csvFiles[endsWith(csvFiles, "MarketData.csv")][0]
+			schemaTB = snapshotCsvSchemaSZ(day)
+			schemaTest = extractTextSchema(csvPath)
+			if(schemaTB.rows() != schemaTest.rows()){
+				errorMessage = dict(`message`code, ["[" + csvPath + "] 的数据格式有误，列数不匹配", "error"])
+				writeLog(toStdJson(errorMessage))
+				print(toStdJson(errorMessage))
+				return false
+			}
+			try{
+				snapshotTB = ploadText(filename=csvPath, schema=schemaTB)
+			}catch(ex){
+				errorMessage = dict(`message`code, [string(ex[0])+":"+string(ex[1]), "error"])
+				writeLog(toStdJson(errorMessage))
+				print(toStdJson(errorMessage))
+				return false
+			}
+			if(merge == true){
+				snapshotTB = select 'SZ' as Market, concatDateTime(day, TradeTime) as TradeTime, string(NULL) as MDStreamID, SecurityID, string(NULL) as SecurityIDSource, TradingPhaseCode, int(1) as ImageStatus, PreCloPrice, NumTrades, TotalVolumeTrade, TotalValueTrade, LastPrice, OpenPrice, HighPrice, LowPrice, double(NULL) as ClosePrice, double(NULL) as DifPrice1, double(NULL) as DifPrice2, PE1, PE2, double(NULL) as PreCloseIOPV, double(NULL) as IOPV, TotalBidQty, WeightedAvgBidPx, double(NULL) as AltWAvgBidPri, TotalOfferQty, WeightedAvgOfferPx, double(NULL) as AltWAvgAskPri, double(NULL) as UpLimitPx, double(NULL) as DownLimitPx, OpenInt, double(NULL) as OptPremiumRatio, fixedLengthArrayVector(AskPrice1,AskPrice2,AskPrice3,AskPrice4,AskPrice5,AskPrice6,AskPrice7,AskPrice8,AskPrice9,AskPrice10) as OfferPrice, fixedLengthArrayVector(BidPrice1,BidPrice2,BidPrice3,BidPrice4,BidPrice5,BidPrice6,BidPrice7,BidPrice8,BidPrice9,BidPrice10) as BidPrice, fixedLengthArrayVector(AskVolume1,AskVolume2,AskVolume3,AskVolume4,AskVolume5,AskVolume6,AskVolume7,AskVolume8,AskVolume9,AskVolume10) as OfferOrderQty, fixedLengthArrayVector(BidVolume1,BidVolume2,BidVolume3,BidVolume4,BidVolume5,BidVolume6,BidVolume7,BidVolume8,BidVolume9,BidVolume10) as BidOrderQty, fixedLengthArrayVector(take(double(NULL), snapshotTB.size())) as BidNumOrders, fixedLengthArrayVector(take(double(NULL),snapshotTB.size())) as OfferNumOrders, int(NULL) as ETFBuyNumber, int(NULL) as ETFBuyAmount, double(NULL) as ETFBuyMoney, int(NULL) as ETFSellNumber, int(NULL) as ETFSellAmount, double(NULL) as ETFSellMoney, double(NULL) as YieldToMatu, double(NULL) as TotWarExNum, int(NULL) as WithdrawBuyNumber, int(NULL) as WithdrawBuyAmount, double(NULL) as WithdrawBuyMoney, int(NULL) as WithdrawSellNumber, int(NULL) as WithdrawSellAmount, double(NULL) as WithdrawSellMoney, int(NULL) as TotalBidNumber, int(NULL) as TotalOfferNumber, int(NULL) as MaxBidDur, int(NULL) as MaxSellDur, int(NULL) as BidNum, int(NULL) as SellNum, LocalTime, SeqNo from snapshotTB
+			}else{
+				snapshotTB = select int(1) as ImageStatus, concatDateTime(day, TradeTime) as TradeTime, string(NULL) as MDStreamID, SecurityID, string(NULL) as SecurityIDSource, TradingPhaseCode, PreCloPrice, NumTrades, TotalVolumeTrade, TotalValueTrade, LastPrice, OpenPrice, HighPrice, LowPrice, double(NULL) as DifPrice1, double(NULL) as DifPrice2, PE1, PE2, double(NULL) as PreCloseIOPV, double(NULL) as IOPV, TotalBidQty, WeightedAvgBidPx, TotalOfferQty, WeightedAvgOfferPx, double(NULL) as UpLimitPx, double(NULL) as DownLimitPx, OpenInt, double(NULL) as OptPremiumRatio, fixedLengthArrayVector(AskPrice1,AskPrice2,AskPrice3,AskPrice4,AskPrice5,AskPrice6,AskPrice7,AskPrice8,AskPrice9,AskPrice10) as OfferPrice, fixedLengthArrayVector(BidPrice1,BidPrice2,BidPrice3,BidPrice4,BidPrice5,BidPrice6,BidPrice7,BidPrice8,BidPrice9,BidPrice10) as BidPrice, fixedLengthArrayVector(AskVolume1,AskVolume2,AskVolume3,AskVolume4,AskVolume5,AskVolume6,AskVolume7,AskVolume8,AskVolume9,AskVolume10) as OfferOrderQty, fixedLengthArrayVector(BidVolume1,BidVolume2,BidVolume3,BidVolume4,BidVolume5,BidVolume6,BidVolume7,BidVolume8,BidVolume9,BidVolume10) as BidOrderQty, fixedLengthArrayVector(take(double(NULL), snapshotTB.size())) as BidNumOrders, fixedLengthArrayVector(take(double(NULL),snapshotTB.size())) as OfferNumOrders, LocalTime, SeqNo from snapshotTB
+			}
+			snapshotTB = select * from snapshotTB where isDuplicated([TradeTime, SecurityID, ImageStatus], LAST)=false
+			
+			// 50 档委托
+			csvPath = csvFiles[endsWith(csvFiles, "OrderQueue.csv")][0]
+			schemaTB = orderQueueCsvSchema()
+			schemaTest = extractTextSchema(csvPath)
+			if(schemaTB.rows() != schemaTest.rows()){
+				errorMessage = dict(`message`code, ["[" + csvPath + "] 的数据格式有误，列数不匹配", "error"])
+				writeLog(toStdJson(errorMessage))
+				print(toStdJson(errorMessage))
+				return false
+			}
+			try{
+				orderTB = ploadText(filename=csvPath, schema=schemaTB)
+			}catch(ex){
+				errorMessage = dict(`message`code, [string(ex[0])+":"+string(ex[1]), "error"])
+				writeLog(toStdJson(errorMessage))
+				print(toStdJson(errorMessage))
+				return false
+			}
+			orderTB = select ImageStatus.nullFill(1) as ImageStatus, concatDateTime(day, TradeTime) as TradeTime, SecurityID, fixedLengthArrayVector(OrderQty1, OrderQty2, OrderQty3, OrderQty4, OrderQty5, OrderQty6, OrderQty7, OrderQty8, OrderQty9, OrderQty10, OrderQty11, OrderQty12, OrderQty13, OrderQty14, OrderQty15, OrderQty16, OrderQty17, OrderQty18, OrderQty19, OrderQty20, OrderQty21, OrderQty22, OrderQty23, OrderQty24, OrderQty25, OrderQty26, OrderQty27, OrderQty28, OrderQty29, OrderQty30, OrderQty31, OrderQty32, OrderQty33, OrderQty34, OrderQty35, OrderQty36, OrderQty37, OrderQty38, OrderQty39, OrderQty40, OrderQty41, OrderQty42, OrderQty43, OrderQty44, OrderQty45, OrderQty46, OrderQty47, OrderQty48, OrderQty49, OrderQty50) as Orders, Side from orderTB
+			tempData = select ImageStatus, TradeTime, SecurityID, Orders as OfferOrders from orderTB where Side = `S and isDuplicated([TradeTime, SecurityID, ImageStatus], LAST)=false
+			orderTB = select ImageStatus, TradeTime, SecurityID, Orders as BidOrders from orderTB where Side = `B and  isDuplicated([TradeTime, SecurityID, ImageStatus], LAST)=false 
+			orderTB = lj(tempData, orderTB, `TradeTime`SecurityID`ImageStatus)
+			tempData = NULL	
+		}else{
+			errorMessage = dict(`message`code, ["深交所 [" + string(day) + "] 日期的 [" + csvNames.concat(", ") + "] 的 csv 文件不全或者不存在", "error"])
+			writeLog(toStdJson(errorMessage))
+			print(toStdJson(errorMessage))
+			return false
+		}
+	}else{	// 2016.05.07—至今
+		csvNames = ["mdl_6_28_0.csv", "mdl_6_28_1.csv", "mdl_6_28_2.csv"]
+		if(each(endsWith{csvFiles}, csvNames).sum().sum() >= size(csvNames)){	// 检查数据文件是否存在
+			// 快照数据
+			csvPath = csvFiles[endsWith(csvFiles, "mdl_6_28_0.csv")][0]
+			schemaTB = snapshotCsvSchemaSZ(day)
+			schemaTest = extractTextSchema(csvPath)
+			if(schemaTB.rows() != schemaTest.rows()){
+				errorMessage = dict(`message`code, ["[" + csvPath + "] 的数据格式有误，列数不匹配", "error"])
+				writeLog(toStdJson(errorMessage))
+				print(toStdJson(errorMessage))
+				return false
+			}
+			try{
+				snapshotTB = ploadText(filename=csvPath, schema=schemaTB)
+			}catch(ex){
+				errorMessage = dict(`message`code, [string(ex[0])+":"+string(ex[1]), "error"])
+				writeLog(toStdJson(errorMessage))
+				print(toStdJson(errorMessage))
+				return false
+			}
+			if(day < 2019.06.05){	// 2016.05.07—2019.06.04
+				if(merge == true){
+					snapshotTB = select 'SZ' as Market, concatDateTime(day, TradeTime) as TradeTime, MDStreamID, SecurityID, SecurityIDSource, TradingPhaseCode, int(1) as ImageStatus, PreCloPrice, NumTrades, TotalVolumeTrade, TotalValueTrade, LastPrice, OpenPrice, HighPrice, LowPrice, double(NULL) as ClosePrice, DifPrice1, DifPrice2, PE1, PE2, PreCloseIOPV, IOPV, TotalBidQty, WeightedAvgBidPx, double(NULL) as AltWAvgBidPri, TotalOfferQty, WeightedAvgOfferPx, double(NULL) as AltWAvgAskPri, UpLimitPx, DownLimitPx, OpenInt, OptPremiumRatio, fixedLengthArrayVector(AskPrice1,AskPrice2,AskPrice3,AskPrice4,AskPrice5,AskPrice6,AskPrice7,AskPrice8,AskPrice9,AskPrice10) as OfferPrice, fixedLengthArrayVector(BidPrice1,BidPrice2,BidPrice3,BidPrice4,BidPrice5,BidPrice6,BidPrice7,BidPrice8,BidPrice9,BidPrice10) as BidPrice, fixedLengthArrayVector(AskVolume1,AskVolume2,AskVolume3,AskVolume4,AskVolume5,AskVolume6,AskVolume7,AskVolume8,AskVolume9,AskVolume10) as OfferOrderQty, fixedLengthArrayVector(BidVolume1,BidVolume2,BidVolume3,BidVolume4,BidVolume5,BidVolume6,BidVolume7,BidVolume8,BidVolume9,BidVolume10) as BidOrderQty, fixedLengthArrayVector(take(double(NULL),snapshotTB.size())) as BidNumOrders, fixedLengthArrayVector(take(double(NULL),snapshotTB.size())) as OfferNumOrders, int(NULL) as ETFBuyNumber, int(NULL) as ETFBuyAmount, double(NULL) as ETFBuyMoney, int(NULL) as ETFSellNumber, int(NULL) as ETFSellAmount, double(NULL) as ETFSellMoney, double(NULL) as YieldToMatu, double(NULL) as TotWarExNum, int(NULL) as WithdrawBuyNumber, int(NULL) as WithdrawBuyAmount, double(NULL) as WithdrawBuyMoney, int(NULL) as WithdrawSellNumber, int(NULL) as WithdrawSellAmount, double(NULL) as WithdrawSellMoney, int(NULL) as TotalBidNumber, int(NULL) as TotalOfferNumber, int(NULL) as MaxBidDur, int(NULL) as MaxSellDur, int(NULL) as BidNum, int(NULL) as SellNum, LocalTime, SeqNo from snapshotTB
+				}else{
+					snapshotTB = select int(1) as ImageStatus, concatDateTime(day, TradeTime) as TradeTime, MDStreamID, SecurityID, SecurityIDSource, TradingPhaseCode, PreCloPrice, NumTrades, TotalVolumeTrade, TotalValueTrade, LastPrice, OpenPrice, HighPrice, LowPrice, DifPrice1, DifPrice2, PE1, PE2, PreCloseIOPV, IOPV, TotalBidQty, WeightedAvgBidPx, TotalOfferQty, WeightedAvgOfferPx, UpLimitPx, DownLimitPx, OpenInt, OptPremiumRatio, fixedLengthArrayVector(AskPrice1,AskPrice2,AskPrice3,AskPrice4,AskPrice5,AskPrice6,AskPrice7,AskPrice8,AskPrice9,AskPrice10) as OfferPrice, fixedLengthArrayVector(BidPrice1,BidPrice2,BidPrice3,BidPrice4,BidPrice5,BidPrice6,BidPrice7,BidPrice8,BidPrice9,BidPrice10) as BidPrice, fixedLengthArrayVector(AskVolume1,AskVolume2,AskVolume3,AskVolume4,AskVolume5,AskVolume6,AskVolume7,AskVolume8,AskVolume9,AskVolume10) as OfferOrderQty, fixedLengthArrayVector(BidVolume1,BidVolume2,BidVolume3,BidVolume4,BidVolume5,BidVolume6,BidVolume7,BidVolume8,BidVolume9,BidVolume10) as BidOrderQty, fixedLengthArrayVector(take(double(NULL), snapshotTB.size())) as BidNumOrders, fixedLengthArrayVector(take(double(NULL),snapshotTB.size())) as OfferNumOrders, LocalTime, SeqNo from snapshotTB 
+					}
+			}else{
+				if(merge == true){
+					snapshotTB = select 'SZ' as Market, concatDateTime(day, TradeTime) as TradeTime, MDStreamID, SecurityID, SecurityIDSource, TradingPhaseCode, int(1) as ImageStatus, PreCloPrice, NumTrades, TotalVolumeTrade, TotalValueTrade, LastPrice, OpenPrice, HighPrice, LowPrice, double(NULL) as ClosePrice, DifPrice1, DifPrice2, PE1, PE2, PreCloseIOPV, IOPV, TotalBidQty, WeightedAvgBidPx, double(NULL) as AltWAvgBidPri, TotalOfferQty, WeightedAvgOfferPx, double(NULL) as AltWAvgAskPri, UpLimitPx, DownLimitPx, OpenInt, OptPremiumRatio, fixedLengthArrayVector(AskPrice1,AskPrice2,AskPrice3,AskPrice4,AskPrice5,AskPrice6,AskPrice7,AskPrice8,AskPrice9,AskPrice10) as OfferPrice, fixedLengthArrayVector(BidPrice1,BidPrice2,BidPrice3,BidPrice4,BidPrice5,BidPrice6,BidPrice7,BidPrice8,BidPrice9,BidPrice10) as BidPrice, fixedLengthArrayVector(AskVolume1,AskVolume2,AskVolume3,AskVolume4,AskVolume5,AskVolume6,AskVolume7,AskVolume8,AskVolume9,AskVolume10) as OfferOrderQty, fixedLengthArrayVector(BidVolume1,BidVolume2,BidVolume3,BidVolume4,BidVolume5,BidVolume6,BidVolume7,BidVolume8,BidVolume9,BidVolume10) as BidOrderQty, fixedLengthArrayVector(NumOrdersB1,NumOrdersB2,NumOrdersB3,NumOrdersB4,NumOrdersB5,NumOrdersB6,NumOrdersB7,NumOrdersB8,NumOrdersB9,NumOrdersB10) as BidNumOrders, fixedLengthArrayVector(NumOrdersS1,NumOrdersS2,NumOrdersS3,NumOrdersS4,NumOrdersS5,NumOrdersS6,NumOrdersS7,NumOrdersS8,NumOrdersS9,NumOrdersS10) as OfferNumOrders, int(NULL) as ETFBuyNumber, int(NULL) as ETFBuyAmount, double(NULL) as ETFBuyMoney, int(NULL) as ETFSellNumber, int(NULL) as ETFSellAmount, double(NULL) as ETFSellMoney, double(NULL) as YieldToMatu, double(NULL) as TotWarExNum, int(NULL) as WithdrawBuyNumber, int(NULL) as WithdrawBuyAmount, double(NULL) as WithdrawBuyMoney, int(NULL) as WithdrawSellNumber, int(NULL) as WithdrawSellAmount, double(NULL) as WithdrawSellMoney, int(NULL) as TotalBidNumber, int(NULL) as TotalOfferNumber, int(NULL) as MaxBidDur, int(NULL) as MaxSellDur, int(NULL) as BidNum, int(NULL) as SellNum, LocalTime, SeqNo from snapshotTB
+				}else{
+					snapshotTB = select int(1) as ImageStatus, concatDateTime(day, TradeTime) as TradeTime, MDStreamID, SecurityID, SecurityIDSource, TradingPhaseCode, PreCloPrice, NumTrades, TotalVolumeTrade, TotalValueTrade, LastPrice, OpenPrice, HighPrice, LowPrice, DifPrice1, DifPrice2, PE1, PE2, PreCloseIOPV, IOPV, TotalBidQty, WeightedAvgBidPx, TotalOfferQty, WeightedAvgOfferPx, UpLimitPx, DownLimitPx, OpenInt, OptPremiumRatio, fixedLengthArrayVector(AskPrice1,AskPrice2,AskPrice3,AskPrice4,AskPrice5,AskPrice6,AskPrice7,AskPrice8,AskPrice9,AskPrice10) as OfferPrice, fixedLengthArrayVector(BidPrice1,BidPrice2,BidPrice3,BidPrice4,BidPrice5,BidPrice6,BidPrice7,BidPrice8,BidPrice9,BidPrice10) as BidPrice, fixedLengthArrayVector(AskVolume1,AskVolume2,AskVolume3,AskVolume4,AskVolume5,AskVolume6,AskVolume7,AskVolume8,AskVolume9,AskVolume10) as OfferOrderQty, fixedLengthArrayVector(BidVolume1,BidVolume2,BidVolume3,BidVolume4,BidVolume5,BidVolume6,BidVolume7,BidVolume8,BidVolume9,BidVolume10) as BidOrderQty, fixedLengthArrayVector(NumOrdersB1,NumOrdersB2,NumOrdersB3,NumOrdersB4,NumOrdersB5,NumOrdersB6,NumOrdersB7,NumOrdersB8,NumOrdersB9,NumOrdersB10) as BidNumOrders, fixedLengthArrayVector(NumOrdersS1,NumOrdersS2,NumOrdersS3,NumOrdersS4,NumOrdersS5,NumOrdersS6,NumOrdersS7,NumOrdersS8,NumOrdersS9,NumOrdersS10) as OfferNumOrders, LocalTime, SeqNo from snapshotTB }
+			}
+			snapshotTB = select * from snapshotTB where isDuplicated([TradeTime, SecurityID, ImageStatus], LAST)=false
+			
+			// 50 档委托（卖）
+			csvPath = csvFiles[endsWith(csvFiles, "mdl_6_28_1.csv")][0]
+			schemaTB = orderQueueCsvSchema()
+			schemaTest = extractTextSchema(csvPath)
+			if(schemaTB.rows() != schemaTest.rows()){
+				errorMessage = dict(`message`code, ["[" + csvPath + "] 的数据格式有误，列数不匹配", "error"])
+				writeLog(toStdJson(errorMessage))
+				print(toStdJson(errorMessage))
+				return false
+			}
+			try{
+				orderTB = ploadText(filename=csvPath, schema=schemaTB)
+			}catch(ex){
+				errorMessage = dict(`message`code, [string(ex[0])+":"+string(ex[1]), "error"])
+				writeLog(toStdJson(errorMessage))
+				print(toStdJson(errorMessage))
+				return false
+			}
+			orderTB = select ImageStatus, concatDateTime(day, TradeTime) as TradeTime, SecurityID, fixedLengthArrayVector(OrderQty1, OrderQty2, OrderQty3, OrderQty4, OrderQty5, OrderQty6, OrderQty7, OrderQty8, OrderQty9, OrderQty10, OrderQty11, OrderQty12, OrderQty13, OrderQty14, OrderQty15, OrderQty16, OrderQty17, OrderQty18, OrderQty19, OrderQty20, OrderQty21, OrderQty22, OrderQty23, OrderQty24, OrderQty25, OrderQty26, OrderQty27, OrderQty28, OrderQty29, OrderQty30, OrderQty31, OrderQty32, OrderQty33, OrderQty34, OrderQty35, OrderQty36, OrderQty37, OrderQty38, OrderQty39, OrderQty40, OrderQty41, OrderQty42, OrderQty43, OrderQty44, OrderQty45, OrderQty46, OrderQty47, OrderQty48, OrderQty49, OrderQty50) as OfferOrders from orderTB 
+			orderTB = select * from orderTB where isDuplicated([TradeTime, SecurityID, ImageStatus], LAST)=false
+
+			// 50 档委托（买）
+			csvPath = csvFiles[endsWith(csvFiles, "mdl_6_28_2.csv")][0]
+			schemaTB = orderQueueCsvSchema()
+			schemaTest = extractTextSchema(csvPath)
+			if(schemaTB.rows() != schemaTest.rows()){
+				errorMessage = dict(`message`code, ["[" + csvPath + "] 的数据格式有误，列数不匹配", "error"])
+				writeLog(toStdJson(errorMessage))
+				print(toStdJson(errorMessage))
+				return false
+			}
+			try{
+				tempData = ploadText(filename=csvPath, schema=schemaTB)
+			}catch(ex){
+				errorMessage = dict(`message`code, [string(ex[0])+":"+string(ex[1]), "error"])
+				writeLog(toStdJson(errorMessage))
+				print(toStdJson(errorMessage))
+				return false
+			}
+			tempData = select ImageStatus, concatDateTime(day, TradeTime) as TradeTime, SecurityID, fixedLengthArrayVector(OrderQty1, OrderQty2, OrderQty3, OrderQty4, OrderQty5, OrderQty6, OrderQty7, OrderQty8, OrderQty9, OrderQty10, OrderQty11, OrderQty12, OrderQty13, OrderQty14, OrderQty15, OrderQty16, OrderQty17, OrderQty18, OrderQty19, OrderQty20, OrderQty21, OrderQty22, OrderQty23, OrderQty24, OrderQty25, OrderQty26, OrderQty27, OrderQty28, OrderQty29, OrderQty30, OrderQty31, OrderQty32, OrderQty33, OrderQty34, OrderQty35, OrderQty36, OrderQty37, OrderQty38, OrderQty39, OrderQty40, OrderQty41, OrderQty42, OrderQty43, OrderQty44, OrderQty45, OrderQty46, OrderQty47, OrderQty48, OrderQty49, OrderQty50) as BidOrders from tempData
+			tempData = select * from tempData where isDuplicated([TradeTime, SecurityID, ImageStatus], LAST)=false
+			orderTB = lj(orderTB, tempData, `TradeTime`SecurityID`ImageStatus)
+			tempData = NULL
+		}else{
+			errorMessage = dict(`message`code, ["深交所 [" + string(day) + "] 日期的 [" + csvNames.concat(", ") + "] 的 csv 文件不全或者不存在", "error"])
+			writeLog(toStdJson(errorMessage))
+			print(toStdJson(errorMessage))
+			return false
+		}	
+	}
+	
+	// 快照和50档委托 left join
+	securityID = snapshotTB.SecurityID.distinct()
+	hashNum = loadTable(dbName, tbName).schema().partitionSchema[1]
+	ploop(joinSnapOrder{ , securityID, snapshotTB, orderTB, dbName, tbName, hashNum}, 0..(hashNum-1))
+	snapshotTB = NULL
+	orderTB = NULL
+	return true
+}
+
+
+/** 导入一天上交所数据 */
+// merge=true，沪深数据合并存储；merge=false，沪深数据分开存储
+def loadOneDaySnapshotSH(csvFiles, day, dbName, tbName, merge=true){
+	csvNames = ["MarketData.csv", "OrderQueue.csv"]
+	if(day < 2019.06.06){	// 2019.06.06 之前的数据
+		if(each(endsWith{csvFiles}, csvNames).sum().sum() >= size(csvNames)){	// 检查数据文件是否存在
+			// 快照数据
+			csvPath = csvFiles[endsWith(csvFiles, "MarketData.csv")][0]
+			schemaTB = snapshotCsvSchemaSH(day)
+			schemaTest = extractTextSchema(csvPath)
+			if(schemaTB.rows() != schemaTest.rows()){
+				errorMessage = dict(`message`code, ["[" + csvPath + "] 的数据格式有误，列数不匹配", "error"])
+				writeLog(toStdJson(errorMessage))
+				print(toStdJson(errorMessage))
+				return false
+			}
+			try{
+				snapshotTB = ploadText(filename=csvPath, schema=schemaTB)
+			}catch(ex){
+				errorMessage = dict(`message`code, [string(ex[0])+":"+string(ex[1]), "error"])
+				writeLog(toStdJson(errorMessage))
+				print(toStdJson(errorMessage))
+				return false
+			}
+			if(merge==true){
+				snapshotTB = select 'SH' as Market, concatDateTime(day, TradeTime) as TradeTime, string(NULL) as MDStreamID, SecurityID, string(NULL) as SecurityIDSource, TradingPhaseCode, ImageStatus, PreCloPrice, NumTrades, TotalVolumeTrade, TotalValueTrade, LastPrice, OpenPrice, HighPrice, LowPrice, ClosePrice, double(NULL) as DifPrice1, double(NULL) as DifPrice2, double(NULL) as PE1, double(NULL) as PE2, double(NULL) as PreCloseIOPV, IOPV, TotalBidQty, WeightedAvgBidPx, AltWAvgBidPri, TotalOfferQty, WeightedAvgOfferPx, AltWAvgAskPri, UpLimitPx, DownLimitPx, int(NULL) as OpenInt, double(NULL) as  OptPremiumRatio, fixedLengthArrayVector(AskPrice1,AskPrice2,AskPrice3,AskPrice4,AskPrice5,AskPrice6,AskPrice7,AskPrice8,AskPrice9,AskPrice10) as OfferPrice, fixedLengthArrayVector(BidPrice1,BidPrice2,BidPrice3,BidPrice4,BidPrice5,BidPrice6,BidPrice7,BidPrice8,BidPrice9,BidPrice10) as BidPrice, fixedLengthArrayVector(AskVolume1,AskVolume2,AskVolume3,AskVolume4,AskVolume5,AskVolume6,AskVolume7,AskVolume8,AskVolume9,AskVolume10) as OfferOrderQty, fixedLengthArrayVector(BidVolume1,BidVolume2,BidVolume3,BidVolume4,BidVolume5,BidVolume6,BidVolume7,BidVolume8,BidVolume9,BidVolume10) as BidOrderQty, fixedLengthArrayVector(take(double(NULL),snapshotTB.size())) as BidNumOrders, fixedLengthArrayVector(take(double(NULL),snapshotTB.size())) as OfferNumOrders, ETFBuyNumber, ETFBuyAmount, ETFBuyMoney, ETFSellNumber, ETFSellAmount, ETFSellMoney, YieldToMatu, TotWarExNum, WithdrawBuyNumber, WithdrawBuyAmount, WithdrawBuyMoney, WithdrawSellNumber, WithdrawSellAmount, WithdrawSellMoney, TotalBidNumber, TotalOfferNumber, MaxBidDur, MaxSellDur, BidNum, SellNum, LocalTime, SeqNo from snapshotTB
+			}else{
+				snapshotTB = select concatDateTime(day, TradeTime) as TradeTime, SecurityID, ImageStatus, PreCloPrice, OpenPrice, HighPrice, LowPrice, LastPrice, ClosePrice, TradingPhaseCode, NumTrades, TotalVolumeTrade, TotalValueTrade, TotalBidQty, WeightedAvgBidPx, AltWAvgBidPri, TotalOfferQty, WeightedAvgOfferPx, AltWAvgAskPri, ETFBuyNumber, ETFBuyAmount, ETFBuyMoney, ETFSellNumber, ETFSellAmount, ETFSellMoney, YieldToMatu, TotWarExNum, UpLimitPx, DownLimitPx, WithdrawBuyNumber, WithdrawBuyAmount, WithdrawBuyMoney, WithdrawSellNumber, WithdrawSellAmount, WithdrawSellMoney, TotalBidNumber, TotalOfferNumber, MaxBidDur, MaxSellDur, BidNum, SellNum, IOPV, fixedLengthArrayVector(AskPrice1,AskPrice2,AskPrice3,AskPrice4,AskPrice5,AskPrice6,AskPrice7,AskPrice8,AskPrice9,AskPrice10) as OfferPrice, fixedLengthArrayVector(BidPrice1,BidPrice2,BidPrice3,BidPrice4,BidPrice5,BidPrice6,BidPrice7,BidPrice8,BidPrice9,BidPrice10) as BidPrice, fixedLengthArrayVector(AskVolume1,AskVolume2,AskVolume3,AskVolume4,AskVolume5,AskVolume6,AskVolume7,AskVolume8,AskVolume9,AskVolume10) as OfferOrderQty, fixedLengthArrayVector(BidVolume1,BidVolume2,BidVolume3,BidVolume4,BidVolume5,BidVolume6,BidVolume7,BidVolume8,BidVolume9,BidVolume10) as BidOrderQty, fixedLengthArrayVector(take(double(NULL),snapshotTB.size())) as BidNumOrders, fixedLengthArrayVector(take(double(NULL),snapshotTB.size())) as OfferNumOrders, LocalTime, SeqNo from snapshotTB
+			}
+			snapshotTB = select * from snapshotTB where isDuplicated([TradeTime, SecurityID, ImageStatus], LAST)=false
+		}else{
+			errorMessage = dict(`message`code, ["上交所 [" + string(day) + "] 日期的 [" + csvNames.concat(", ") + "] 的 csv 文件不全或者不存在", "error"])
+			writeLog(toStdJson(errorMessage))
+			print(toStdJson(errorMessage))
+			return false
+		}
+	}else{		// 2019.06.05 - 至今
+		if(each(endsWith{csvFiles}, csvNames).sum().sum() >= size(csvNames)){	// 检查数据文件是否存在
+			// 快照数据
+			csvPath = csvFiles[endsWith(csvFiles, "MarketData.csv")][0]
+			schemaTB = snapshotCsvSchemaSH(day)
+			schemaTest = extractTextSchema(csvPath)
+			if(schemaTB.rows() != schemaTest.rows()){
+				errorMessage = dict(`message`code, ["[" + csvPath + "] 的数据格式有误，列数不匹配", "error"])
+				writeLog(toStdJson(errorMessage))
+				print(toStdJson(errorMessage))
+				return false
+			}
+			try{
+				snapshotTB = ploadText(filename=csvPath, schema=schemaTB)
+			}catch(ex){
+				errorMessage = dict(`message`code, [string(ex[0])+":"+string(ex[1]), "error"])
+				writeLog(toStdJson(errorMessage))
+				print(toStdJson(errorMessage))
+				return false
+			}
+			if(merge==true){
+				snapshotTB = select 'SH' as Market, concatDateTime(day, TradeTime) as TradeTime, string(NULL) as MDStreamID, SecurityID, string(NULL) as SecurityIDSource, TradingPhaseCode, ImageStatus, PreCloPrice, NumTrades, TotalVolumeTrade, TotalValueTrade, LastPrice, OpenPrice, HighPrice, LowPrice, ClosePrice, double(NULL) as DifPrice1, double(NULL) as DifPrice2, double(NULL) as PE1, double(NULL) as PE2, double(NULL) as PreCloseIOPV, IOPV, TotalBidQty, WeightedAvgBidPx, AltWAvgBidPri, TotalOfferQty, WeightedAvgOfferPx, AltWAvgAskPri, UpLimitPx, DownLimitPx, int(NULL) as OpenInt, double(NULL) as  OptPremiumRatio, fixedLengthArrayVector(AskPrice1,AskPrice2,AskPrice3,AskPrice4,AskPrice5,AskPrice6,AskPrice7,AskPrice8,AskPrice9,AskPrice10) as OfferPrice, fixedLengthArrayVector(BidPrice1,BidPrice2,BidPrice3,BidPrice4,BidPrice5,BidPrice6,BidPrice7,BidPrice8,BidPrice9,BidPrice10) as BidPrice, fixedLengthArrayVector(AskVolume1,AskVolume2,AskVolume3,AskVolume4,AskVolume5,AskVolume6,AskVolume7,AskVolume8,AskVolume9,AskVolume10) as OfferOrderQty, fixedLengthArrayVector(BidVolume1,BidVolume2,BidVolume3,BidVolume4,BidVolume5,BidVolume6,BidVolume7,BidVolume8,BidVolume9,BidVolume10) as BidOrderQty, fixedLengthArrayVector(NumOrdersB1,NumOrdersB2,NumOrdersB3,NumOrdersB4,NumOrdersB5,NumOrdersB6,NumOrdersB7,NumOrdersB8,NumOrdersB9,NumOrdersB10) as BidNumOrders, fixedLengthArrayVector(NumOrdersS1,NumOrdersS2,NumOrdersS3,NumOrdersS4,NumOrdersS5,NumOrdersS6,NumOrdersS7,NumOrdersS8,NumOrdersS9,NumOrdersS10) as OfferNumOrders, ETFBuyNumber, ETFBuyAmount, ETFBuyMoney, ETFSellNumber, ETFSellAmount, ETFSellMoney, YieldToMatu, TotWarExNum, WithdrawBuyNumber, WithdrawBuyAmount, WithdrawBuyMoney, WithdrawSellNumber, WithdrawSellAmount, WithdrawSellMoney, TotalBidNumber, TotalOfferNumber, MaxBidDur, MaxSellDur, BidNum, SellNum, LocalTime, SeqNo from snapshotTB
+			}else{
+				snapshotTB = select concatDateTime(day, TradeTime) as TradeTime, SecurityID, ImageStatus, PreCloPrice, OpenPrice, HighPrice, LowPrice, LastPrice, ClosePrice, TradingPhaseCode, NumTrades, TotalVolumeTrade, TotalValueTrade, TotalBidQty, WeightedAvgBidPx, AltWAvgBidPri, TotalOfferQty, WeightedAvgOfferPx, AltWAvgAskPri, ETFBuyNumber, ETFBuyAmount, ETFBuyMoney, ETFSellNumber, ETFSellAmount, ETFSellMoney, YieldToMatu, TotWarExNum, UpLimitPx, DownLimitPx, WithdrawBuyNumber, WithdrawBuyAmount, WithdrawBuyMoney, WithdrawSellNumber, WithdrawSellAmount, WithdrawSellMoney, TotalBidNumber, TotalOfferNumber, MaxBidDur, MaxSellDur, BidNum, SellNum, IOPV, fixedLengthArrayVector(AskPrice1,AskPrice2,AskPrice3,AskPrice4,AskPrice5,AskPrice6,AskPrice7,AskPrice8,AskPrice9,AskPrice10) as OfferPrice, fixedLengthArrayVector(BidPrice1,BidPrice2,BidPrice3,BidPrice4,BidPrice5,BidPrice6,BidPrice7,BidPrice8,BidPrice9,BidPrice10) as BidPrice, fixedLengthArrayVector(AskVolume1,AskVolume2,AskVolume3,AskVolume4,AskVolume5,AskVolume6,AskVolume7,AskVolume8,AskVolume9,AskVolume10) as OfferOrderQty, fixedLengthArrayVector(BidVolume1,BidVolume2,BidVolume3,BidVolume4,BidVolume5,BidVolume6,BidVolume7,BidVolume8,BidVolume9,BidVolume10) as BidOrderQty, fixedLengthArrayVector(NumOrdersB1,NumOrdersB2,NumOrdersB3,NumOrdersB4,NumOrdersB5,NumOrdersB6,NumOrdersB7,NumOrdersB8,NumOrdersB9,NumOrdersB10) as BidNumOrders, fixedLengthArrayVector(NumOrdersS1,NumOrdersS2,NumOrdersS3,NumOrdersS4,NumOrdersS5,NumOrdersS6,NumOrdersS7,NumOrdersS8,NumOrdersS9,NumOrdersS10) as OfferNumOrders, LocalTime, SeqNo from snapshotTB
+			}
+			snapshotTB = select * from snapshotTB where isDuplicated([TradeTime, SecurityID, ImageStatus], LAST)=false
+		}else{
+			errorMessage = dict(`message`code, ["上交所 [" + string(day) + "] 日期的 [" + csvNames.concat(", ") + "] 的 csv 文件不全或者不存在", "error"])
+			writeLog(toStdJson(errorMessage))
+			print(toStdJson(errorMessage))
+			return false
+		}
+	}
+	// 50 档委托
+	csvPath = csvFiles[endsWith(csvFiles, "OrderQueue.csv")][0]
+	schemaTB = orderQueueCsvSchema()
+	schemaTest = extractTextSchema(csvPath)
+	if(schemaTB.rows() != schemaTest.rows()){
+		errorMessage = dict(`message`code, ["[" + csvPath + "] 的数据格式有误，列数不匹配", "error"])
+		writeLog(toStdJson(errorMessage))
+		print(toStdJson(errorMessage))
+		return false
+	}
+	try{
+		orderTB = ploadText(filename=csvPath, schema=schemaTB)
+	}catch(ex){
+		errorMessage = dict(`message`code, [string(ex[0])+":"+string(ex[1]), "error"])
+		writeLog(toStdJson(errorMessage))
+		print(toStdJson(errorMessage))
+		return false
+	}
+	orderTB = select ImageStatus, concatDateTime(day, TradeTime) as TradeTime, SecurityID, fixedLengthArrayVector(OrderQty1, OrderQty2, OrderQty3, OrderQty4, OrderQty5, OrderQty6, OrderQty7, OrderQty8, OrderQty9, OrderQty10, OrderQty11, OrderQty12, OrderQty13, OrderQty14, OrderQty15, OrderQty16, OrderQty17, OrderQty18, OrderQty19, OrderQty20, OrderQty21, OrderQty22, OrderQty23, OrderQty24, OrderQty25, OrderQty26, OrderQty27, OrderQty28, OrderQty29, OrderQty30, OrderQty31, OrderQty32, OrderQty33, OrderQty34, OrderQty35, OrderQty36, OrderQty37, OrderQty38, OrderQty39, OrderQty40, OrderQty41, OrderQty42, OrderQty43, OrderQty44, OrderQty45, OrderQty46, OrderQty47, OrderQty48, OrderQty49, OrderQty50) as Orders, Side from orderTB
+	tempData = select TradeTime, SecurityID, ImageStatus, Orders as OfferOrders from orderTB where Side = `S and isDuplicated([TradeTime, SecurityID, ImageStatus], LAST)=false
+	orderTB = select TradeTime, SecurityID, ImageStatus, Orders as BidOrders from orderTB where Side = `B and  isDuplicated([TradeTime, SecurityID, ImageStatus], LAST)=false 
+	orderTB = lj(tempData, orderTB, `TradeTime`SecurityID`ImageStatus)
+	tempData = NULL	
+
+	// 快照和50档委托 left join
+	securityID = snapshotTB.SecurityID.distinct()
+	hashNum = loadTable(dbName, tbName).schema().partitionSchema[1]
+	ploop(joinSnapOrder{ , securityID, snapshotTB, orderTB, dbName, tbName, hashNum}, 0..(hashNum-1))
+	snapshotTB = NULL
+	orderTB = NULL
+	return true
+}

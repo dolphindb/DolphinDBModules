@@ -1,0 +1,206 @@
+module DolphinDBModules::easyTLDataImport::loadTLData
+
+use DolphinDBModules::easyTLDataImport::createDB
+use DolphinDBModules::easyTLDataImport::createTB
+use DolphinDBModules::easyTLDataImport::loadOneDayData::loadOneDaySnapshot
+use DolphinDBModules::easyTLDataImport::loadOneDayData::loadOneDayEntrust
+use DolphinDBModules::easyTLDataImport::loadOneDayData::loadOneDayTrade
+
+// 获取 fileDir 文件夹下所有 regex文件的路径
+def myFiles(fileDir, regex){
+	if(endsWith(fileDir, "/")) 	filedir = fileDir
+	else 				filedir = fileDir + "/"
+	res = filedir + exec filename from files(filedir) where regexFind(filename, regex) != -1
+	folderFiles = exec filename from files(filedir) where isDir=true
+	if(size(folderFiles)==0) return res
+	
+	for(folder in folderFiles){
+		res = res join myFiles(filedir + folder, regex)
+	}
+	return res
+}
+
+// 把 file文件夹下的快照数据导入 dbName 数据库的 tbName 表
+// file是形如 ".../20211201" 的绝对路径字符串的标量或者向量，是包含某日且仅包含一天数据的目录
+def loadDaysData(fileList, dbName, tbName, dataType, market="ALL"){
+	for(file in fileList){	//file=fileList[0]
+		day = temporalParse(lastNot(split(file, "/")),"yyyyMMdd")
+		print("Start load the data in path [" + file + "]")
+		writeLog("Start load the data in path [" + file + "]")
+		if(day < 2016.05.07){
+			csvFilesSZ = myFiles(file, "SZ$")[0]	// 2016.05.06 以前沪深的 csv 名字相同，所以需要再使用上层目录区分
+			csvFilesSH = myFiles(file, "SH$")[0]
+		}
+		else 	csvFilesSZ, csvFilesSH = file, file
+		csvFilesSZ, csvFilesSH = myFiles(csvFilesSZ, "csv$"), myFiles(csvFilesSH, "csv$")
+		
+		if(dataType=="Snapshot")		funcSZ, funcSH = loadOneDaySnapshotSZ, loadOneDaySnapshotSH
+		else if(dataType=="Entrust")	funcSZ, funcSH = loadOneDayEntrustSZ, loadOneDayEntrustSH
+		else if(dataType=="Trade")		funcSZ, funcSH = loadOneDayTradeSZ, loadOneDayTradeSH
+		
+		if(market=="ALL"){
+			tbNameSZ, tbNameSH = tbName, tbName
+			try{
+				funcSZ(csvFilesSZ, day, dbName, tbNameSZ, true)
+				funcSH(csvFilesSH, day, dbName, tbNameSH, true)
+			}
+			catch(ex){
+				errorMessage = dict(`message`code, [string(ex[0])+":"+string(ex[1]), "error"])
+				writeLog(toStdJson(errorMessage))	
+				print(toStdJson(errorMessage))
+			}
+		}else if(market == "SZ"){
+			tbNameSZ = tbName + "SZ"
+			try{
+				funcSZ(csvFilesSZ, day, dbName, tbNameSZ, false)
+			}
+			catch(ex){
+				errorMessage = dict(`message`code, [string(ex[0])+":"+string(ex[1]), "error"])
+				writeLog(toStdJson(errorMessage))	
+				print(toStdJson(errorMessage))
+			}
+		}else if(market == "SH"){
+			tbNameSH = tbName + "SH"
+			try{
+				funcSH(csvFilesSH, day, dbName, tbNameSH, false)
+			}
+			catch(ex){
+				errorMessage = dict(`message`code, [string(ex[0])+":"+string(ex[1]), "error"])
+				writeLog(toStdJson(errorMessage))	
+				print(toStdJson(errorMessage))
+			}
+		}
+	}
+}
+
+// 导入某个路径 filedir 下的所有快照数据
+// merge=true，沪深数据合并存储；merge=false，沪深数据分开存储
+def autoLoadTongLianData(fileDir, dataSource, dbName="dfs://TL_Level2", tableName=NULL, market="ALL", startDate=NULL, endDate=NULL, parallel=1, initialDB=false, initialTB=false){
+	if(market == "ALL")		merge = true
+	else if(market == "SZ")	merge = false
+	else if(market == "SH")	merge = false
+	else{
+		errorMessage = dict(`message`code, ["市场 [" + market + "] 暂时不支持", "error"])
+		writeLog(toStdJson(errorMessage))
+		print(toStdJson(errorMessage))
+		return false
+	}
+
+	if(dataSource in ["TLSnapshot", "TLEntrust", "TLTrade"]){
+		dataType = dataSource[2:]
+		tbName = iif(tableName==NULL, lower(dataType), tableName)
+		// 尝试创建库表
+		writeLog("Start creating the table [" + tbName + "] in the database [" + dbName + "].")
+		print("Start creating the table [" + tbName + "] in the database [" + dbName + "].")
+		try{
+			createTB(dbName, tbName, dataType, initialTB=initialTB, initialDB=initialDB, market=market)
+		}catch(ex){
+			errorMessage = dict(`message`code, [string(ex[0])+":"+string(ex[1]), "error"])
+			writeLog(toStdJson(errorMessage))
+			print(toStdJson(errorMessage))
+			return false
+		}
+		
+		
+		// 导入数据
+		writeLog("Start loading the TongLian data.")
+		print("Start loading the TongLian data.")
+		try{
+			if(endsWith(fileDir, "/")) 	filedir = fileDir
+			else 				filedir = fileDir + "/"
+			fileDirs = myFiles(filedir, "[0-9]{8}$")
+		}catch(ex){
+			errorMessage = dict(`message`code, [string(ex[0])+":"+string(ex[1]), "error"])
+			writeLog(toStdJson(errorMessage))
+			print(toStdJson(errorMessage))
+			return false
+		}
+		if(count(fileDirs) == 0){
+			errorMessage = dict(`message`code, ["[" + fileDir + "] 路径下没有找到指定日期的文件夹，请确认文件路径", "warning"])
+			writeLog(toStdJson(errorMessage))
+			print(toStdJson(errorMessage))
+			return false
+		}
+		fileDirs = fileDirs[regexFind(each(x->last(split(x, "/")), fileDirs), "[0-9]{8}$")==0]
+		if(count(fileDirs) == 0){
+			errorMessage = dict(`message`code, ["[" + fileDir + "] 路径下没有找到指定日期的文件夹，请确认文件路径", "warning"])
+			writeLog(toStdJson(errorMessage))
+			print(toStdJson(errorMessage))
+			return false
+		}
+		
+		if(startDate != NULL){
+			if(typestr(startDate)=="STRING"){
+				if(regexFind(startDate, "[0-9]{8}$")==0){
+					fileDirs = fileDirs[each(def(path, file){return last(split(path, "/")) >= file}, fileDirs, startDate)]	
+				}else{
+					errorMessage = dict(`message`code, ["开始日期 [" + startDate + "] 格式有误", "error"])
+					writeLog(toStdJson(errorMessage))
+					print(toStdJson(errorMessage))
+					return false
+				}
+			}else{
+				errorMessage = dict(`message`code, ["开始日期 [" + startDate + "] 格式有误", "error"])
+				writeLog(toStdJson(errorMessage))
+				print(toStdJson(errorMessage))
+				return false
+			}
+		}
+		if(endDate != NULL)	{
+			if(typestr(endDate)=="STRING"){
+				if(regexFind(endDate, "[0-9]{8}$")==0){
+					fileDirs = fileDirs[each(def(path, file){return last(split(path, "/")) <= file}, fileDirs, endDate)]	
+				}else{
+					errorMessage = dict(`message`code, ["结束日期 [" + endDate + "] 格式有误", "error"])
+					writeLog(toStdJson(errorMessage))
+					print(toStdJson(errorMessage))
+					return false
+				}
+			}else{
+				errorMessage = dict(`message`code, ["结束日期 [" + endDate + "] 格式有误", "error"])
+				writeLog(toStdJson(errorMessage))
+				print(toStdJson(errorMessage))
+				return false		
+			}
+		}
+
+		if(count(fileDirs) == 0){
+			errorMessage = dict(`message`code, ["[" + fileDir + "] 路径下没有找到指定日期的文件夹，请确认文件路径", "warning"])
+			writeLog(toStdJson(errorMessage))
+			print(toStdJson(errorMessage))
+			return false
+		}
+
+		// 将符合导入条件的日期的数据，在原来的数据库内删除（防止重复导入）
+		if(merge == true)	delete from loadTable(dbName, tbName) where date(TradeTime) in temporalParse(each(last, split(fileDirs, "/")), "yyyyMMdd")
+		else			delete from loadTable(dbName, tbName+market) where date(TradeTime) in temporalParse(each(last, split(fileDirs, "/")), "yyyyMMdd")
+
+		// 根据并行度拆分任务
+		myCut = def(i, parallel, dirs){return dirs[rowNo(dirs)%parallel==i]}
+		fileLists = loop(myCut{,parallel, fileDirs}, 0..(parallel-1))
+
+		jobid = rand(uuid(), 1)[0]
+		for(fileList in fileLists){//fileList=fileLists[0]
+			submitJob("TongLian"+dataType+market, string(jobid), loadDaysData{fileList, dbName, tbName, dataType, market})
+		}
+	}else{
+		errorMessage = dict(`message`code, ["数据源 [" + dataSource + "] 暂时不支持", "error"])
+		writeLog(toStdJson(errorMessage))
+		print(toStdJson(errorMessage))
+		return false
+	}
+	return jobid
+}
+
+def getJobStatus(jobid){
+	temp = string(jobid)
+	return select * from getRecentJobs() where jobDesc=temp
+}
+
+
+def getJobDetails(jobid){
+	jobStatus = getJobStatus(jobid)
+	jobMessage = each(getJobMessage, jobStatus.jobId)
+	jobMessage = concat(jobMessage, "\n////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////\n")
+	return jobMessage
+}

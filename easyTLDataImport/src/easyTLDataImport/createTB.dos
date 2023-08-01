@@ -1,0 +1,55 @@
+module DolphinDBModules::easyTLDataImport::createTB
+
+use DolphinDBModules::easyTLDataImport::tbSchema::snapshotSchema
+use DolphinDBModules::easyTLDataImport::tbSchema::entrustSchema
+use DolphinDBModules::easyTLDataImport::tbSchema::tradeSchema
+use DolphinDBModules::easyTLDataImport::createDB
+
+def createTbMerge(dbName, tbName, dataType){
+	if(existsTable(dbName, tbName)){
+		errorMessage = dict(`message`code, ["数据库 [" + dbName + "] 已经存在表 [" + tbName + "]", "warning"])
+		writeLog(toStdJson(errorMessage))
+		print(toStdJson(errorMessage))
+		return false
+	}
+	db = database(dbName)
+	if(dataType=="Snapshot")		t = snapshotSchemaTb()
+	else if(dataType=="Entrust")	t = entrustSchemaTb()
+	else if(dataType=="Trade")		t = tradeSchemaTb()
+	db.createPartitionedTable(table=t, tableName=tbName, partitionColumns=`TradeTime`SecurityID, compressMethods={TradeTime:"delta"}, sortColumns=`Market`SecurityID`TradeTime, keepDuplicates=ALL)
+	return true	
+}
+
+def createTbSplit(dbName, tbName, dataType, market){
+	if(existsTable(dbName, tbName+market)){
+		errorMessage = dict(`message`code, ["数据库 [" + dbName + "] 已经存在表 [" + tbName + "]", "warning"])
+		writeLog(toStdJson(errorMessage))
+		print(toStdJson(errorMessage))
+		return false
+	}
+	db = database(dbName)
+	if(market=="SZ"){
+		if(dataType=="Snapshot")		t = snapshotSchemaTbSZ()
+		else if(dataType=="Entrust")	t = entrustSchemaTbSZ()
+		else if(dataType=="Trade")		t = tradeSchemaTbSZ()	
+	}else{
+		if(dataType=="Snapshot")		t = snapshotSchemaTbSH()
+		else if(dataType=="Entrust")	t = entrustSchemaTbSH()
+		else if(dataType=="Trade")		t = tradeSchemaTbSH()	
+	}
+	db.createPartitionedTable(table=t, tableName=tbName+market, partitionColumns=`TradeTime`SecurityID, compressMethods={TradeTime:"delta"}, sortColumns=`SecurityID`TradeTime, keepDuplicates=ALL)	
+	return true
+}
+
+def createTB(dbName, tbName, dataType, initialTB=false, initialDB=false, market="ALL"){
+	merge = iif(market=="ALL", true, false)
+	createDB(dbName, initialDB, merge)
+	if(initialTB==true){
+		if(merge==true)	try{dropTable(database(dbName), tbName)}catch(ex){}
+		else			try{dropTable(database(dbName), tbName+market)}catch(ex){}
+	}
+
+	if(merge==true)	createTbMerge(dbName, tbName, dataType)
+	else			createTbSplit(dbName, tbName, dataType, market)	
+	return true
+}
