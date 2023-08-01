@@ -1,0 +1,317 @@
+login("admin", "123456")
+/** set your nsq plugin and nsq sdk config file path here **/ 
+pluginPath = "/home/appadmin/mqzhu/v2.00.9.6/server/plugins/nsq/PluginNsq.txt"
+configFilePath = "/home/appadmin/mqzhu/v2.00.9.6/server/plugins/nsq/nsq_sdk_config.ini";
+
+
+try { 
+    loadPlugin("plugins/nsq/PluginNsq.txt") 
+} catch(ex) { 
+    print(ex) 
+    try{ loadPlugin(pluginPath) } catch(ex) { print(ex) }
+}
+use DolphinDBModules::easyNSQ
+
+
+def checkNsqSubscription(dataType, market) {
+    if(dataType in [`snapshot, `trade, `orders]) {
+        if(market in [`sh, `sz]) {
+            return exec isSubscribed from nsq::getSubscriptionStatus() where topicType = stringFormat("(%W, %W)", dataType, market);
+        }
+    }
+    return false
+}
+
+def existsSharedAndPersistStreamTable(tbName) {
+    names = exec name from objs(true) where form="TABLE" and type="REALTIME" and shared=true
+    
+    if(names.find(tbName) >= 0) {
+        persistTableList = (exec tables from getStreamingStat().persistWorkers).concat(',').split(',').trim()
+        if(in(tbName, persistTableList)) {
+            return true
+        }
+    }
+    return false
+}
+
+def isSubscribedByDfs(streamTableName) {
+    return existsSubscriptionTopic(,streamTableName, "easyNSQ_saveToDfsTable")
+}
+
+// 单独订阅上交所逐笔成交行情数据测试
+@testing:case="function_subscribeNsq_trade_sh_defaultName"
+    iniNsqEnv()
+    streamTableNames = subscribeNsq(configFilePath, "trade", "sh")
+    assert 1, eqObj(streamTableNames, ["nsqStockTradeSHStream"])
+    assert 2, existsSharedAndPersistStreamTable("nsqStockTradeSHStream")
+    assert 3, checkNsqSubscription("trade", "sh")
+    
+    nsq::unsubscribe("trade", "sh")
+    assert 4, checkNsqSubscription("trade", "sh")==false
+    iniNsqEnv()
+    assert 5, existsSharedAndPersistStreamTable("nsqStockTradeSHStream")==false
+
+
+@testing:case="function_subscribeNsq_trade_sh_givenName"
+    iniNsqEnv("myNsqTradeSHStream")
+    streamTableNames = subscribeNsq(configFilePath, "trade", "sh", streamTableNames="myNsqTradeSHStream")
+    assert 1, checkNsqSubscription("trade", "sh")
+    assert 2, eqObj(streamTableNames, ["myNsqTradeSHStream"])
+    assert 3, existsSharedAndPersistStreamTable("myNsqTradeSHStream")==true
+    
+    nsq::unsubscribe("trade", "sh")
+    assert 4, checkNsqSubscription("trade", "sh")==false
+    iniNsqEnv("myNsqTradeSHStream")
+    assert 5, existsSharedAndPersistStreamTable("myNsqTradeSHStream")==false
+
+    
+@testing:case="function_subscribeNsq_trade_sh_saveDFS_defaultName"
+    iniNsqEnv()
+    iniNsqDfs()
+    streamTableNames, dbPath, tableNames = subscribeNsq(configFilePath, "trade", "sh", saveToDfs=true)
+    assert 1, eqObj(streamTableNames, ["nsqStockTradeSHStream"])
+    assert 2, eqObj(dbPath, "dfs://nsqStockTrade")
+    assert 3, eqObj(tableNames, ["tradeSH"])
+    assert 4, existsSharedAndPersistStreamTable("nsqStockTradeSHStream")
+    assert 5, existsTable("dfs://nsqStockTrade", "tradeSH")
+    assert 6, checkNsqSubscription("trade", "sh")
+    assert 7, isSubscribedByDfs("nsqStockTradeSHStream")
+    
+    nsq::unsubscribe("trade", "sh")
+    assert 8, checkNsqSubscription("trade", "sh")==false
+    iniNsqEnv()
+    assert 9, existsSharedAndPersistStreamTable("nsqStockTradeSHStream")==false
+    iniNsqDfs()
+    assert 10, existsTable("dfs://nsqStockTrade", "tradeSH")==false
+    
+
+@testing:case="function_subscribeNsq_trade_sh_saveDFS_givenName"
+    iniNsqEnv()
+    iniNsqDfs("dfs://myNsqTrade", "myNsqTradeSH")
+    streamTableNames, dbPath, tableNames = subscribeNsq(configFilePath, "trade", "sh", saveToDfs=true, dbPath="dfs://myNsqTrade", tableNames="myNsqTradeSH")
+    assert 1, eqObj(streamTableNames, ["nsqStockTradeSHStream"])
+    assert 2, eqObj(dbPath, "dfs://myNsqTrade")
+    assert 3, eqObj(tableNames, ["myNsqTradeSH"])
+    assert 4, existsSharedAndPersistStreamTable("nsqStockTradeSHStream")
+    assert 5, existsTable("dfs://myNsqTrade", "myNsqTradeSH")
+    assert 6, checkNsqSubscription("trade", "sh")
+    assert 7, isSubscribedByDfs("nsqStockTradeSHStream")
+    
+    nsq::unsubscribe("trade", "sh")
+    assert 8, checkNsqSubscription("trade", "sh")==false
+    iniNsqEnv()
+    assert 9, existsSharedAndPersistStreamTable("nsqStockTradeSHStream")==false
+    iniNsqDfs("dfs://myNsqTrade", "myNsqTradeSH")
+    assert 10, existsTable("dfs://myNsqTrade", "myNsqTradeSH")==false
+
+
+// 单独订阅深交所逐笔成交行情数据测试
+@testing:case="function_subscribeNsq_trade_sz_defaultName"
+    iniNsqEnv()
+    streamTableNames = subscribeNsq(configFilePath, "trade", "sz")
+    assert 1, eqObj(streamTableNames, ["nsqStockTradeSZStream"])
+    assert 2, existsSharedAndPersistStreamTable("nsqStockTradeSZStream")
+    assert 3, checkNsqSubscription("trade", "sz")
+    
+    nsq::unsubscribe("trade", "sz")
+    assert 4, checkNsqSubscription("trade", "sz")==false
+    iniNsqEnv()
+    assert 5, existsSharedAndPersistStreamTable("nsqStockTradeSZStream")==false
+
+
+@testing:case="function_subscribeNsq_trade_sz_givenName"
+    iniNsqEnv("myNsqTradeSZStream")
+    streamTableNames = subscribeNsq(configFilePath, "trade", "sz", streamTableNames="myNsqTradeSZStream")
+    assert 1, checkNsqSubscription("trade", "sz")
+    assert 2, eqObj(streamTableNames, ["myNsqTradeSZStream"])
+    assert 3, existsSharedAndPersistStreamTable("myNsqTradeSZStream")==true
+    
+    nsq::unsubscribe("trade", "sz")
+    assert 4, checkNsqSubscription("trade", "sz")==false
+    iniNsqEnv("myNsqTradeSZStream")
+    assert 5, existsSharedAndPersistStreamTable("myNsqTradeSZStream")==false
+
+    
+@testing:case="function_subscribeNsq_trade_sz_saveDFS_defaultName"
+    iniNsqEnv()
+    iniNsqDfs()
+    streamTableNames, dbPath, tableNames = subscribeNsq(configFilePath, "trade", "sz", saveToDfs=true)
+    assert 1, eqObj(streamTableNames, ["nsqStockTradeSZStream"])
+    assert 2, eqObj(dbPath, "dfs://nsqStockTrade")
+    assert 3, eqObj(tableNames, ["tradeSZ"])
+    assert 4, existsSharedAndPersistStreamTable("nsqStockTradeSZStream")
+    assert 5, existsTable("dfs://nsqStockTrade", "tradeSZ")
+    assert 6, checkNsqSubscription("trade", "sz")
+    assert 7, isSubscribedByDfs("nsqStockTradeSZStream")
+    
+    nsq::unsubscribe("trade", "sz")
+    assert 8, checkNsqSubscription("trade", "sz")==false
+    iniNsqEnv()
+    assert 9, existsSharedAndPersistStreamTable("nsqStockTradeSZStream")==false
+    iniNsqDfs()
+    assert 10, existsTable("dfs://nsqStockTrade", "tradeSZ")==false
+    
+
+@testing:case="function_subscribeNsq_trade_sz_saveDFS_givenName"
+    iniNsqEnv()
+    iniNsqDfs("dfs://myNsqTrade", "myNsqTradeSZ")
+    streamTableNames, dbPath, tableNames = subscribeNsq(configFilePath, "trade", "sz", saveToDfs=true, dbPath="dfs://myNsqTrade", tableNames="myNsqTradeSZ")
+    assert 1, eqObj(streamTableNames, ["nsqStockTradeSZStream"])
+    assert 2, eqObj(dbPath, "dfs://myNsqTrade")
+    assert 3, eqObj(tableNames, ["myNsqTradeSZ"])
+    assert 4, existsSharedAndPersistStreamTable("nsqStockTradeSZStream")
+    assert 5, existsTable("dfs://myNsqTrade", "myNsqTradeSZ")
+    assert 6, checkNsqSubscription("trade", "sz")
+    assert 7, isSubscribedByDfs("nsqStockTradeSZStream")
+    
+    nsq::unsubscribe("trade", "sz")
+    assert 8, checkNsqSubscription("trade", "sz")==false
+    iniNsqEnv()
+    assert 9, existsSharedAndPersistStreamTable("nsqStockTradeSZStream")==false
+    iniNsqDfs("dfs://myNsqTrade", "myNsqTradeSZ")
+    assert 10, existsTable("dfs://myNsqTrade", "myNsqTradeSZ")==false
+
+    
+
+// 同时订阅上交所和深交所逐笔成交行情数据测试（分开存储）
+@testing:case="function_subscribeNsq_trade_shsz_defaultName"
+    iniNsqEnv()
+    streamTableNames = subscribeNsq(configFilePath, "trade", ["sh","sz"])
+    assert 1, eqObj(streamTableNames, ["nsqStockTradeSHStream", "nsqStockTradeSZStream"])
+    assert 2, all(existsSharedAndPersistStreamTable, ["nsqStockTradeSHStream", "nsqStockTradeSZStream"])
+    assert 3, all(checkNsqSubscription{"trade"},["sh", "sz"])
+    
+    nsq::unsubscribe("trade", "sh")
+    nsq::unsubscribe("trade", "sz")
+    assert 3, any(checkNsqSubscription{"trade"},["sh", "sz"])==false
+    iniNsqEnv()
+    assert 4, any(existsSharedAndPersistStreamTable, ["nsqStockTradeSHStream", "nsqStockTradeSZStream"])==false
+    
+@testing:case="function_subscribeNsq_trade_shsz_givenName"
+    iniNsqEnv(["myNsqTradeSHStream", "myNsqTradeSZStream"])
+    streamTableNames = subscribeNsq(configFilePath, "trade", ["sh","sz"], streamTableNames=["myNsqTradeSHStream", "myNsqTradeSZStream"])
+    assert 1, eqObj(streamTableNames, ["myNsqTradeSHStream", "myNsqTradeSZStream"])
+    assert 2, all(existsSharedAndPersistStreamTable, ["myNsqTradeSHStream", "myNsqTradeSZStream"])
+    assert 3, all(checkNsqSubscription{"trade"},["sh", "sz"])
+    
+    nsq::unsubscribe("trade", "sh")
+    nsq::unsubscribe("trade", "sz")
+    assert 3, any(checkNsqSubscription{"trade"},["sh", "sz"])==false
+    iniNsqEnv(["myNsqTradeSHStream", "myNsqTradeSZStream"])
+    assert 4, any(existsSharedAndPersistStreamTable, ["myNsqTradeSHStream", "myNsqTradeSZStream"])==false
+
+
+@testing:case="function_subscribeNsq_trade_shsz_saveDFS_defaultName"
+    iniNsqEnv()
+    iniNsqDfs()
+    streamTableNames, dbPath, tableNames = subscribeNsq(configFilePath, "trade", ["sh","sz"], saveToDfs=true)
+    assert 1, eqObj(streamTableNames, ["nsqStockTradeSHStream", "nsqStockTradeSZStream"])
+    assert 2, eqObj(dbPath, "dfs://nsqStockTrade")
+    assert 3, eqObj(tableNames, ["tradeSH", "tradeSZ"])
+    assert 4, all(existsSharedAndPersistStreamTable, ["nsqStockTradeSHStream", "nsqStockTradeSZStream"])
+    assert 5, all(existsTable{"dfs://nsqStockTrade"}, ["tradeSH", "tradeSZ"])
+    assert 6, all(checkNsqSubscription{"trade"}, ["sh", "sz"])
+    assert 7, all(isSubscribedByDfs, ["nsqStockTradeSHStream", "nsqStockTradeSZStream"])
+    
+    nsq::unsubscribe("trade", "sh")
+    nsq::unsubscribe("trade", "sz")
+    assert 8, any(checkNsqSubscription{"trade"},["sh", "sz"])==false
+    iniNsqEnv()
+    assert 9, any(existsSharedAndPersistStreamTable, ["nsqStockTradeSHStream", "nsqStockTradeSZStream"])==false
+    iniNsqDfs()
+    assert 10, any(existsTable{"dfs://nsqStockTrade"}, ["tradeSH", "tradeSZ"])==false
+
+@testing:case="function_subscribeNsq_trade_shsz_saveDFS_givenName"
+    iniNsqEnv()
+    iniNsqDfs("dfs://myNsqTrade", "myNsqTradeSH")
+    iniNsqDfs("dfs://myNsqTrade", "myNsqTradeSZ")
+    streamTableNames, dbPath, tableNames = subscribeNsq(configFilePath, "trade", ["sh","sz"], saveToDfs=true, dbPath="dfs://myNsqTrade", tableNames=["myNsqTradeSH", "myNsqTradeSZ"])
+    assert 1, eqObj(streamTableNames, ["nsqStockTradeSHStream", "nsqStockTradeSZStream"])
+    assert 2, eqObj(dbPath, "dfs://myNsqTrade")
+    assert 3, eqObj(tableNames, ["myNsqTradeSH", "myNsqTradeSZ"])
+    assert 4, all(existsSharedAndPersistStreamTable, ["nsqStockTradeSHStream", "nsqStockTradeSZStream"])
+    assert 5, all(existsTable{"dfs://myNsqTrade"}, ["myNsqTradeSH", "myNsqTradeSZ"])
+    assert 6, all(checkNsqSubscription{"trade"}, ["sh", "sz"])
+    assert 7, all(isSubscribedByDfs, ["nsqStockTradeSHStream", "nsqStockTradeSZStream"])
+    
+    nsq::unsubscribe("trade", "sh")
+    nsq::unsubscribe("trade", "sz")
+    assert 8, any(checkNsqSubscription{"trade"},["sh", "sz"])==false
+    iniNsqEnv()
+    assert 9, any(existsSharedAndPersistStreamTable, ["nsqStockTradeSHStream", "nsqStockTradeSZStream"])==false
+    iniNsqDfs("dfs://myNsqTrade", "myNsqTradeSH")
+    iniNsqDfs("dfs://myNsqTrade", "myNsqTradeSZ")
+    assert 10, any(existsTable{"dfs://myNsqTrade"}, ["myNsqTradeSH", "myNsqTradeSZ"])==false
+    
+    
+// 同时订阅上交所和深交所逐笔成交行情数据测试（合并存储）
+@testing:case="function_subscribeNsq_trade_merge_defaultName"
+    iniNsqEnv()
+    streamTableNames = subscribeNsq(configFilePath, "trade", ["sh","sz"], merge=true)
+    assert 1, eqObj(streamTableNames, ["nsqStockTradeStream"])
+    assert 2, existsSharedAndPersistStreamTable("nsqStockTradeStream")
+    assert 3, all(checkNsqSubscription{"trade"},["sh", "sz"])
+    
+    nsq::unsubscribe("trade", "sh")
+    nsq::unsubscribe("trade", "sz")
+    assert 3, any(checkNsqSubscription{"trade"},["sh", "sz"])==false
+    iniNsqEnv()
+    assert 4, existsSharedAndPersistStreamTable("nsqStockTradeStream")==false
+    
+@testing:case="function_subscribeNsq_trade_merge_givenName"
+    iniNsqEnv("myNsqTradeStream")
+    streamTableNames = subscribeNsq(configFilePath, "trade", ["sh","sz"], merge=true, streamTableNames="myNsqTradeStream")
+    assert 1, eqObj(streamTableNames, ["myNsqTradeStream"])
+    assert 2, existsSharedAndPersistStreamTable("myNsqTradeStream")
+    assert 3, all(checkNsqSubscription{"trade"},["sh", "sz"])
+    
+    nsq::unsubscribe("trade", "sh")
+    nsq::unsubscribe("trade", "sz")
+    assert 3, any(checkNsqSubscription{"trade"},["sh", "sz"])==false
+    iniNsqEnv("myNsqTradeStream")
+    assert 4, existsSharedAndPersistStreamTable("myNsqTradeStream")==false
+
+@testing:case="function_subscribeNsq_trade_merge_saveDFS_defaultName"
+    iniNsqEnv()
+    iniNsqDfs()
+    streamTableNames, dbPath, tableNames = subscribeNsq(configFilePath, "trade", ["sh","sz"], merge=true, saveToDfs=true)
+    assert 1, eqObj(streamTableNames, ["nsqStockTradeStream"])
+    assert 2, eqObj(dbPath, "dfs://nsqStockTrade")
+    assert 3, eqObj(tableNames, ["trade"])
+    assert 4, existsSharedAndPersistStreamTable("nsqStockTradeStream")
+    assert 5, existsTable("dfs://nsqStockTrade", "trade")
+    assert 6, all(checkNsqSubscription{"trade"},["sh", "sz"])
+    assert 7, isSubscribedByDfs("nsqStockTradeStream")
+    
+    nsq::unsubscribe("trade", "sh")
+    nsq::unsubscribe("trade", "sz")
+    assert 8, any(checkNsqSubscription{"trade"},["sh", "sz"])==false
+    iniNsqEnv()
+    assert 9, existsSharedAndPersistStreamTable("nsqStockTradeStream")==false
+    iniNsqDfs()
+    assert 10, existsTable("dfs://nsqStockTrade", "trade")==false
+
+
+@testing:case="function_subscribeNsq_trade_merge_saveDFS_givenName"
+    iniNsqEnv()
+    iniNsqDfs("dfs://myNsqTrade", "myNsqTrade")
+    streamTableNames, dbPath, tableNames = subscribeNsq(configFilePath, "trade", ["sh","sz"], merge=true, saveToDfs=true, dbPath="dfs://myNsqTrade", tableNames="myNsqTrade")
+    assert 1, eqObj(streamTableNames,["nsqStockTradeStream"])
+    assert 2, eqObj(dbPath, "dfs://myNsqTrade")
+    assert 3, eqObj(tableNames, ["myNsqTrade"])
+    assert 4, existsSharedAndPersistStreamTable("nsqStockTradeStream")
+    assert 5, existsTable("dfs://myNsqTrade", "myNsqTrade")
+    assert 6, all(checkNsqSubscription{"trade"},["sh", "sz"])
+    assert 7, isSubscribedByDfs("nsqStockTradeStream")
+    
+    nsq::unsubscribe("trade", "sh")
+    nsq::unsubscribe("trade", "sz")
+    assert 8, any(checkNsqSubscription{"trade"},["sh", "sz"])==false
+    iniNsqEnv()
+    assert 9, existsSharedAndPersistStreamTable("nsqStockTradeStream")==false
+    iniNsqDfs("dfs://myNsqTrade", "myNsqTrade")
+    assert 10, existsTable("dfs://myNsqTrade", "myNsqTrade")==false
+    
+
+closeNsqConnection()
+assert any(exec isConnected from nsq::getSubscriptionStatus())==false

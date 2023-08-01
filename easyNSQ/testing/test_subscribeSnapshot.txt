@@ -1,0 +1,317 @@
+login("admin", "123456")
+/** set your nsq plugin and nsq sdk config file path here **/ 
+pluginPath = "/home/appadmin/mqzhu/v2.00.9.6/server/plugins/nsq/PluginNsq.txt"
+configFilePath = "/home/appadmin/mqzhu/v2.00.9.6/server/plugins/nsq/nsq_sdk_config.ini";
+
+
+try { 
+    loadPlugin("plugins/nsq/PluginNsq.txt") 
+} catch(ex) { 
+    print(ex) 
+    try{ loadPlugin(pluginPath) } catch(ex) { print(ex) }
+}
+use DolphinDBModules::easyNSQ
+
+
+def checkNsqSubscription(dataType, market) {
+    if(dataType in [`snapshot, `trade, `orders]) {
+        if(market in [`sh, `sz]) {
+            return exec isSubscribed from nsq::getSubscriptionStatus() where topicType = stringFormat("(%W, %W)", dataType, market);
+        }
+    }
+    return false
+}
+
+def existsSharedAndPersistStreamTable(tbName) {
+    names = exec name from objs(true) where form="TABLE" and type="REALTIME" and shared=true
+    
+    if(names.find(tbName) >= 0) {
+        persistTableList = (exec tables from getStreamingStat().persistWorkers).concat(',').split(',').trim()
+        if(in(tbName, persistTableList)) {
+            return true
+        }
+    }
+    return false
+}
+
+def isSubscribedByDfs(streamTableName) {
+    return existsSubscriptionTopic(,streamTableName, "easyNSQ_saveToDfsTable")
+}
+
+// 单独订阅上交所L2快照行情数据测试
+@testing:case="function_subscribeNsq_snapshot_sh_defaultName"
+    iniNsqEnv()
+    streamTableNames = subscribeNsq(configFilePath, "snapshot", "sh")
+    assert 1, eqObj(streamTableNames, ["nsqStockSnapshotSHStream"])
+    assert 2, existsSharedAndPersistStreamTable("nsqStockSnapshotSHStream")
+    assert 3, checkNsqSubscription("snapshot", "sh")
+    
+    nsq::unsubscribe("snapshot", "sh")
+    assert 4, checkNsqSubscription("snapshot", "sh")==false
+    iniNsqEnv()
+    assert 5, existsSharedAndPersistStreamTable("nsqStockSnapshotSHStream")==false
+
+
+@testing:case="function_subscribeNsq_snapshot_sh_givenName"
+    iniNsqEnv("myNsqSnapshotSHStream")
+    streamTableNames = subscribeNsq(configFilePath, "snapshot", "sh", streamTableNames="myNsqSnapshotSHStream")
+    assert 1, checkNsqSubscription("snapshot", "sh")
+    assert 2, eqObj(streamTableNames, ["myNsqSnapshotSHStream"])
+    assert 3, existsSharedAndPersistStreamTable("myNsqSnapshotSHStream")==true
+    
+    nsq::unsubscribe("snapshot", "sh")
+    assert 4, checkNsqSubscription("snapshot", "sh")==false
+    iniNsqEnv("myNsqSnapshotSHStream")
+    assert 5, existsSharedAndPersistStreamTable("myNsqSnapshotSHStream")==false
+
+    
+@testing:case="function_subscribeNsq_snapshot_sh_saveDFS_defaultName"
+    iniNsqEnv()
+    iniNsqDfs()
+    streamTableNames, dbPath, tableNames = subscribeNsq(configFilePath, "snapshot", "sh", saveToDfs=true)
+    assert 1, eqObj(streamTableNames, ["nsqStockSnapshotSHStream"])
+    assert 2, eqObj(dbPath, "dfs://nsqStockSnapshot")
+    assert 3, eqObj(tableNames, ["snapshotSH"])
+    assert 4, existsSharedAndPersistStreamTable("nsqStockSnapshotSHStream")
+    assert 5, existsTable("dfs://nsqStockSnapshot", "snapshotSH")
+    assert 6, checkNsqSubscription("snapshot", "sh")
+    assert 7, isSubscribedByDfs("nsqStockSnapshotSHStream")
+    
+    nsq::unsubscribe("snapshot", "sh")
+    assert 8, checkNsqSubscription("snapshot", "sh")==false
+    iniNsqEnv()
+    assert 9, existsSharedAndPersistStreamTable("nsqStockSnapshotSHStream")==false
+    iniNsqDfs()
+    assert 10, existsTable("dfs://nsqStockSnapshot", "snapshotSH")==false
+    
+
+@testing:case="function_subscribeNsq_snapshot_sh_saveDFS_givenName"
+    iniNsqEnv()
+    iniNsqDfs("dfs://myNsqSnapshot", "myNsqSnapshotSH")
+    streamTableNames, dbPath, tableNames = subscribeNsq(configFilePath, "snapshot", "sh", saveToDfs=true, dbPath="dfs://myNsqSnapshot", tableNames="myNsqSnapshotSH")
+    assert 1, eqObj(streamTableNames, ["nsqStockSnapshotSHStream"])
+    assert 2, eqObj(dbPath, "dfs://myNsqSnapshot")
+    assert 3, eqObj(tableNames, ["myNsqSnapshotSH"])
+    assert 4, existsSharedAndPersistStreamTable("nsqStockSnapshotSHStream")
+    assert 5, existsTable("dfs://myNsqSnapshot", "myNsqSnapshotSH")
+    assert 6, checkNsqSubscription("snapshot", "sh")
+    assert 7, isSubscribedByDfs("nsqStockSnapshotSHStream")
+    
+    nsq::unsubscribe("snapshot", "sh")
+    assert 8, checkNsqSubscription("snapshot", "sh")==false
+    iniNsqEnv()
+    assert 9, existsSharedAndPersistStreamTable("nsqStockSnapshotSHStream")==false
+    iniNsqDfs("dfs://myNsqSnapshot", "myNsqSnapshotSH")
+    assert 10, existsTable("dfs://myNsqSnapshot", "myNsqSnapshotSH")==false
+
+
+// 单独订阅深交所L2快照行情数据测试
+@testing:case="function_subscribeNsq_snapshot_sz_defaultName"
+    iniNsqEnv()
+    streamTableNames = subscribeNsq(configFilePath, "snapshot", "sz")
+    assert 1, eqObj(streamTableNames, ["nsqStockSnapshotSZStream"])
+    assert 2, existsSharedAndPersistStreamTable("nsqStockSnapshotSZStream")
+    assert 3, checkNsqSubscription("snapshot", "sz")
+    
+    nsq::unsubscribe("snapshot", "sz")
+    assert 4, checkNsqSubscription("snapshot", "sz")==false
+    iniNsqEnv()
+    assert 5, existsSharedAndPersistStreamTable("nsqStockSnapshotSZStream")==false
+
+
+@testing:case="function_subscribeNsq_snapshot_sz_givenName"
+    iniNsqEnv("myNsqSnapshotSZStream")
+    streamTableNames = subscribeNsq(configFilePath, "snapshot", "sz", streamTableNames="myNsqSnapshotSZStream")
+    assert 1, checkNsqSubscription("snapshot", "sz")
+    assert 2, eqObj(streamTableNames, ["myNsqSnapshotSZStream"])
+    assert 3, existsSharedAndPersistStreamTable("myNsqSnapshotSZStream")==true
+    
+    nsq::unsubscribe("snapshot", "sz")
+    assert 4, checkNsqSubscription("snapshot", "sz")==false
+    iniNsqEnv("myNsqSnapshotSZStream")
+    assert 5, existsSharedAndPersistStreamTable("myNsqSnapshotSZStream")==false
+
+    
+@testing:case="function_subscribeNsq_snapshot_sz_saveDFS_defaultName"
+    iniNsqEnv()
+    iniNsqDfs()
+    streamTableNames, dbPath, tableNames = subscribeNsq(configFilePath, "snapshot", "sz", saveToDfs=true)
+    assert 1, eqObj(streamTableNames, ["nsqStockSnapshotSZStream"])
+    assert 2, eqObj(dbPath, "dfs://nsqStockSnapshot")
+    assert 3, eqObj(tableNames, ["snapshotSZ"])
+    assert 4, existsSharedAndPersistStreamTable("nsqStockSnapshotSZStream")
+    assert 5, existsTable("dfs://nsqStockSnapshot", "snapshotSZ")
+    assert 6, checkNsqSubscription("snapshot", "sz")
+    assert 7, isSubscribedByDfs("nsqStockSnapshotSZStream")
+    
+    nsq::unsubscribe("snapshot", "sz")
+    assert 8, checkNsqSubscription("snapshot", "sz")==false
+    iniNsqEnv()
+    assert 9, existsSharedAndPersistStreamTable("nsqStockSnapshotSZStream")==false
+    iniNsqDfs()
+    assert 10, existsTable("dfs://nsqStockSnapshot", "snapshotSZ")==false
+    
+
+@testing:case="function_subscribeNsq_snapshot_sz_saveDFS_givenName"
+    iniNsqEnv()
+    iniNsqDfs("dfs://myNsqSnapshot", "myNsqSnapshotSZ")
+    streamTableNames, dbPath, tableNames = subscribeNsq(configFilePath, "snapshot", "sz", saveToDfs=true, dbPath="dfs://myNsqSnapshot", tableNames="myNsqSnapshotSZ")
+    assert 1, eqObj(streamTableNames, ["nsqStockSnapshotSZStream"])
+    assert 2, eqObj(dbPath, "dfs://myNsqSnapshot")
+    assert 3, eqObj(tableNames, ["myNsqSnapshotSZ"])
+    assert 4, existsSharedAndPersistStreamTable("nsqStockSnapshotSZStream")
+    assert 5, existsTable("dfs://myNsqSnapshot", "myNsqSnapshotSZ")
+    assert 6, checkNsqSubscription("snapshot", "sz")
+    assert 7, isSubscribedByDfs("nsqStockSnapshotSZStream")
+    
+    nsq::unsubscribe("snapshot", "sz")
+    assert 8, checkNsqSubscription("snapshot", "sz")==false
+    iniNsqEnv()
+    assert 9, existsSharedAndPersistStreamTable("nsqStockSnapshotSZStream")==false
+    iniNsqDfs("dfs://myNsqSnapshot", "myNsqSnapshotSZ")
+    assert 10, existsTable("dfs://myNsqSnapshot", "myNsqSnapshotSZ")==false
+
+    
+
+// 同时订阅上交所和深交所L2快照行情数据测试（分开存储）
+@testing:case="function_subscribeNsq_snapshot_shsz_defaultName"
+    iniNsqEnv()
+    streamTableNames = subscribeNsq(configFilePath, "snapshot", ["sh","sz"])
+    assert 1, eqObj(streamTableNames, ["nsqStockSnapshotSHStream", "nsqStockSnapshotSZStream"])
+    assert 2, all(existsSharedAndPersistStreamTable, ["nsqStockSnapshotSHStream", "nsqStockSnapshotSZStream"])
+    assert 3, all(checkNsqSubscription{"snapshot"},["sh", "sz"])
+    
+    nsq::unsubscribe("snapshot", "sh")
+    nsq::unsubscribe("snapshot", "sz")
+    assert 3, any(checkNsqSubscription{"snapshot"},["sh", "sz"])==false
+    iniNsqEnv()
+    assert 4, any(existsSharedAndPersistStreamTable, ["nsqStockSnapshotSHStream", "nsqStockSnapshotSZStream"])==false
+    
+@testing:case="function_subscribeNsq_snapshot_shsz_givenName"
+    iniNsqEnv(["myNsqSnapshotSHStream", "myNsqSnapshotSZStream"])
+    streamTableNames = subscribeNsq(configFilePath, "snapshot", ["sh","sz"], streamTableNames=["myNsqSnapshotSHStream", "myNsqSnapshotSZStream"])
+    assert 1, eqObj(streamTableNames, ["myNsqSnapshotSHStream", "myNsqSnapshotSZStream"])
+    assert 2, all(existsSharedAndPersistStreamTable, ["myNsqSnapshotSHStream", "myNsqSnapshotSZStream"])
+    assert 3, all(checkNsqSubscription{"snapshot"},["sh", "sz"])
+    
+    nsq::unsubscribe("snapshot", "sh")
+    nsq::unsubscribe("snapshot", "sz")
+    assert 3, any(checkNsqSubscription{"snapshot"},["sh", "sz"])==false
+    iniNsqEnv(["myNsqSnapshotSHStream", "myNsqSnapshotSZStream"])
+    assert 4, any(existsSharedAndPersistStreamTable, ["myNsqSnapshotSHStream", "myNsqSnapshotSZStream"])==false
+
+
+@testing:case="function_subscribeNsq_snapshot_shsz_saveDFS_defaultName"
+    iniNsqEnv()
+    iniNsqDfs()
+    streamTableNames, dbPath, tableNames = subscribeNsq(configFilePath, "snapshot", ["sh","sz"], saveToDfs=true)
+    assert 1, eqObj(streamTableNames, ["nsqStockSnapshotSHStream", "nsqStockSnapshotSZStream"])
+    assert 2, eqObj(dbPath, "dfs://nsqStockSnapshot")
+    assert 3, eqObj(tableNames, ["snapshotSH", "snapshotSZ"])
+    assert 4, all(existsSharedAndPersistStreamTable, ["nsqStockSnapshotSHStream", "nsqStockSnapshotSZStream"])
+    assert 5, all(existsTable{"dfs://nsqStockSnapshot"}, ["snapshotSH", "snapshotSZ"])
+    assert 6, all(checkNsqSubscription{"snapshot"}, ["sh", "sz"])
+    assert 7, all(isSubscribedByDfs, ["nsqStockSnapshotSHStream", "nsqStockSnapshotSZStream"])
+    
+    nsq::unsubscribe("snapshot", "sh")
+    nsq::unsubscribe("snapshot", "sz")
+    assert 8, any(checkNsqSubscription{"snapshot"},["sh", "sz"])==false
+    iniNsqEnv()
+    assert 9, any(existsSharedAndPersistStreamTable, ["nsqStockSnapshotSHStream", "nsqStockSnapshotSZStream"])==false
+    iniNsqDfs()
+    assert 10, any(existsTable{"dfs://nsqStockSnapshot"}, ["snapshotSH", "snapshotSZ"])==false
+
+@testing:case="function_subscribeNsq_snapshot_shsz_saveDFS_givenName"
+    iniNsqEnv()
+    iniNsqDfs("dfs://myNsqSnapshot", "myNsqSnapshotSH")
+    iniNsqDfs("dfs://myNsqSnapshot", "myNsqSnapshotSZ")
+    streamTableNames, dbPath, tableNames = subscribeNsq(configFilePath, "snapshot", ["sh","sz"], saveToDfs=true, dbPath="dfs://myNsqSnapshot", tableNames=["myNsqSnapshotSH", "myNsqSnapshotSZ"])
+    assert 1, eqObj(streamTableNames, ["nsqStockSnapshotSHStream", "nsqStockSnapshotSZStream"])
+    assert 2, eqObj(dbPath, "dfs://myNsqSnapshot")
+    assert 3, eqObj(tableNames, ["myNsqSnapshotSH", "myNsqSnapshotSZ"])
+    assert 4, all(existsSharedAndPersistStreamTable, ["nsqStockSnapshotSHStream", "nsqStockSnapshotSZStream"])
+    assert 5, all(existsTable{"dfs://myNsqSnapshot"}, ["myNsqSnapshotSH", "myNsqSnapshotSZ"])
+    assert 6, all(checkNsqSubscription{"snapshot"}, ["sh", "sz"])
+    assert 7, all(isSubscribedByDfs, ["nsqStockSnapshotSHStream", "nsqStockSnapshotSZStream"])
+    
+    nsq::unsubscribe("snapshot", "sh")
+    nsq::unsubscribe("snapshot", "sz")
+    assert 8, any(checkNsqSubscription{"snapshot"},["sh", "sz"])==false
+    iniNsqEnv()
+    assert 9, any(existsSharedAndPersistStreamTable, ["nsqStockSnapshotSHStream", "nsqStockSnapshotSZStream"])==false
+    iniNsqDfs("dfs://myNsqSnapshot", "myNsqSnapshotSH")
+    iniNsqDfs("dfs://myNsqSnapshot", "myNsqSnapshotSZ")
+    assert 10, any(existsTable{"dfs://myNsqSnapshot"}, ["myNsqSnapshotSH", "myNsqSnapshotSZ"])==false
+    
+    
+// 同时订阅上交所和深交所L2快照行情数据测试（合并存储）
+@testing:case="function_subscribeNsq_snapshot_merge_defaultName"
+    iniNsqEnv()
+    streamTableNames = subscribeNsq(configFilePath, "snapshot", ["sh","sz"], merge=true)
+    assert 1, eqObj(streamTableNames, ["nsqStockSnapshotStream"])
+    assert 2, existsSharedAndPersistStreamTable("nsqStockSnapshotStream")
+    assert 3, all(checkNsqSubscription{"snapshot"},["sh", "sz"])
+    
+    nsq::unsubscribe("snapshot", "sh")
+    nsq::unsubscribe("snapshot", "sz")
+    assert 3, any(checkNsqSubscription{"snapshot"},["sh", "sz"])==false
+    iniNsqEnv()
+    assert 4, existsSharedAndPersistStreamTable("nsqStockSnapshotStream")==false
+    
+@testing:case="function_subscribeNsq_snapshot_merge_givenName"
+    iniNsqEnv("myNsqSnapshotStream")
+    streamTableNames = subscribeNsq(configFilePath, "snapshot", ["sh","sz"], merge=true, streamTableNames="myNsqSnapshotStream")
+    assert 1, eqObj(streamTableNames, ["myNsqSnapshotStream"])
+    assert 2, existsSharedAndPersistStreamTable("myNsqSnapshotStream")
+    assert 3, all(checkNsqSubscription{"snapshot"},["sh", "sz"])
+    
+    nsq::unsubscribe("snapshot", "sh")
+    nsq::unsubscribe("snapshot", "sz")
+    assert 3, any(checkNsqSubscription{"snapshot"},["sh", "sz"])==false
+    iniNsqEnv("myNsqSnapshotStream")
+    assert 4, existsSharedAndPersistStreamTable("myNsqSnapshotStream")==false
+
+@testing:case="function_subscribeNsq_snapshot_merge_saveDFS_defaultName"
+    iniNsqEnv()
+    iniNsqDfs()
+    streamTableNames, dbPath, tableNames = subscribeNsq(configFilePath, "snapshot", ["sh","sz"], merge=true, saveToDfs=true)
+    assert 1, eqObj(streamTableNames, ["nsqStockSnapshotStream"])
+    assert 2, eqObj(dbPath, "dfs://nsqStockSnapshot")
+    assert 3, eqObj(tableNames, ["snapshot"])
+    assert 4, existsSharedAndPersistStreamTable("nsqStockSnapshotStream")
+    assert 5, existsTable("dfs://nsqStockSnapshot", "snapshot")
+    assert 6, all(checkNsqSubscription{"snapshot"},["sh", "sz"])
+    assert 7, isSubscribedByDfs("nsqStockSnapshotStream")
+    
+    nsq::unsubscribe("snapshot", "sh")
+    nsq::unsubscribe("snapshot", "sz")
+    assert 8, any(checkNsqSubscription{"snapshot"},["sh", "sz"])==false
+    iniNsqEnv()
+    assert 9, existsSharedAndPersistStreamTable("nsqStockSnapshotStream")==false
+    iniNsqDfs()
+    assert 10, existsTable("dfs://nsqStockSnapshot", "snapshot")==false
+
+
+@testing:case="function_subscribeNsq_snapshot_merge_saveDFS_givenName"
+    iniNsqEnv()
+    iniNsqDfs("dfs://myNsqSnapshot", "myNsqSnapshot")
+    streamTableNames, dbPath, tableNames = subscribeNsq(configFilePath, "snapshot", ["sh","sz"], merge=true, saveToDfs=true, dbPath="dfs://myNsqSnapshot", tableNames="myNsqSnapshot")
+    assert 1, eqObj(streamTableNames,["nsqStockSnapshotStream"])
+    assert 2, eqObj(dbPath, "dfs://myNsqSnapshot")
+    assert 3, eqObj(tableNames, ["myNsqSnapshot"])
+    assert 4, existsSharedAndPersistStreamTable("nsqStockSnapshotStream")
+    assert 5, existsTable("dfs://myNsqSnapshot", "myNsqSnapshot")
+    assert 6, all(checkNsqSubscription{"snapshot"},["sh", "sz"])
+    assert 7, isSubscribedByDfs("nsqStockSnapshotStream")
+    
+    nsq::unsubscribe("snapshot", "sh")
+    nsq::unsubscribe("snapshot", "sz")
+    assert 8, any(checkNsqSubscription{"snapshot"},["sh", "sz"])==false
+    iniNsqEnv()
+    assert 9, existsSharedAndPersistStreamTable("nsqStockSnapshotStream")==false
+    iniNsqDfs("dfs://myNsqSnapshot", "myNsqSnapshot")
+    assert 10, existsTable("dfs://myNsqSnapshot", "myNsqSnapshot")==false
+    
+
+closeNsqConnection()
+assert any(exec isConnected from nsq::getSubscriptionStatus())==false

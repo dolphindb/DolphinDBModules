@@ -1,0 +1,7 @@
+nsq,libPluginNsq.so,2.00.9.3.1
+nsqConnect,connect,system,1,2,0
+subscribe,subscribe,system,3,3,0
+unsubscribe,unsubscribe,system,2,2,0
+getSchema,getSchema,system,1,1,0
+nsqClose,close,system,0,0,0
+getSubscriptionStatus,getSubscriptionStatus,system,0,0,0
