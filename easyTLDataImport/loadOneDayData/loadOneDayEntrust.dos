@@ -1,0 +1,102 @@
+module DolphinDBModules::easyTLDataImport::loadOneDayData::loadOneDayEntrust
+
+use DolphinDBModules::easyTLDataImport::tbSchema::entrustCsvSchema
+
+
+def transformSZ(day, merge, mutable t){
+	if(merge==true){
+		if(day < 2016.05.07){
+			t = select ChannelNo, ApplSeqNum, string(NULL) as MDStreamID, SecurityID, string(NULL) as SecurityIDSource, Price, OrderQty, Side, concatDateTime(day, TradeTime) as TradeTime, OrderType, LocalTime, SeqNo, int(NULL) as OrderNO, int(NULL) as DataStatus, long(NULL) as BizIndex, "SZ" as Market  from t where isDuplicated([ChannelNo, ApplSeqNum], LAST)=false	
+		}else{
+			t = select ChannelNo, ApplSeqNum, MDStreamID, SecurityID, SecurityIDSource, Price, OrderQty, string(char(Side)) as Side, concatDateTime(day, TradeTime) as TradeTime, string(char(OrderType)) as OrderType, LocalTime, SeqNo, int(NULL) as OrderNO, int(NULL) as DataStatus, long(NULL) as BizIndex, "SZ" as Market  from t where isDuplicated([ChannelNo, ApplSeqNum], LAST)=false	
+		}
+	}else{
+		if(day < 2016.05.07){
+			t = select ChannelNo, ApplSeqNum, string(NULL) as MDStreamID, SecurityID, string(NULL) as SecurityIDSource, Price, OrderQty, Side, concatDateTime(day, TradeTime) as TradeTime, OrderType, LocalTime, SeqNo from t where isDuplicated([ChannelNo, ApplSeqNum], LAST)=false	
+		}else{
+			t = select ChannelNo, ApplSeqNum, MDStreamID, SecurityID, SecurityIDSource, Price, OrderQty, string(char(Side)) as Side, concatDateTime(day, TradeTime) as TradeTime, string(char(OrderType)) as OrderType, LocalTime, SeqNo from t where isDuplicated([ChannelNo, ApplSeqNum], LAST)=false	
+		}
+	}
+	return t
+}
+
+def loadOneDayEntrustSZ(csvFiles, day, dbName, tbName, merge=true){
+	csvNames = iif(day < 2016.05.07, "Order.csv", "mdl_6_33_0.csv")
+	csvPath = csvFiles[endsWith(csvFiles, csvNames)][0]
+	if(csvPath==NULL){
+		errorMessage = dict(`message`code, ["深交所 [" + string(day) + "] 日期的 [" + csvNames + "] 的 csv 文件不全或者不存在", "error"])
+		writeLog(toStdJson(errorMessage))
+		print(toStdJson(errorMessage))
+		return false
+	}
+	schemaTB = entrustCsvSchemaSZ(day)
+	schemaTest = extractTextSchema(csvPath)
+	if(schemaTB.rows() != schemaTest.rows()){
+		errorMessage = dict(`message`code, ["[" + csvPath + "] 的数据格式有误，列数不匹配", "error"])
+		writeLog(toStdJson(errorMessage))
+		print(toStdJson(errorMessage))
+		return false
+	}
+	
+	try{
+//		loadTextEx(dbHandle=database(dbName), tableName=tbName, partitionColumns=`TradeTime`SecurityID, filename=csvPath, schema=schemaTB, transform=transformSZ{day, merge})
+		t = ploadText(filename=csvPath, schema=schemaTB)
+		t = select * from t
+//		格式转换
+		t = transformSZ(day, merge, t)
+		loadTable(dbName, tbName).append!(t)
+		t = NULL
+	}catch(ex){
+		errorMessage = dict(`message`code, [string(ex[0])+":"+string(ex[1]), "error"])
+		writeLog(toStdJson(errorMessage))
+		print(toStdJson(errorMessage))
+		return false
+	}
+	return true
+}
+
+
+def transformSH(day, merge, mutable t){
+	if(merge==true){
+		t = select ChannelNo, ApplSeqNum, string(NULL) as MDStreamID, SecurityID, string(NULL) as SecurityIDSource, Price, OrderQty, Side, concatDateTime(day, TradeTime) as TradeTime, OrderType, LocalTime, SeqNo, OrderNO, DataStatus, BizIndex, "SH" as Market from t where isDuplicated([ApplSeqNum, ChannelNo], LAST)=false
+	}else{
+		t = select * from t where isDuplicated([ApplSeqNum, ChannelNo], LAST)=false
+		t.replaceColumn!(`TradeTime, concatDateTime(day, t.TradeTime))
+	}
+	return t
+}
+
+def loadOneDayEntrustSH(csvFiles, day, dbName, tbName, merge=true){
+	if(day < 2021.06.07)		return false		// "mdl_4_19_0.csv" 是 2021.06.07 新增数据
+	csvNames = "mdl_4_19_0.csv"
+	csvPath = csvFiles[endsWith(csvFiles, csvNames)][0]
+	if(csvPath==NULL){
+		errorMessage = dict(`message`code, ["上交所 [" + string(day) + "] 日期的 [" + csvNames + "] 的 csv 文件不全或者不存在", "error"])
+		writeLog(toStdJson(errorMessage))
+		print(toStdJson(errorMessage))
+		return false
+	}
+	schemaTB = entrustCsvSchemaSH()
+	schemaTest = extractTextSchema(csvPath)
+	if(schemaTB.rows() != schemaTest.rows()){
+		errorMessage = dict(`message`code, ["[" + csvPath + "] 的数据格式有误，列数不匹配", "error"])
+		writeLog(toStdJson(errorMessage))
+		print(toStdJson(errorMessage))
+		return false
+	}
+	try{
+//		loadTextEx(dbHandle=database(dbName), tableName=tbName, partitionColumns=`TradeTime`SecurityID, filename=csvPath, schema=schemaTB, transform=transformSH{day, merge})
+		t = ploadText(filename=csvPath, schema=schemaTB)
+		t = select * from t
+//		格式转换
+		t = transformSH(day, merge, t)
+		loadTable(dbName, tbName).append!(t)
+		t = NULL
+	}catch(ex){
+		errorMessage = dict(`message`code, [string(ex[0])+":"+string(ex[1]), "导入错误"])
+		writeLog(toStdJson(errorMessage))
+		print(toStdJson(errorMessage))
+		return false
+	}
+	return true
+}

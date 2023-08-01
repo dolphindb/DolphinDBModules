@@ -1,0 +1,20 @@
+module DolphinDBModules::easyTLDataImport::tbSchema::entrustSchema
+
+
+def entrustSchemaTb(){
+	name = `ChannelNo`ApplSeqNum`MDStreamID`SecurityID`SecurityIDSource`Price`OrderQty`Side`TradeTime`OrderType`LocalTime`SeqNo`OrderNO`DataStatus`BizIndex`Market
+	type = [INT, LONG, SYMBOL, SYMBOL, SYMBOL, DOUBLE, INT, SYMBOL, TIMESTAMP, SYMBOL, TIME, LONG, LONG, INT,LONG, SYMBOL]
+	return table(1:0, name, type)
+}
+
+def entrustSchemaTbSZ(){
+	name = `ChannelNo`ApplSeqNum`MDStreamID`SecurityID`SecurityIDSource`Price`OrderQty`Side`TradeTime`OrderType`LocalTime`SeqNo
+	type = `INT`LONG`SYMBOL`SYMBOL`SYMBOL`DOUBLE`INT`SYMBOL`TIMESTAMP`SYMBOL`TIME`INT
+	return table(1:0, name, type)
+}
+
+def entrustSchemaTbSH(){
+	name = `DataStatus`ApplSeqNum`ChannelNo`SecurityID`TradeTime`OrderType`OrderNO`Price`OrderQty`Side`BizIndex`LocalTime`SeqNo
+	type = `INT`LONG`INT`SYMBOL`TIMESTAMP`SYMBOL`INT`DOUBLE`INT`SYMBOL`INT`TIME`INT
+	return table(1:0, name, type)
+}

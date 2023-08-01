@@ -1,0 +1,105 @@
+module DolphinDBModules::easyTLDataImport::loadOneDayData::loadOneDayTrade
+
+use DolphinDBModules::easyTLDataImport::tbSchema::tradeCsvSchema
+
+def transformSZ(day, merge, mutable t){
+	if(merge==true){
+		if(day < 2016.05.07){
+			t = select ChannelNo, ApplSeqNum, string(NULL) as MDStreamID, BidApplSeqNum, OfferApplSeqNum, SecurityID, string(NULL) as SecurityIDSource, TradePrice, TradeQty, ExecType, concatDateTime(day, TradeTime) as TradeTime, LocalTime, SeqNo, int(NULL) as DataStatus, double(NULL) as TradeMoney, string(NULL) as TradeBSFlag, long(NULL) as BizIndex, OrderKind, "SZ" as Market from t where isDuplicated([ChannelNo, ApplSeqNum], LAST)=false
+		}else{
+			t = select ChannelNo, ApplSeqNum, MDStreamID, BidApplSeqNum, OfferApplSeqNum, SecurityID, SecurityIDSource, TradePrice, TradeQty, string(char(ExecType)) as ExecType, concatDateTime(day, TradeTime) as TradeTime, LocalTime, SeqNo, int(NULL) as DataStatus, double(NULL) as TradeMoney, string(NULL) as TradeBSFlag, long(NULL) as BizIndex, string(NULL) as OrderKind, "SZ" as Market from t where isDuplicated([ChannelNo, ApplSeqNum], LAST)=false
+		}	
+	}else{
+		if(day < 2016.05.07){
+			t = select ChannelNo, ApplSeqNum, string(NULL) as MDStreamID, BidApplSeqNum, OfferApplSeqNum, SecurityID, string(NULL) as SecurityIDSource, TradePrice, TradeQty, ExecType, concatDateTime(day, TradeTime) as TradeTime, LocalTime, SeqNo, OrderKind from t where isDuplicated([ChannelNo, ApplSeqNum], LAST)=false
+		}else{
+			t = select ChannelNo, ApplSeqNum, MDStreamID, BidApplSeqNum, OfferApplSeqNum, SecurityID, SecurityIDSource, TradePrice, TradeQty, string(char(ExecType)) as ExecType, concatDateTime(day, TradeTime) as TradeTime, LocalTime, SeqNo, string(NULL) as OrderKind from t where isDuplicated([ChannelNo, ApplSeqNum], LAST)=false
+		}
+	}
+	return t
+}
+
+def loadOneDayTradeSZ(csvFiles, day, dbName, tbName, merge=true){
+	csvNames = iif(day < 2016.05.07, "Trade.csv", "mdl_6_36_0.csv")
+	csvPath = csvFiles[endsWith(csvFiles, csvNames)][0]
+	if(csvPath==NULL){
+		errorMessage = dict(`message`code, ["深交所 [" + string(day) + "] 日期的 [" + csvNames + "] 的 csv 文件不全或者不存在", "error"])
+		writeLog(toStdJson(errorMessage))
+		print(toStdJson(errorMessage))
+		return false
+	}
+	schemaTB = tradeCsvSchemaSZ(day)
+	schemaTest = extractTextSchema(csvPath)
+	if(schemaTB.rows() != schemaTest.rows()){
+		errorMessage = dict(`message`code, ["[" + csvPath + "] 的数据格式有误，列数不匹配", "error"])
+		writeLog(toStdJson(errorMessage))
+		print(toStdJson(errorMessage))
+		return false
+	}
+	try{
+//		loadTextEx(dbHandle=database(dbName), tableName=tbName, partitionColumns=`TradeTime`SecurityID, filename=csvPath, schema=schemaTB, transform=transformSZ{day, merge})
+		t = ploadText(filename=csvPath, schema=schemaTB)
+		t = select * from t
+		t = transformSZ(day, merge, t)
+		loadTable(dbName, tbName).append!(t)
+		t = NULL
+	}catch(ex){
+		errorMessage = dict(`message`code, [string(ex[0])+":"+string(ex[1]), "error"])
+		writeLog(toStdJson(errorMessage))
+		print(toStdJson(errorMessage))
+		return false
+	}
+	return true
+}
+
+
+def transformSH(day, merge, mutable t){
+	if(merge==true){
+		if(day < 2021.04.26){
+			t = select ChannelNo, ApplSeqNum, string(NULL) as MDStreamID, BidApplSeqNum, OfferApplSeqNum, SecurityID, string(NULL) as SecurityIDSource, TradePrice, TradeQty, string(NULL) as ExecType, concatDateTime(day, TradeTime) as TradeTime, LocalTime, SeqNo, DataStatus, TradeMoney, TradeBSFlag, long(NULL) as BizIndex, string(NULL) as OrderKind, "SH" as Market from t where isDuplicated([ApplSeqNum, ChannelNo], LAST)=false
+		}else{
+			t = select ChannelNo, ApplSeqNum, string(NULL) as MDStreamID, BidApplSeqNum, OfferApplSeqNum, SecurityID, string(NULL) as SecurityIDSource, TradePrice, TradeQty, string(NULL) as ExecType, concatDateTime(day, TradeTime) as TradeTime, LocalTime, SeqNo, DataStatus, TradeMoney, TradeBSFlag, BizIndex, string(NULL) as OrderKind, "SH" as Market from t where isDuplicated([ApplSeqNum, ChannelNo], LAST)=false
+		}	
+	}else{
+		if(day < 2021.04.26){
+			t = select DataStatus, ApplSeqNum, ChannelNo, SecurityID, concatDateTime(day, TradeTime) as TradeTime, TradePrice, TradeQty, TradeMoney, BidApplSeqNum, OfferApplSeqNum, TradeBSFlag, long(NULL) as BizIndex, LocalTime, SeqNo from t where isDuplicated([ApplSeqNum, ChannelNo], LAST)=false
+		}else{
+			t = select DataStatus, ApplSeqNum, ChannelNo, SecurityID, concatDateTime(day, TradeTime) as TradeTime, TradePrice, TradeQty, TradeMoney, BidApplSeqNum, OfferApplSeqNum, TradeBSFlag, BizIndex, LocalTime, SeqNo from t where isDuplicated([ApplSeqNum, ChannelNo], LAST)=false
+		}
+	}
+	return t
+}
+
+
+def loadOneDayTradeSH(csvFiles, day, dbName, tbName, merge=true){
+	csvNames = "Transaction.csv"
+	csvPath = csvFiles[endsWith(csvFiles, "Transaction.csv")][0]
+	if(csvPath==NULL){
+		errorMessage = dict(`message`code, ["上交所 [" + string(day) + "] 日期的 [" + csvNames + "] 的 csv 文件不全或者不存在", "error"])
+		writeLog(toStdJson(errorMessage))
+		print(toStdJson(errorMessage))
+		return false
+	}
+	schemaTB = tradeCsvSchemaSH(day)
+	schemaTest = extractTextSchema(csvPath)
+	if(schemaTB.rows() != schemaTest.rows()){
+		errorMessage = dict(`message`code, ["[" + csvPath + "] 的数据格式有误，列数不匹配", "error"])
+		writeLog(toStdJson(errorMessage))
+		print(toStdJson(errorMessage))
+		return false
+	}
+	try{
+//		loadTextEx(dbHandle=database(dbName), tableName=tbName, partitionColumns=`TradeTime`SecurityID, filename=csvPath, schema=schemaTB, transform=transformSH{day, merge})
+		t = ploadText(filename=csvPath, schema=schemaTB)
+		t = select * from t
+		t = transformSH(day, merge, t)
+		loadTable(dbName, tbName).append!(t)
+		t = NULL
+	}catch(ex){
+		errorMessage = dict(`message`code, [string(ex[0])+":"+string(ex[1]), "error"])
+		writeLog(toStdJson(errorMessage))
+		print(toStdJson(errorMessage))
+		return false
+	}
+	return true
+}

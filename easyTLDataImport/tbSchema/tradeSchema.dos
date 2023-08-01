@@ -1,0 +1,20 @@
+module DolphinDBModules::easyTLDataImport::tbSchema::tradeSchema
+
+
+def tradeSchemaTb(){
+	name = `ChannelNo`ApplSeqNum`MDStreamID`BidApplSeqNum`OfferApplSeqNum`SecurityID`SecurityIDSource`TradePrice`TradeQty`ExecType`TradeTime`LocalTime`SeqNo`DataStatus`TradeMoney`TradeBSFlag`BizIndex`OrderKind`Market
+	type = [INT, LONG, SYMBOL, LONG, LONG, SYMBOL, SYMBOL, DOUBLE, INT, SYMBOL, TIMESTAMP, TIME, LONG, INT, DOUBLE, SYMBOL, LONG, SYMBOL, SYMBOL]
+	return table(1:0, name, type)
+}
+
+def tradeSchemaTbSH(){
+	name = `DataStatus`ApplSeqNum`ChannelNo`SecurityID`TradeTime`TradePrice`TradeQty`TradeMoney`BidApplSeqNum`OfferApplSeqNum`TradeBSFlag`BizIndex`LocalTime`SeqNo
+	type = `INT`INT`INT`SYMBOL`TIMESTAMP`DOUBLE`INT`DOUBLE`LONG`LONG`SYMBOL`LONG`TIME`INT
+	return table(1:0, name, type)
+}
+
+def tradeSchemaTbSZ(){
+	name = `ChannelNo`ApplSeqNum`MDStreamID`BidApplSeqNum`OfferApplSeqNum`SecurityID`SecurityIDSource`TradePrice`TradeQty`ExecType`TradeTime`LocalTime`SeqNo`OrderKind
+	type = `INT`LONG`SYMBOL`LONG`LONG`SYMBOL`SYMBOL`DOUBLE`INT`SYMBOL`TIMESTAMP`TIME`INT`SYMBOL
+	return table(1:0, name, type)
+}

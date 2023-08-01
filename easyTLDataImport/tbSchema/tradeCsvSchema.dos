@@ -1,0 +1,23 @@
+module DolphinDBModules::easyTLDataImport::tbSchema::tradeCsvSchema
+
+def tradeCsvSchemaSZ(day){
+	if(day < 2016.05.07){
+		name = `ApplSeqNum`BidApplSeqNum`OfferApplSeqNum`SecurityID`TradeTime`TradePrice`TradeQty`OrderKind`ExecType`ChannelNo`LocalTime`SeqNo
+		typeString = `INT`INT`INT`SYMBOL`TIME`DOUBLE`INT`SYMBOL`SYMBOL`INT`TIME`LONG
+	}else{
+		name = `ChannelNo`ApplSeqNum`MDStreamID`BidApplSeqNum`OfferApplSeqNum`SecurityID`SecurityIDSource`TradePrice`TradeQty`ExecType`TradeTime`LocalTime`SeqNo
+		typeString = `INT`LONG`SYMBOL`LONG`LONG`SYMBOL`SYMBOL`DOUBLE`INT`INT`TIME`TIME`INT	
+	}
+	return table(name, typeString)
+}
+
+def tradeCsvSchemaSH(day){
+	if(day >= 2021.04.26){	// 2021.04.26 之后新增字段 `BizIndex
+		name = `DataStatus`ApplSeqNum`ChannelNo`SecurityID`TradeTime`TradePrice`TradeQty`TradeMoney`BidApplSeqNum`OfferApplSeqNum`TradeBSFlag`BizIndex`LocalTime`SeqNo
+		typeString = `INT`INT`INT`SYMBOL`TIME`DOUBLE`INT`DOUBLE`LONG`LONG`SYMBOL`LONG`TIME`INT
+	}else{
+		name = `DataStatus`ApplSeqNum`ChannelNo`SecurityID`TradeTime`TradePrice`TradeQty`TradeMoney`BidApplSeqNum`OfferApplSeqNum`TradeBSFlag`LocalTime`SeqNo
+		typeString = `INT`INT`INT`SYMBOL`TIME`DOUBLE`INT`DOUBLE`LONG`LONG`SYMBOL`TIME`INT
+	}
+	return table(name, typeString)	
+}

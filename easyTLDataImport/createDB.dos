@@ -1,0 +1,19 @@
+module DolphinDBModules::easyTLDataImport::createDB
+
+def createDB(dbName, initial=false, merge=true){
+	if(existsDatabase(dbName)){
+		if(initial==true)	dropDatabase(dbName)
+		else{
+			errorMessage = dict(`message`code, ["[" + dbName + "] 数据库已经存在", "warning"])
+			writeLog(toStdJson(errorMessage))
+			print(toStdJson(errorMessage))
+			return false
+		}
+	}
+	if(merge==true)	hashNum = 50
+	else			hashNum = 25
+	db1 = database(, VALUE, 2020.01.01..2021.01.01)
+	db2 = database(, HASH, [SYMBOL, hashNum])
+	db = database(dbName, COMPO, [db1, db2], , "TSDB")
+	return true
+}
