@@ -151,7 +151,7 @@
 | 成交笔数                 | NumTrades          | INT              | TradNumber                                 | TradNumber                                   |
 | 成交总量                 | TotalVolumeTrade   | INT              | TradVolume                                 | TradVolume                                   |
 | 成交总金额               | TotalValueTrade    | DOUBLE           | Turnover                                   | Turnover                                     |
-| 委托买入总量             | TotalBidQty        | INT              | TotalBidVo                                 | TotalBidVo                                   |
+| 委托买入总量             | TotalBidQty        | INT              | TotalBidVol                                 | TotalBidVol                                   |
 | 加权平均买入价格         | WeightedAvgBidPx   | DOUBLE           | WAvgBidPri                                 | WAvgBidPri                                   |
 | 债券加权平均委买价格     | AltWAvgBidPri      | DOUBLE           | AltWAvgBidPri                              | AltWAvgBidPri                                |
 | 委托卖出总量             | TotalOfferQty      | INT              | TotalAskVol                                | TotalAskVol                                  |
