@@ -4,7 +4,7 @@ module ta
 module to support Python TA-Lib
 DolphinDB Inc.
 DolphinDB server version: 1.30.20 2022.09.28/2.00.8 2022.09.28
-Last modification time: 2023.07.25
+Last modification time: 2023.08.09
 */
 
 /**
@@ -622,11 +622,11 @@ def ad(high, low, close, volume){
  * OBV - On Balance Volume
  * https://www.fmlabs.com/reference/default.htm?url=OBV.htm
  */
+@state
 def obv(close, volume){
 	tmp = close.deltas()
-	ind=iif(tmp == 0, 0, iif(nullCompare(>, tmp, 0), 1,  -1))
-	b = ifirstNot([close, volume])
-	if (b > 0) ind[b] = 1
+	ind1 = signum(tmp)
+	ind = iif(cumcount(close)==1, 1, ind1)
 	return cumsum(ind * volume)
 }
 
