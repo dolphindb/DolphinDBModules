@@ -172,8 +172,16 @@ def autoLoadTongLianData(fileDir, dataSource, dbName="dfs://TL_Level2", tableNam
 		}
 
 		// 将符合导入条件的日期的数据，在原来的数据库内删除（防止重复导入）
-		if(merge == true)	delete from loadTable(dbName, tbName) where date(TradeTime) in temporalParse(each(last, split(fileDirs, "/")), "yyyyMMdd")
-		else			delete from loadTable(dbName, tbName+market) where date(TradeTime) in temporalParse(each(last, split(fileDirs, "/")), "yyyyMMdd")
+//		if(merge == true)	delete from loadTable(dbName, tbName) where date(TradeTime) in temporalParse(each(last, split(fileDirs, "/")), "yyyyMMdd")
+//		else			delete from loadTable(dbName, tbName+market) where date(TradeTime) in temporalParse(each(last, split(fileDirs, "/")), "yyyyMMdd")
+		if(merge == true)	exist_date = (select count(*) from loadTable(dbName, tbName) group by date(TradeTime)).date_TradeTime
+		else			exist_date = (select count(*) from loadTable(dbName, tbName+market) group by date(TradeTime)).date_TradeTime
+		load_date = temporalParse(each(last, split(fileDirs, "/")), "yyyyMMdd")
+		target_date = load_date[load_date in exist_date]
+		if(size(target_date) > 0){
+			if(merge == true)	dropPartition(database(dbName), target_date, tableName=tbName)
+			else			dropPartition(database(dbName), target_date, tableName=tbName+market)
+		}
 
 		// 根据并行度拆分任务
 		myCut = def(i, parallel, dirs){return dirs[rowNo(dirs)%parallel==i]}
