@@ -300,7 +300,7 @@ def trange(high, low, close){
  * https://www.investopedia.com/articles/technical/02/050602.asp
  */
 @state
-def plus_dm(high, low, timePeriod){
+def plus_dm(high, low, timePeriod=14){
 	highDelta = deltas(high)
 	lowDelta = -deltas(low)
 	tmp = iif(highDelta > lowDelta && highDelta > 0, highDelta, 0)
@@ -334,7 +334,7 @@ def plus_di(high, low, close, timePeriod=14){
  *  https://www.fmlabs.com/reference/default.htm?url=di.htm
  */
 @state
-def minus_dm(high, low, timePeriod){
+def minus_dm(high, low, timePeriod=14){
 	high_, low_ = talibNull(high, low)
 	highDelta = deltas(high_)
 	lowDelta = -deltas(low_)
@@ -348,7 +348,7 @@ def minus_dm(high, low, timePeriod){
  *  https://www.fmlabs.com/reference/default.htm?url=di.htm
  */
 @state
-def minus_di(high, low, close, timePeriod){
+def minus_di(high, low, close, timePeriod=14){
 	high_, low_, close_ = talibNull(high, low, close)
 	minusDMsum = minus_dm(high_, low_, timePeriod)
 	
@@ -367,7 +367,7 @@ def minus_di(high, low, close, timePeriod){
  * https://www.fmlabs.com/reference/default.htm?url=DX.htm
  */
 @state
-def dx(high, low, close, timePeriod){
+def dx(high, low, close, timePeriod=14){
 	plusDI = plus_di(high, low, close, timePeriod)
 	minusDI = minus_di(high, low, close, timePeriod)
 	return iif(plusDI + minusDI == 0, 0, 100*abs(plusDI - minusDI) \ (plusDI + minusDI))
