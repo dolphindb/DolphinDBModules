@@ -4,7 +4,7 @@ module ta
 module to support Python TA-Lib
 DolphinDB Inc.
 DolphinDB server version: 1.30.20 2022.09.28/2.00.8 2022.09.28
-Last modification time: 2023.08.09
+Last modification time: 2023.08.24
 */
 
 /**
@@ -300,12 +300,13 @@ def trange(high, low, close){
  * https://www.investopedia.com/articles/technical/02/050602.asp
  */
 @state
-def plus_dm(high, low, timePeriod=14){
+def plus_dm(high, low, timePeriod){
 	highDelta = deltas(high)
 	lowDelta = -deltas(low)
 	tmp = iif(highDelta > lowDelta && highDelta > 0, highDelta, 0)
 	diffP = iif(nullCompare(<, high, tmp) == NULL, NULL, tmp)
 	return wilder(diffP, timePeriod) * timePeriod
+
 }
 
 /**
@@ -315,12 +316,16 @@ def plus_dm(high, low, timePeriod=14){
 @state
 def plus_di(high, low, close, timePeriod=14){
 	high_, low_, close_ = talibNull(high, low, close)
-	highDelta = deltas(high_)
-	lowDelta = -deltas(low_)
-	tmp = iif(highDelta > lowDelta && highDelta > 0, highDelta, 0)
-	diffP = iif(nullCompare(<, high_, tmp) == NULL, NULL, tmp)
-	rangeP = trueRange(high_, low_, close_)
-	return 100.0 * wilder(diffP, timePeriod) / wilder(rangeP, timePeriod)
+	plusDMsum = plus_dm(high_, low_, timePeriod)
+	
+	TRtemp = max(max(high_ - low_, abs(high_ - prev(close_))), abs(low_ - prev(close_)))
+	TR = iif(cumcount(high)==1, 0, TRtemp)				// TR[0] = 0
+	
+	TRsumtemp = wilder(TR, timePeriod) * timePeriod
+	
+	TRsum = iif(cumcount(high)==timePeriod, NULL, TRsumtemp)	// TRsum[timePeriod-1]= NULL
+
+	return iif(TRsum == 0, 0, 100.0 * plusDMsum / TRsum)
 }
 
 
@@ -329,7 +334,7 @@ def plus_di(high, low, close, timePeriod=14){
  *  https://www.fmlabs.com/reference/default.htm?url=di.htm
  */
 @state
-def minus_dm(high, low, timePeriod=14){
+def minus_dm(high, low, timePeriod){
 	high_, low_ = talibNull(high, low)
 	highDelta = deltas(high_)
 	lowDelta = -deltas(low_)
@@ -343,14 +348,18 @@ def minus_dm(high, low, timePeriod=14){
  *  https://www.fmlabs.com/reference/default.htm?url=di.htm
  */
 @state
-def minus_di(high, low, close, timePeriod=14){
+def minus_di(high, low, close, timePeriod){
 	high_, low_, close_ = talibNull(high, low, close)
-	highDelta = deltas(high_)
-	lowDelta = -deltas(low_)
-	tmp = iif(lowDelta > highDelta && lowDelta > 0, lowDelta, 0)
-	diffP = iif(nullCompare(<, low_, tmp) == NULL, NULL, tmp)
-	rangeP = trueRange(high_, low_, close_)
-	return 100.0 * wilder(diffP, timePeriod) / wilder(rangeP, timePeriod)
+	minusDMsum = minus_dm(high_, low_, timePeriod)
+	
+	TRtemp = max(max(high_ - low_, abs(high_ - prev(close_))), abs(low_ - prev(close_)))
+	TR = iif(cumcount(high)==1, 0, TRtemp)				// TR[0] = 0
+	
+	TRsumtemp = wilder(TR, timePeriod) * timePeriod
+	
+	TRsum = iif(cumcount(high)==timePeriod, NULL, TRsumtemp)	// TRsum[timePeriod-1]= NULL
+
+	return iif(TRsum==0, 0, 100.0 * minusDMsum / TRsum) 
 }
 
 /**
@@ -358,17 +367,10 @@ def minus_di(high, low, close, timePeriod=14){
  * https://www.fmlabs.com/reference/default.htm?url=DX.htm
  */
 @state
-def dx(high, low, close, timePeriod=14){
-	high_, low_, close_ = talibNull(high, low, close)
-	highDelta = deltas(high_)
-	lowDelta = -deltas(low_)
-	tmp1  = iif(lowDelta>highDelta && lowDelta>0, lowDelta, 0.0)
-	diffM = iif(nullCompare(<, high_, tmp1) == NULL, NULL, tmp1)
-	tmp2 = iif((highDelta > lowDelta && highDelta > 0), highDelta, 0)
-	diffP = iif(nullCompare(<, low_, tmp2) == NULL, NULL, tmp2)
-	mdm = wilder(diffM, timePeriod)
-	pdm =  wilder(diffP, timePeriod)
-	return 100.0 * abs(mdm - pdm) / (mdm + pdm)
+def dx(high, low, close, timePeriod){
+	plusDI = plus_di(high, low, close, timePeriod)
+	minusDI = minus_di(high, low, close, timePeriod)
+	return iif(plusDI + minusDI == 0, 0, 100*abs(plusDI - minusDI) \ (plusDI + minusDI))
 }
 
 /**
@@ -566,9 +568,24 @@ def apo(close, fastPeriod=12, slowPeriod=26, maType=0){
  * https://www.investopedia.com/terms/a/aroon.asp
  */
 @state
-def aroon(high, low, timePeriod=14){
-	return (100.0 / timePeriod * talib(mimin, low, timePeriod + 1)),( 100.0 / timePeriod * talib(mimax, high, timePeriod + 1))
+def aroonup(high, timePeriod=14){
+	index = byRow(defg(x){return imax(x[size(x):0])}, movingWindowData(high, timePeriod+1))
+	up = 100.0 / timePeriod * (timePeriod - index)
+	return iif(cumcount(high) > timePeriod, up, NULL)
 }
+
+@state
+def aroondown(low, timePeriod=14){
+	index = byRow(defg(x){return imin(x[size(x):0])}, movingWindowData(low, timePeriod+1))
+	down = 100.0 / timePeriod * (timePeriod - index)
+	return iif(cumcount(low) > timePeriod, down, NULL)
+}
+
+@state
+def aroon(high, low, timePeriod=14){
+	return aroondown(low, timePeriod), aroonup(high, timePeriod)
+}
+
 
 /**
  * aroonOsc : aroon oscillator
