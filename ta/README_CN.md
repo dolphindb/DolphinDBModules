@@ -457,7 +457,7 @@ submitJob("replay", "replay",  replay{data, inputTable, `tradedate, `tradedate, 
 | ma  | ma(close, timePeriod, maType) | Moving average |
 | mavp | mavp(inReal, periods, minPeriod, maxPeriod, maType) | Moving average with variable period |
 | midPoint | midPoint(close, timePeriod) | MidPoint over period |
-| midPrice | midPrice(low, high, timePeriod) | Midpoint Price over period |
+| midPrice | midPrice(high, low, timePeriod) | Midpoint Price over period |
 | sma | sma(close, timePeriod) | Simple Moving Average |
 | t3  | t3(close, timePeriod, vfactor) | Triple Exponential Moving Average (T3) |
 | tema | tema(close, timePeriod) | Triple Exponential Moving Average |
