@@ -67,8 +67,8 @@ def loadOneDaySnapshotSZ(csvFiles, day, dbName, tbName, merge=true){
 				return false
 			}
 			orderTB = select ImageStatus.nullFill(1) as ImageStatus, concatDateTime(day, TradeTime) as TradeTime, SecurityID, fixedLengthArrayVector(OrderQty1, OrderQty2, OrderQty3, OrderQty4, OrderQty5, OrderQty6, OrderQty7, OrderQty8, OrderQty9, OrderQty10, OrderQty11, OrderQty12, OrderQty13, OrderQty14, OrderQty15, OrderQty16, OrderQty17, OrderQty18, OrderQty19, OrderQty20, OrderQty21, OrderQty22, OrderQty23, OrderQty24, OrderQty25, OrderQty26, OrderQty27, OrderQty28, OrderQty29, OrderQty30, OrderQty31, OrderQty32, OrderQty33, OrderQty34, OrderQty35, OrderQty36, OrderQty37, OrderQty38, OrderQty39, OrderQty40, OrderQty41, OrderQty42, OrderQty43, OrderQty44, OrderQty45, OrderQty46, OrderQty47, OrderQty48, OrderQty49, OrderQty50) as Orders, Side from orderTB
-			tempData = select ImageStatus, TradeTime, SecurityID, Orders as OfferOrders from orderTB where Side = `S and isDuplicated([TradeTime, SecurityID, ImageStatus], LAST)=false
-			orderTB = select ImageStatus, TradeTime, SecurityID, Orders as BidOrders from orderTB where Side = `B and  isDuplicated([TradeTime, SecurityID, ImageStatus], LAST)=false 
+			tempData = select ImageStatus, TradeTime, SecurityID, Orders as OfferOrders from orderTB where Side = `S and isDuplicated([TradeTime, SecurityID, ImageStatus, Side], LAST)=false
+			orderTB = select ImageStatus, TradeTime, SecurityID, Orders as BidOrders from orderTB where Side = `B and  isDuplicated([TradeTime, SecurityID, ImageStatus, Side], LAST)=false 
 			orderTB = lj(tempData, orderTB, `TradeTime`SecurityID`ImageStatus)
 			tempData = NULL	
 		}else{
@@ -261,8 +261,8 @@ def loadOneDaySnapshotSH(csvFiles, day, dbName, tbName, merge=true){
 		return false
 	}
 	orderTB = select ImageStatus, concatDateTime(day, TradeTime) as TradeTime, SecurityID, fixedLengthArrayVector(OrderQty1, OrderQty2, OrderQty3, OrderQty4, OrderQty5, OrderQty6, OrderQty7, OrderQty8, OrderQty9, OrderQty10, OrderQty11, OrderQty12, OrderQty13, OrderQty14, OrderQty15, OrderQty16, OrderQty17, OrderQty18, OrderQty19, OrderQty20, OrderQty21, OrderQty22, OrderQty23, OrderQty24, OrderQty25, OrderQty26, OrderQty27, OrderQty28, OrderQty29, OrderQty30, OrderQty31, OrderQty32, OrderQty33, OrderQty34, OrderQty35, OrderQty36, OrderQty37, OrderQty38, OrderQty39, OrderQty40, OrderQty41, OrderQty42, OrderQty43, OrderQty44, OrderQty45, OrderQty46, OrderQty47, OrderQty48, OrderQty49, OrderQty50) as Orders, Side from orderTB
-	tempData = select TradeTime, SecurityID, ImageStatus, Orders as OfferOrders from orderTB where Side = `S and isDuplicated([TradeTime, SecurityID, ImageStatus], LAST)=false
-	orderTB = select TradeTime, SecurityID, ImageStatus, Orders as BidOrders from orderTB where Side = `B and  isDuplicated([TradeTime, SecurityID, ImageStatus], LAST)=false 
+	tempData = select TradeTime, SecurityID, ImageStatus, Orders as OfferOrders from orderTB where Side = `S and isDuplicated([TradeTime, SecurityID, ImageStatus, Side], LAST)=false
+	orderTB = select TradeTime, SecurityID, ImageStatus, Orders as BidOrders from orderTB where Side = `B and  isDuplicated([TradeTime, SecurityID, ImageStatus, Side], LAST)=false 
 	orderTB = lj(tempData, orderTB, `TradeTime`SecurityID`ImageStatus)
 	tempData = NULL	
 
