@@ -204,7 +204,7 @@ getTableDiskUsage("dfs://rangedb", "pt", true)
 | --------- | -------- |
 | DFS_NODE1 | 0.008498 |
 
-### 3.4 dropRecoveringPartitions <!-- omit in toc -->
+### 3.5 dropRecoveringPartitions <!-- omit in toc -->
 
 **语法**
 
@@ -240,7 +240,7 @@ rpc(getControllerAlias(), getClusterChunksStatus)
 dropRecoveringPartitions(database("dfs://olapDemo"));
 ```
 
-### 3.5 getAllLicenses <!-- omit in toc -->
+### 3.6 getAllLicenses <!-- omit in toc -->
 
 **语法**
 
@@ -273,7 +273,7 @@ getAllLicenses()
 | ctl18920  | 2042.01.01 |
 | agent     | 2042.01.01 |
 
-### 3.6 updateAllLicenses <!-- omit in toc -->
+### 3.7 updateAllLicenses <!-- omit in toc -->
 
 **语法**
 
@@ -305,7 +305,7 @@ updateAllLicenses()
 | ctl18920  | 2042.01.01 |
 | agent     | 2042.01.01 |
 
-### 3.7 unsubscribeAll <!-- omit in toc -->
+### 3.8 unsubscribeAll <!-- omit in toc -->
 
 **语法**
 
@@ -335,7 +335,7 @@ unsubscribeAll()
 undef(st, SHARED)
 ```
 
-### 3.8 gatherClusterPerf <!-- omit in toc -->
+### 3.9 gatherClusterPerf <!-- omit in toc -->
 
 **语法**
 
@@ -360,7 +360,7 @@ gatherClusterPerf(30, 3, "/tmp")
 // 30s 后查看 /tmp/statis.csv 里的结果
 ```
 
-### 3.8 gatherStreamingStat <!-- omit in toc -->
+### 3.10 gatherStreamingStat <!-- omit in toc -->
 
 **语法**
 
@@ -386,7 +386,7 @@ gatherStreamingStat(30, 3, "/tmp")
 // 30s 后查看 /tmp/sub_worker_statis.csv 里的结果
 ```
 
-### 3.9 getDifferentData <!-- omit in toc -->
+### 3.11 getDifferentData <!-- omit in toc -->
 
 **语法**
 
@@ -430,7 +430,7 @@ getDifferentData(t1, t3)
 Both tables are identical
 ```
 
-### 3.10 checkChunkReplicas <!-- omit in toc -->
+### 3.12 checkChunkReplicas <!-- omit in toc -->
 
 **语法**
 
