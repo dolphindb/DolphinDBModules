@@ -397,7 +397,7 @@
 
 ### 3.1 数据表结构
 
-*tbSchema* 文件夹下的模块是根据本文第二章节中的合并规则整理的数据结构。该文件夹包含以 *CsvSchema.dos* 和 *CsvSchema.dos* 结尾的两种模块文件，作用如下：
+*tbSchema* 文件夹下的模块是根据本文第二章节中的合并规则整理的数据结构。该文件夹包含以 *CsvSchema.dos* 和 *Schema.dos* 结尾的两种模块文件，作用如下：
 
 - *CsvSchema.dos* 用于指定 DolphinDB 读取 csv 文件时的数据格式
 - *Schema.dos* 用于指定数据存入数据库的数据格式
