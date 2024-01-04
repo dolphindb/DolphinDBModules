@@ -317,7 +317,6 @@ unsubscribeAll(tbName=NULL)
 
 - tbName: 字符串标量，表示要取消订阅的表名。默认值NULL，即如若不填参数，表示取消所有表的订阅。
 
-
 **详情**
 
 取消某个表的订阅，参数为NULL，即如若不填参数时可以取消所有表的订阅。
@@ -336,7 +335,6 @@ unsubscribeAll()
 undef(st, SHARED)
 ```
 
-
 取消某个表的订阅：
 ```python
 share streamTable(10:0, `id`val, [INT, DOUBLE]) as test_1
@@ -344,6 +342,7 @@ res = table(10:0, `id`val, [INT, DOUBLE])
 subscribeTable(tableName=`test_1,handler=append!{res},actionName="sub_test_1")
 unsubscribeAll("test_1")
 ```
+
 
 ### 3.9 gatherClusterPerf <!-- omit in toc -->
 
@@ -774,7 +773,6 @@ clearAllPersistenceTables()
 clearAllPersistenceTables()
 ```
 
-
 ### 3.23 getDatabaseDDL <!-- omit in toc -->
 
 **语法**
@@ -849,6 +847,7 @@ createPartitionedTable(dbHandle = database('dfs://test_OLAP_RANGE'),table = tabl
 createTable(dbHandle = database('dfs://test_OLAP_RANGE'),table = table(1:0, ["SecurityID","DateTime","Open","High","Low","Close"],["SYMBOL","DATETIME","DOUBLE","DOUBLE","DOUBLE","DOUBLE"]),tableName = 'dimension1',compressMethods = dict(["SecurityID","DateTime","Open","High","Low","Close"],["lz4","lz4","lz4","lz4","lz4","lz4"]))
 ```
 
+
 ### 3.25 getChunkUsageByNode <!-- omit in toc -->
 
 **语法**
@@ -881,6 +880,7 @@ getChunkUsageByNode("dfs://TL_level2", "trade")
 | dnode1      | 33    | 4897619   | 0.34497003 |
 | dnode2      | 35    | 4827365   | 0.34002160 |
 | dnode3      | 32    | 4472246   | 0.31500835 |
+
 
 ### 3.26 getChunkUsageByVolume <!-- omit in toc -->
 

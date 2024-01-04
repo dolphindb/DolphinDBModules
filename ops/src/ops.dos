@@ -235,6 +235,7 @@ def updateAllLicenses(){
     return getAllLicenses()
 }
 
+
 /* *
 *  @ Function name: unsubscribeAll
 *  @ Brief: Cancel all subscriptions or the subscriptions of a table on the node
@@ -636,6 +637,7 @@ def clearAllPersistenceTables(){
 	}
 }
 
+
 /* *
 *  @brief Return the Data Definition Language (DDL) statement for a specific database as a string.
 *  
@@ -858,6 +860,7 @@ def getDBTableDDL(dbName,tbName){
 		return res
 	}
 }
+
 
 
 /* *
