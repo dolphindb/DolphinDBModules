@@ -1,3 +1,12 @@
+/* *
+*  @ brief  
+*  This module is convenient for operation team to maintain the cluster. 
+*  @ Author: DolphinDB
+*  @ Last modification time: 2023.12.29
+*  @ DolphinDB server version: 2.00.11
+*  @ FileName: ops.dos
+*/
+
 module ops
 
 /* *
@@ -33,7 +42,7 @@ def cancelJobEx(id=NULL){
 def closeInactiveSessions(hours=12) {
     if(isNull(hours))
        throw "Please input the interval (in hours)"
-    sessionIds = exec sessionId from pnodeRun(getSessionMemoryStat) where now() - localtime(lastActiveTime) > long(hours*60*60*1000)
+    sessionIds = exec sessionId from pnodeRun(getSessionMemoryStat) where now() - lastActiveTime > long(hours*60*60*1000)
     pnodeRun(closeSessions{sessionIds})
     return pnodeRun(getSessionMemoryStat)
 }
@@ -165,26 +174,31 @@ def dropRecoveringPartitions(dbPath , tableName=""){
 *  @ brief  Get the expiration date of the license on all nodes in the cluster.
 *  @ param NULL
 *  @ return a table containing expiration date of the license on each node
-*  @ sample usage  getAllLicenses()
+*  @ sample usage  getAllLicenses(), you should run this function on datanode or controller.
 */
 
-
 def getAllLicenses(){
-    t = select node as nodeAlias,value as endDate from pnodeRun(getLicenseExpiration)
-    nodes = exec name, host, port from rpc(getControllerAlias(), getClusterPerf{true}) where not mode in [0, 3, 4]
+    t = table(getNodeAlias() as  node,getLicenseExpiration() as end_date)
+    nodes = exec name, host, port from rpc(getControllerAlias(), getClusterPerf{true})
     for(node in nodes){
-        try{
-            conn = xdb(node[`host], node[`port])
-            t1 = remoteRun(
+        if (node[`name] == getNodeAlias()){
+            continue
+        }
+        else{
+            try{
+                conn = xdb(node[`host], node[`port])
+                t1 = remoteRun(
                 conn, "table( getNodeAlias() as node ,getLicenseExpiration() as date)")
-            t.append!(t1)
-        } catch(ex){
-            print(ex)
-            writeLog(ex)
+                t.append!(t1)
+            } catch(ex){
+                print(ex)
+                writeLog(ex)
+            }
         }
     }
     return t
 }
+
 
 
 /* *
@@ -194,7 +208,6 @@ def getAllLicenses(){
 *  @ sample usage  updateAllLicenses(), Must be done after replacing the license file
 */
 
-
 def updateAllLicenses(){
     try{
         pnodeRun(getLicenseExpiration)
@@ -202,41 +215,54 @@ def updateAllLicenses(){
         print(ex)
         writeLog(ex)
     }
-    nodes = exec name, host, port from rpc(getControllerAlias(), getClusterPerf{true}) where not mode in [0, 3, 4]
+    nodes = exec name, host, port from rpc(getControllerAlias(), getClusterPerf{true})
+    localHost = getNodeHost()
+    localPort = getNodePort()
     for(node in nodes){
-        try{
-            conn = xdb(node[`host], node[`port])
-            conn(updateLicense())
-        } catch(ex){
-            print(ex)
-            writeLog(ex)
-        }
-    }
+            if(node[`host] == localHost and node[`port] == localPort){
+                    updateLicense()
+            }
+            else{
+                     try{
+                            conn = xdb(node[`host], node[`port])
+                            remoteRun(conn,updateLicense)
+                        } catch(ex){
+                                    print(ex)
+                            writeLog(ex)
+                        }
+            }
+ }
     return getAllLicenses()
 }
 
-
 /* *
-*  @ brief  Cancel all subscription on the node
-*  @ param NULL
-*  @ return NULL
+*  @ Function name: unsubscribeAll
+*  @ Brief: Cancel all subscriptions or the subscriptions of a table on the node
+*  @ Param:
+*  tbName(default NULL): a string scalar which is the name of a table to be unsubscribed, can be NULL which means to cancel all subscriptions.
+*  @ Return: NULL
+*  @ Sample usage: unsubscribeAll("table1")
 */
 
-def unsubscribeAll() {
-    t = getStreamingStat().pubTables
+def unsubscribeAll(tbName=NULL) {
+	if (tbName!=NULL){
+		t = select * from getStreamingStat().pubTables where tableName = tbName
+	} else {
+		t = getStreamingStat().pubTables
+	}
+	
+	for(row in t){
+		tableName = row.tableName
+		if(string(row.actions).startsWith("[")) {
+			actions = split(substr(row.actions, 1, strlen(row.actions)-2), ",")
+		} else {
+			actions = [].append!(row.actions)
+		}
 
-    for(row in t){
-        tableName = row.tableName
-        if(string(row.actions).startsWith("[")) {
-            actions = split(substr(row.actions, 1, strlen(row.actions)-2), ",")
-        } else {
-            actions = [].append!(row.actions)
-        }
-
-        for(action in actions){
-            unsubscribeTable(tableName=tableName, actionName=action)
-        }
-    }
+		for(action in actions){
+			unsubscribeTable(tableName=tableName, actionName=action)
+		}
+	}
 }
 
 
@@ -362,26 +388,6 @@ def checkOLAPChunkReplicas(dbName, tableName, targetChunkId){
         }
 }
 
-def checkTSDBChunkReplicas(dbName, tableName, targetChunkId){
-    re = array(BOOL,0,10)
-    for(lvl in 0..3){
-        levelFileInfo = select * from pnodeRun(getTSDBMetaData) where chunkId==targetChunkId and like(table,tableName+"%") and level=lvl
-        if(levelFileInfo.size()!=0){
-                levelFilesSize = size(split(levelFileInfo[`files][0],","))-1
-                
-                for(i in 0..(levelFilesSize-1)){
-                        res1 = rpc(levelFileInfo[`node][0],getLevelFileData,levelFileInfo[`chunkPath][0]+"/"+levelFileInfo[`table][0]+"/"+split(levelFileInfo[`files][0],",")[i])
-                        res2 = rpc(levelFileInfo[`node][1],getLevelFileData,levelFileInfo[`chunkPath][1]+"/"+levelFileInfo[`table][1]+"/"+split(levelFileInfo[`files][1],",")[i])
-                        comparison = eqObj(res1.values(), res2.values())
-                        re.append!(comparison)
-                }
-        }
-    }
-    if(re.all()==true)
-            return true
-    return false
-
-}
 
 /**
  * @ brief Compares whether the data for two chunk replicas is the same
@@ -391,9 +397,510 @@ def checkTSDBChunkReplicas(dbName, tableName, targetChunkId){
  * @ return true if the same ,false if different 
  */
 def checkChunkReplicas(dbPath, tableName, targetChunkId){
-	if(database(dbPath).schema().engineType ==`TSDB)
-		return checkTSDBChunkReplicas(dbPath, tableName, targetChunkId);
-	else
-		return checkOLAPChunkReplicas(dbPath, tableName, targetChunkId);
+    return checkOLAPChunkReplicas(dbPath, tableName, targetChunkId);
 }
 
+
+/**
+*  @ Function name: clearAllSubscriptions
+*  @ Brief: clear all subscriptions of the current node
+*  @ Param:
+*  none
+*  @ Return: print cleared subscription information
+*  @ Sample usage: clearAllSubscriptions()
+*/
+
+def clearAllSubscriptions(){
+        if(getStreamingStat().pubTables.rows() > 0){
+                do{
+                        try{
+                                tableName = getStreamingStat().pubTables[0,0]
+                                actionName =  getStreamingStat().pubTables[0,3]
+                                actionName = strReplace(actionName,"[","")
+                                actionName = strReplace(actionName,"]","")
+                                arr = actionName.split(',')
+                        }
+                        catch(ex){
+                                print(ex)
+                        }
+                        for(actionName in arr){
+                                try{        
+                                        print("unsub: " + tableName + ", "  + actionName)
+                                        unsubscribeTable(tableName=tableName, actionName=actionName)
+                                        sleep(10)
+                                }
+                                catch(ex){
+                                        print(ex)
+                                }
+                        }
+        
+                }
+                while(getStreamingStat().pubTables.rows() != 0)
+        }
+        print("All subscriptions have been cleared !")
+}
+
+
+/**
+*  @ Function name: dropAllEngines
+*  @ Brief: clear all engines of the current node
+*  @ Param:
+*  none
+*  @ Return: print "All engines have been dropped !"
+*  @ Sample usage: dropAllEngines()
+*/
+
+def dropAllEngines(){
+	if(getStreamEngineStat().rows() > 0){
+		engineTypes = getStreamEngineStat().keys()
+		for(engineType in engineTypes){
+			engineNames = getStreamEngineStat()[engineType].name
+			for(name in engineNames){
+				try{
+					dropStreamEngine(name)
+					print("Drop Stream Engine: " + name)
+				}
+				catch(ex){
+					print(ex)
+				}
+			}
+		}
+	}
+	print("All engines have been dropped !")
+}
+
+
+/**
+*  @ Function name: existsShareVariable
+*  @ Brief: determine whether each element of a string scalar or vector is a shared variable.
+*  @ Param:
+*  names: a string scalar/vector indicating object name(s).
+*  @ Return: a scalar/vector indicating whether each element of names is a shared variable.
+*  @ Sample usage: existsShareVariable("variable1")
+*/
+
+def existsShareVariable(names){
+     return defined(names, SHARED)
+}
+
+
+/**
+*  @ Function name: clearAllSharedTables
+*  @ Brief: delete all shared tables of the current node
+*  @ Param:
+*  none
+*  @ Return: print deleted shared table information
+*  @ Sample usage: clearAllSharedTables()
+*/
+
+def clearAllSharedTables(){
+	sharedTables = exec name from objs(true) where form="TABLE", shared=true
+	for(sharedTable in sharedTables){
+		type = exec type from objs(true) where form="TABLE", shared=true, name=sharedTable
+		if(type == "REALTIME"){
+			try{
+				dropStreamTable(sharedTable)
+				print("Drop Shared Table: " + sharedTable)
+			}
+			catch(ex){
+				print(ex)
+			}
+		}
+		else{
+			try{
+				undef(sharedTable, SHARED)
+				print("Drop Shared Table: " + sharedTable)
+			}
+			catch(ex){
+				print(ex)
+			}
+		}
+
+
+	}
+	print("All shared table have been cleared !")
+}
+
+
+/**
+*  @ Function name: clearAllStreamEnv
+*  @ Brief: clear all streaming environments of the current node, including subscriptions, engines and shared tables
+*  @ Param:
+*  none
+*  @ Return: print cleared subscription information, engine information and shared table information
+*  @ Sample usage: clearAllStreamEnv()
+*/
+
+def clearAllStreamEnv(){
+        clearAllSubscriptions()
+        dropAllEngines()
+        clearAllSharedTables()
+}
+
+
+/**
+*  @ Function name: getPersistenceTableNames
+*  @ Brief: get the table names of all shared stream tables with persistence enabled
+*  @ Param:
+*  none
+*  @ Return: print the table names of all shared stream tables with persistence enabled
+*  @ Sample usage: getPersistenceTableNames()
+*/
+
+def getPersistenceTableNames(){
+	if(getConfigure("persistenceDir") == NULL){
+		return NULL
+	}else{
+		shareNames = exec name from objs(true) where type="REALTIME" and shared=true
+		res = array(STRING, 0)
+		for(tbName in shareNames){
+			try{
+				getPersistenceMeta(objByName(tbName))
+			}catch(ex){
+				continue
+			}
+			res.append!(tbName)
+		}
+		return res
+	}
+}
+
+
+/**
+*  @ Function name: getNonPersistenceTableNames
+*  @ Brief: get the table names of all shared stream tables with persistence unenabled
+*  @ Param:
+*  none
+*  @ Return: print the table names of all shared stream tables with persistence unenabled
+*  @ Sample usage: getNonPersistenceTableNames()
+*/
+
+def getNonPersistenceTableNames(){
+	persistenceTableNames = getPersistenceTableNames()
+	sharedStreamingTableNames = exec name from objs(true) where type="REALTIME" and shared=true
+	return sharedStreamingTableNames[!(sharedStreamingTableNames in persistenceTableNames)]
+}
+
+
+/**
+*  @ Function name: getPersistenceStat
+*  @ Brief: get the status of all shared stream tables with persistence enabled
+*  @ Param:
+*  none
+*  @ Return: return metadata of all shared stream tables with persistence enabled
+*  @ Sample usage: getPersistenceStat()
+*/
+
+def getPersistenceStat(){
+	tableNames = getPersistenceTableNames()
+	resultColNames = ["tablename","lastLogSeqNum","sizeInMemory","asynWrite","totalSize","raftGroup","compress","memoryOffset","sizeOnDisk","retentionMinutes","persistenceDir","hashValue","diskOffset"]
+	resultColTypes = ["STRING", "LONG","LONG","BOOL","LONG","INT","BOOL","LONG","LONG","LONG","STRING","INT","LONG"]
+	result = table(1:0, resultColNames, resultColTypes)
+	for(tbname in tableNames){
+		tbStat = getPersistenceMeta(objByName(tbname))
+		tbStat["tablename"] = tbname
+		result.tableInsert(tbStat)	
+	}
+	return result
+}
+
+
+/**
+*  @ Function name: getNonPersistenceTableStat
+*  @ Brief: get the status of all shared stream tables with persistence unenabled
+*  @ Param:
+*  none
+*  @ Return: return metadata of all shared stream tables with persistence unenabled
+*  @ Sample usage: getNonPersistenceTableStat()
+*/
+
+def getNonPersistenceTableStat(){
+	tableNames = getNonPersistenceTableNames()
+	return select name as TableName,  rows, columns, bytes from objs(true) where name in tableNames
+}
+
+
+/**
+*  @ Function name: clearAllPersistenceTables
+*  @ Brief: delete all stream tables with persistence enabled
+*  @ Param:
+*  none
+*  @ Return: none
+*  @ Sample usage: clearAllPersistenceTables()
+*/
+
+def clearAllPersistenceTables(){
+	tableNames = getPersistenceTableNames()
+	for(tbname in tableNames){
+		dropStreamTable(tbname)
+	}
+}
+
+/* *
+*  @brief Return the Data Definition Language (DDL) statement for a specific database as a string.
+*  
+*  @param dbName - The absolute path of the database.
+*  @return - scalar[STRING], a string containing the DDL statement.
+*  
+*  @sample usage 
+*  getDatabaseDDL("dfs://demodb")
+*/
+
+def getDatabaseDDL(dbName){
+	if(!existsDatabase(dbName)){
+		print("databaseName: " + dbName +", does not exist.")
+        		return "Warning: database does not exist."
+		}
+	
+	res = array(STRING)
+	dbSchema = schema(database(dbName))
+	partitionSchema = dbSchema.partitionSchema
+	partitionSites  = snippet(dbSchema.partitionSites)
+	dbpartitionTypeName  = dbSchema.partitionTypeName
+	partitionColumnType = dbSchema.partitionColumnType
+	dbatomic = dbSchema.atomic
+	engineType = dbSchema.engineType
+	dbchunkGranularity = dbSchema.chunkGranularity
+	clusterReplicationEnabled = dbSchema.clusterReplicationEnabled
+	dbpartitionType = dbSchema.partitionType
+	paraCount = size(defs(`database).syntax[0].split(","))
+
+	directory = "directory = '" + dbName +"'"
+	if(engineType==NULL){
+		engineType = "OLAP"
+		}
+	engine = "engine= `" + engineType
+	atomic = "atomic = `" + dbatomic
+	
+	if (size(dbpartitionTypeName)==1){
+		partitionType = "partitionType = " +dbpartitionTypeName		
+		if (dbpartitionTypeName=="HASH"){
+			partitionScheme = "partitionScheme = ["+partitionColumnType+","+partitionSchema+"]"
+			}
+		else if (dbpartitionTypeName=="SEQ"){
+			partitionScheme = "partitionScheme = "+partitionSchema
+			}
+		else if (dbpartitionTypeName=="RANGE"){						
+			f = def(x){a = ();return  snippet(a.append!(x)).split("(")[1].split(")")[0]}
+			partitionSchemaTmp = each(f,partitionSchema)		
+			partitionScheme =  "partitionScheme =[" + string(concat(partitionSchemaTmp,","))+"]"+"$"+string(partitionColumnType)
+			}
+		else{			
+			f = def(x,partitionColumnType){
+				a = ();
+				if(partitionColumnType==17){
+					return  snippet(a.append!(x)).split("(")[1].split(")")[0]+"$"+string(18)
+					}
+				else {
+					return  snippet(a.append!(x)).split("(")[1].split(")")[0]+"$"+string(partitionColumnType)
+					}
+				}
+			partitionSchemaTmp = each(f{,partitionColumnType},partitionSchema)		
+			partitionScheme =  "partitionScheme =[" + string(concat(partitionSchemaTmp,","))+"]"
+			}
+		if(partitionSites == NULL){
+			if(paraCount==6){
+				tmp = "database(" + directory + ", " + partitionType + ", " + partitionScheme + ", " + engine + ", " + atomic+ ")"
+				}
+			else{
+				chunkGranularity = "chunkGranularity = `"+ dbchunkGranularity 
+				tmp = "database(" + directory + ", " + partitionType + ", " + partitionScheme + ", " + engine + ", " + atomic + ", " + chunkGranularity +")"
+				}
+			}
+		else{
+			locations = "locations = " +snippet(partitionSites)
+			if(paraCount==6){
+				tmp = "database(" + directory + ", " + partitionType + ", " + partitionScheme + ", " + locations + ", "+ engine + ", " + atomic+ ")"
+				}
+			else{
+				chunkGranularity = "chunkGranularity = `"+ dbchunkGranularity
+				tmp = "database(" + directory + ", " + partitionType + ", " + partitionScheme + ", " + locations + ", "+ engine + ", " + atomic+  ", " + chunkGranularity +")"
+				}
+			}
+		}
+	else{
+		partitionType = "partitionType = COMPO" 
+		for (i in 0..(size(dbpartitionTypeName)-1)){
+			if (dbpartitionTypeName[i]=="HASH"){
+				partitonTmp = "db"+ i +" =database(, partitionType = " +  dbpartitionTypeName[i] +", partitionScheme = ["+partitionColumnType[i]+","+partitionSchema[i]+"])"
+			}
+			else if (dbpartitionTypeName[i]=="SEQ"){
+				partitonTmp = "db"+ i +" =database(, partitionType = " +  dbpartitionTypeName[i] +", partitionScheme =" +partitionSchema[i] +")"
+			}
+			else if (dbpartitionTypeName[i]=="RANGE"){						
+			f = def(x){a = ();return  snippet(a.append!(x)).split("(")[1].split(")")[0]}
+			partitionSchemaTmp = each(f,partitionSchema[i])		
+			partitonTmp = "db"+ i +" =database(, partitionType = " +  dbpartitionTypeName[i] +", partitionScheme =[" + string(concat(partitionSchemaTmp,","))+"]"+"$"+string(partitionColumnType[i])+")"
+			}
+			else {		
+				f = def(x,partitionColumnType){
+					a = ();
+					if(partitionColumnType==17){
+						return  snippet(a.append!(x)).split("(")[1].split(")")[0]+"$"+string(18)
+						}
+					else {
+						return  snippet(a.append!(x)).split("(")[1].split(")")[0]+"$"+string(partitionColumnType)
+						}
+					}
+				partitionSchemaTmp = each(f{,partitionColumnType[i]},partitionSchema[i])		
+				partitonTmp = "db"+ i +" =database(, partitionType = " +  dbpartitionTypeName[i] +", partitionScheme =[" + string(concat(partitionSchemaTmp,","))+"])"
+			}
+		res.append!(partitonTmp)
+		}
+		partitionScheme = "partitionScheme = ["+concat("db"+string(0..(size(dbpartitionTypeName)-1)),",")+"]"
+		if(partitionSites == NULL){
+			if(paraCount==6){
+				tmp = "database(" + directory + ", " + partitionType + ", " + partitionScheme + ", " + engine + ", " + atomic+ ")"
+			}
+			else{
+				chunkGranularity = "chunkGranularity = `"+ dbchunkGranularity 
+				tmp = "database(" + directory + ", " + partitionType + ", " + partitionScheme + ", " + engine + ", " + atomic + ", " + chunkGranularity +")"
+			}
+		}
+		else{
+			locations = "locations = " +snippet(partitionSites)
+			if(paraCount==6){
+				tmp = "database(" + directory + ", " + partitionType + ", " + partitionScheme + ", " + locations + ", "+ engine + ", " + atomic+ ")"
+			}  
+			else{
+				chunkGranularity = "chunkGranularity = `"+ dbchunkGranularity
+				tmp = "database(" + directory + ", " + partitionType + ", " + partitionScheme + ", " + locations + ", "+ engine + ", " + atomic+  ", " + chunkGranularity +")"
+			}
+		}		
+	}
+	res.append!(tmp)
+	return res.concat(";")
+}
+
+/* *
+*  @brief Return the Data Definition Language (DDL) statement of a specific database table as a string.
+*  
+*  @param dbName - The absolute path of the database.
+*  @param tbName - The name of the database table.
+*  @return - scalar[STRING], a string containing the DDL statement.
+*  
+*  @sample usage 
+*  getDBTableDDL("dfs://demodb","tb")
+*/
+def getDBTableDDL(dbName,tbName){
+	if(!existsTable(dbName, tbName)){
+    		print("tableName: " + tbName +", does not exist in database : " +dbName)
+        		return "Warning: table does not exist."
+    	}
+	
+	tbSchema = schema(loadTable(dbName,tbName))
+	colDefs = tbSchema.colDefs
+
+	dbHandle = "dbHandle = database('" + dbName +"')"
+	tableSchema = "table = table(1:0, " + snippet(colDefs.name) +"," + snippet(colDefs.typeString) +")"
+	tableName = "tableName = '" + snippet(tbName) +"'"
+	compressMethods = "compressMethods = dict(" + snippet(tbSchema.compressMethods.name) +"," +snippet(tbSchema.compressMethods.compressMethods)+")"
+
+	engineT = tbSchema.engineType
+	paraCountDimension = size(defs(`createTable).syntax[0].split(","))
+	paraCountPartition = size(defs(`createPartitionedTable).syntax[0].split(","))
+	boolTrans = dict(0 1, `false`true)
+
+	if (tbSchema.partitionColumnIndex[0]==-1){
+		if ((engineT =='OLAP') or (engineT == NULL)){
+			res = "createTable("+dbHandle+","+tableSchema+","+tableName+","+compressMethods+")"
+			}
+		else{
+			if(paraCountDimension==6){
+				sortColumns = "sortColumns = " + snippet(tbSchema.sortColumns) 
+				keepDuplicates = "keepDuplicates = " +tbSchema.keepDuplicates
+				res = "createTable("+dbHandle+","+tableSchema+","+tableName+","+compressMethods+","+sortColumns+","+keepDuplicates+")"
+			}
+			if(paraCountDimension==7)
+				sortColumns = "sortColumns = " + snippet(tbSchema.sortColumns)
+				keepDuplicates = "keepDuplicates = " +tbSchema.keepDuplicates
+				softDelete = "softDelete = " + boolTrans[tbSchema.softDelete]
+				res = "createTable("+dbHandle+","+tableSchema+","+tableName+","+compressMethods+","+sortColumns+","+keepDuplicates+","+softDelete+")"
+			}
+		}
+	else{
+		if ((engineT =='OLAP') or (engineT == NULL)){
+			partitionColumns = "partitionColumns =" + snippet(array(STRING).append!(tbSchema.partitionColumnName))
+			res = "createPartitionedTable("+dbHandle+","+tableSchema+","+tableName+","+partitionColumns+","+compressMethods+")"
+			}
+		else{
+			if(paraCountPartition==8){
+				sortColumns = "sortColumns = " + snippet(tbSchema.sortColumns) 
+				keepDuplicates = "keepDuplicates = " +tbSchema.keepDuplicates
+				partitionColumns = "partitionColumns =" + snippet(array(STRING).append!(tbSchema.partitionColumnName))
+				if (any(tbSchema.keys()==`sortKeyMappingFunction)){
+					sortKeyMappingFunction ="sortKeyMappingFunction = ["+ concat(tbSchema.sortKeyMappingFunction,",") + "]"
+					res = "createPartitionedTable("+dbHandle+","+tableSchema+","+tableName+","+partitionColumns+","+compressMethods+","+sortColumns+","+keepDuplicates+","+sortKeyMappingFunction+")"
+				}
+				else{
+					res = "createPartitionedTable("+dbHandle+","+tableSchema+","+tableName+","+partitionColumns+","+compressMethods+","+sortColumns+","+keepDuplicates+")"
+				}
+			}
+			if(paraCountPartition==9){
+				sortColumns = "sortColumns = " + snippet(tbSchema.sortColumns)
+				keepDuplicates = "keepDuplicates = " +tbSchema.keepDuplicates
+				softDelete = "softDelete = " + boolTrans[tbSchema.softDelete]
+				partitionColumns = "partitionColumns =" + snippet(array(STRING).append!(tbSchema.partitionColumnName))
+				if (any(tbSchema.keys()==`sortKeyMappingFunction)){
+					sortKeyMappingFunction ="sortKeyMappingFunction = ["+ concat(tbSchema.sortKeyMappingFunction,",") + "]"
+					res = "createPartitionedTable("+dbHandle+","+tableSchema+","+tableName+","+partitionColumns+","+compressMethods+","+sortColumns+","+keepDuplicates+","+sortKeyMappingFunction+","+softDelete+")"
+				}
+				else{
+					res = "createPartitionedTable("+dbHandle+","+tableSchema+","+tableName+","+partitionColumns+","+compressMethods+","+sortColumns+","+keepDuplicates+","+softDelete+")"
+				}
+			}		
+		}		
+	}
+	if(any(split((typestr(res))," ")==`VECTOR)){
+		return res[0]
+		}
+	else{
+		return res
+	}
+}
+
+
+/* *
+*  @ Function name: getChunkUsageByNode
+*  @ Brief: Check if the data in a table is evenly distributed across all nodes
+*  @ Param:
+*  dbName: the name of one database
+*  tbName: the name of one table in the database
+*  @ Return: a table that contains the number of chunks, disk usage, and the proportion of disk usage on each node
+*  @ Sample usage: 
+*  getChunkUsageByNode("dfs://TL_level2", "trade")
+*/
+def getChunkUsageByNode(dbName, tbName) {
+	dfsPath = dbName.strReplace("dfs://","/")+"%"
+	datanode = exec node from pnodeRun(getNodeType) where value=0 or value =3
+	
+	checkRes = select count(*) as count, sum(diskUsage) as diskUsage from pnodeRun(getTabletsMeta{dfsPath, tbName, true, -1},datanode) group by node
+	checkRes = select *, diskUsage\sum(diskUsage) as percent from checkRes order by node
+	return checkRes
+}
+
+
+/* *
+*  @ Function name: getChunkUsageByVolume
+*  @ Brief: Check if the data in a table is evenly distributed across all volumes
+*  @ Param:
+*  dbName: the name of one database
+*  tbName: the name of one table in the database
+*  node(default NULL): the alias scalar or vector of datanodes
+*  @ Return: a table that contains the number of chunks, disk usage, and the proportion of disk usage on each node by node and volume
+*  @ Sample usage: 
+*  getChunkUsageByVolume("dfs://TL_level2", "trade", `dnode2`dnode3)
+*/
+def getChunkUsageByVolume(dbName, tbName, node = NULL) {
+	dfsPath = dbName.strReplace("dfs://", "/")+"%"
+	datanode = node
+	if (node.size() == 1){
+		if (node==NULL){
+			datanode = exec node from pnodeRun(getNodeType) where value=0 or value =3
+		}
+	}
+	checkRes = select path.substr(0, path.strpos("/CHUNKS")) as path, node, diskUsage from pnodeRun(getTabletsMeta{dfsPath, tbName, true, -1}, datanode)
+	checkRes = select count(*), sum(diskUsage) as diskUsage from checkRes group by node, path
+	checkRes = select *, diskUsage\sum(diskUsage) as percent from checkRes context by node
+	return checkRes
+}

@@ -1,5 +1,12 @@
-//dolphindb实现通达信的指标计算
 module mytt
+
+/**
+DolphinDB实现通达信的指标计算
+module to support Python MyTT Library
+DolphinDB Inc.
+DolphinDB server version: 1.30.21 2023.02.15/2.00.9 2023.02.15
+Last modification time: 2023.04.23
+*/
 
 //---------------------------------------------0级：核心工具函数---------------
 @state
@@ -359,18 +366,19 @@ def BARSLASTCOUNT(S) {
 }
 
 /*
- * 判断两个序列是否交叉的函数，判断向上金叉穿越 CROSS(MA(C,5),MA(C,10))  判断向下死叉穿越 CROSS(MA(C,10),MA(C,5))。
+ * 判断两个序列是否交叉的函数，判断向上金叉穿越 CROSS_(MA(C,5),MA(C,10))  判断向下死叉穿越 CROSS_(MA(C,10),MA(C,5))。
+ * 由于CROSS与dolphindb内置变量名冲突，故函数名改为CROSS_
  * :param S1: 序列。
  * :param S2: 序列。
  * :return S_: 序列，BOOL型，S1是否向上交叉S2。
 */
 @state
-def CROSS(S1, S2) {
+def CROSS_(S1, S2) {
 	return ::not(myttCompare(>, ::prev(S1), ::prev(S2))) && myttCompare(>, S1, S2)
 }
 
 /*
- * 判断两个序列是否在个持一定周期后再交叉的函数，判断两个序列是否再个持N周期后再交叉，N=1时等同于CROSS(S1, S2)。
+ * 判断两个序列是否在个持一定周期后再交叉的函数，判断两个序列是否再个持N周期后再交叉，N=1时等同于CROSS_(S1, S2)。
  * :param S1: 序列。
  * :param S2: 序列。
  * :param N: 两个序列个持不交叉的周期数。
@@ -402,6 +410,26 @@ def VALUEWHEN(S, X) {
 @state
 def BETWEEN(S, A, B) {
 	return ((A < S) and (S < B)) or ((A > S) and (S > B))
+}
+
+/*
+ * 统计S序列的某个元素是近多少周期内的最大值，TOPRANGE(HIGH)表示当前最高价是近多少周期内最高价的最大值。
+ * :param S: 序列。
+ * :return S_: 序列，INT型，表示S序列的某个元素是近多少周期内的最大值。
+*/
+@state
+def TOPRANGE(S) {
+	return ::topRange(S)
+}
+
+/*
+ * 统计S序列的某个元素是近多少周期内的最小值，LOWRANGE(LOW)表示当前最低价是近多少周期内最低价的最小值。
+ * :param S: 序列。
+ * :return S_: 序列，INT型，表示S序列的某个元素是近多少周期内的最小值。
+*/
+@state
+def LOWRANGE(S) {
+	return ::lowRange(S)
 }
 
 
@@ -490,7 +518,7 @@ def BIAS(CLOSE, L1 = 6, L2 = 12, L3 = 24) {
 /*
  * BOLL函数，计算通信达的BOLL指标。
  * :param CLOSE: 序列，如收盘价序列（CLOSE）。
- * :param N: 数值，默认值是26。
+ * :param N: 数值，默认值是20。
  * :param P: 数值，默认值是2。
  * :return UPPER，MID，LOWER: 3个序列。
 */

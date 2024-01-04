@@ -499,6 +499,284 @@ checkChunkReplicas("dfs://rangedb", "pt", "af8268f0-151e-c18b-a84c-a77560b721e6"
 true
 ```
 
+### 3.13 clearAllSubscriptions 
 
+**Syntax**
+
+```
+clearAllSubscriptions()
+```
+
+**Arguments**
+
+None
+
+**Return**
+
+Returns the unsubscribed stream table name and handle name, and prints "All subscriptions have been cleared !".
+
+**Details**
+
+Clears all subscriptions of the current node.
+
+**Example**
+
+```
+clearAllSubscriptions()
+```
+unsub: st, sub1  
+All subscriptions have been cleared !
+
+### 3.14 dropAllEngines 
+
+**Syntax**
+
+```
+dropAllEngines()
+```
+
+**Arguments**
+
+None
+
+**Return**
+
+Returns "All engines have been dropped !".
+
+**Details**
+
+Clears all engines of the current node.
+
+**Example**
+
+```
+dropAllEngines()
+```
+All engines have been dropped !
+
+### 3.15 existsShareVariable 
+
+**Syntax**
+
+```
+existsShareVariable(names)
+```
+
+**Arguments**
+
+- names: a string scalar/vector indicating object name(s).
+
+**Return**
+
+Returns a scalar/vector indicating whether each element of names is a shared variable.
+
+**Details**
+
+Determines whether each element of a string scalar or vector is a shared variable.
+
+**Example**
+
+```
+share streamTable(10000:0, `timestamp`sym`val, [TIMESTAMP, SYMBOL, INT]) as variable1
+existsShareVariable("variable1")
+```
+true
+
+### 3.16 clearAllSharedTables 
+
+**Syntax**
+
+```
+clearAllSharedTables()
+```
+
+**Arguments**
+
+None
+
+**Return**
+
+Returns the name of the deleted shared table and prints "All shared table have been cleared !".
+
+**Details**
+
+Deletes all shared tables of the current node.
+
+**Example**
+
+```
+clearAllSharedTables()
+```
+Drop Shared Table: st  
+All shared table have been cleared !
+
+### 3.17 clearAllStreamEnv 
+
+**Syntax**
+
+```
+clearAllStreamEnv()
+```
+
+**Arguments**
+
+None
+
+**Return**
+
+Same as the returns conbination of the clearAllSubscriptions, dropAllEngines, and clearAllSharedTables.
+
+**Details**
+
+Clears all streaming environments of the current node, including subscriptions, engines and shared tables.
+
+**Example**
+
+```
+clearAllStreamEnv()
+```
+unsub: st, sub1  
+All subscriptions have been cleared !  
+All engines have been dropped !  
+Drop Stream Table: dummyTable1  
+All stream table have been cleared !
+
+### 3.18 getPersistenceTableNames 
+
+**Syntax**
+
+```
+getPersistenceTableNames()
+```
+
+**Arguments**
+
+None
+
+**Return**
+
+Prints the table names of all shared stream tables with persistence enabled.
+
+**Details**
+
+Gets the table names of all shared stream tables with persistence enabled.
+
+**Example**
+
+```
+getPersistenceTableNames()
+```
+[st1,st2]
+
+### 3.19 getNonPersistenceTableNames 
+
+**Syntax**
+
+```
+getNonPersistenceTableNames()
+```
+
+**Arguments**
+
+None
+
+**Return**
+
+Prints the table names of all shared stream tables with persistence unenabled.
+
+**Details**
+
+Gets the table names of all shared stream tables with persistence unenabled.
+
+**Example**
+
+```
+getNonPersistenceTableNames()
+```
+[st1,st2]
+
+### 3.20 getPersistenceStat 
+
+**Syntax**
+
+```
+getPersistenceStat()
+```
+
+**Arguments**
+
+None
+
+**Return**
+
+Returns metadata of all shared stream tables with persistence enabled.
+
+**Details**
+
+Gets the status of all shared stream tables with persistence enabled.
+
+**Example**
+
+```
+getPersistenceStat()
+```
+| lastLogSeqNum | sizeInMemory | asynWrite | compress | retentionMinutes | sizeOnDisk | persistenceDir        | hashValue | diskOffset | totalSize | raftGroup | memoryOffset | tablename |
+| ------------- | ------------ | --------- | -------- | ---------------- | ---------- | --------------------- | --------- | ---------- | --------- | --------- | ------------ | --------- |
+| -1            | 0            | TRUE      | TRUE     | 1440             | 0          | C:/DolphinDB/Data/st2 | 1         | 0          | 0         | -1        | 0            | st2       |
+
+### 3.21 getNonPersistenceTableStat 
+
+**Syntax**
+
+```
+getNonPersistenceTableStat()
+```
+
+**Arguments**
+
+None
+
+**Return**
+
+Returns metadata of all shared stream tables with persistence unenabled.
+
+**Details**
+
+Gets the status of all shared stream tables with persistence unenabled.
+
+**Example**
+
+```
+getNonPersistenceTableStat()
+```
+| TableName | rows | columns | bytes |
+| --------- | ---- | ------- | ----- |
+| st3       | 0    | 3       | 20    |
+
+### 3.22 clearAllPersistenceTables 
+
+**Syntax**
+
+```
+clearAllPersistenceTables()
+```
+
+**Arguments**
+
+None
+
+**Return**
+
+None
+
+**Details**
+
+Deletes all stream tables with persistence enabled.
+
+**Example**
+
+```
+clearAllPersistenceTables()
+```
 
  

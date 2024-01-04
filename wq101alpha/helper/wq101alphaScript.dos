@@ -2,7 +2,7 @@
 *  @ brief  
 *  This script calculates all 101 alpha factors and save them into database.
 *  @ Author: DolphinDB
-*  @ Last modification time: 2023.05.25
+*  @ Last modification time: 2023.04.23
 *  @ DolphinDB server version: 2.00.9
 *  @ FileName: wq101alphaScript.dos
 */
@@ -16,117 +16,27 @@ def createFactorWideDbTable(dbName, tbName){
 		dropDatabase(dbName)
 	}
 
-	dbDate = database("", VALUE,  2010.01M + (0..10)*12)
-	dbSymbol=database("", VALUE, `WQAlpha + string(1..101))
+	dbDate = database("", RANGE,  2010.01M + (0..10)*12)
+	dbSymbol=database("", VALUE, `alpha + string(1..101))
 	db = database(directory=dbName, partitionType=COMPO, partitionScheme=[dbDate,dbSymbol],engine="TSDB")
 
 	baseColNames = `tradetime`factorname join ("sz"+lpad(string(000001..004000), 6, `0))
-	baseColType = ([TIMESTAMP, SYMBOL]).append!(take(DOUBLE, 4000))
-
-	mtable=table(1:0, baseColNames, baseColType);
-	min_factor = db.createPartitionedTable(table=mtable, tableName=tbName, partitionColumns=`tradetime`factorname, sortColumns=`factorname`tradetime, compressMethods={tradetime:"delta"}, keepDuplicates=LAST)
-}
-
-
-def createFactorLongDbTable(dbName, tbName){
-	if(existsDatabase(dbName)){
-		dropDatabase(dbName)
-	}
-
-	dbDate = database("", VALUE,  2010.01M + (0..10)*12)
-	dbSymbol=database("", VALUE, `WQAlpha + string(1..101))
-	db = database(directory=dbName, partitionType=COMPO, partitionScheme=[dbDate,dbSymbol], engine="TSDB")
-
-	baseColNames = `tradetime`securityid`factorname`value
-	baseColType = [TIMESTAMP, SYMBOL, SYMBOL, DOUBLE]
+	baseColType = ([TIMESTAMP,SYMBOL]).append!(take(DOUBLE,4000))
 
 	mtable=table(1:0, baseColNames,baseColType);
-	min_factor = db.createPartitionedTable(table=mtable, tableName=tbName, partitionColumns=`tradetime`factorname, sortColumns=`securityid`tradetime, compressMethods={tradetime:"delta"},keepDuplicates=LAST)
+	min_factor = db.createPartitionedTable(table=mtable, tableName=tbName, partitionColumns=`tradetime`factorname,sortColumns=`factorname`tradetime,compressMethods={tradetime:"delta"},keepDuplicates=LAST)
 }
 
 
-def writePanelInWideTable(result, factor, dbName, tbName){
-    if (typestr(result) == CODE){
-        res = result.eval()$DOUBLE
-    } else {
-        res = result
-    }
+def writePanelInWideTable(res, factor){
 	resWide = table(res.rowNames() as tradetime, res).rename!(array(STRING,0,100).append!(["tradetime"]).append!(res.colNames()))
 	resWide[`factorname] = factor
 	reorderColumns!(resWide,`tradetime`factorname)
-	loadTable(dbName, tbName).append!(resWide)
+	loadTable("dfs://K_FACTOR_WIDE","factor_k_wide").append!(resWide)
 }
 
+//Load data
 
-def writePanelInLongTable(result, factor, dbName, tbName){
-    if (typestr(result) == CODE){
-        res = result.eval()$DOUBLE
-    } else {
-        res = result
-    }
-    resWide = table(res.rowNames() as tradetime, res).rename!(array(STRING,0,100).append!(["tradetime"]).append!(res.colNames()))
-    returnTable = resWide.unpivot(`tradetime, resWide.colNames()[1:])
-    returnTable[`factorname] = factor
-    returnTable.rename!(`valueType, `securityid)
-    returnTable.reorderColumns!(`tradetime`securityid`factorname`value)
-    loadTable(dbName, tbName).append!(returnTable)
-} 
-
-
-def calcAndWriteWQAlphas(data, startTime, endTime, tbType, dbName, tbName, n){
-    alphaName = exec name from defs() where name in "wq101alpha::WQAlpha" + string(n)
-    alphaSyntax = exec syntax from defs() where name in "wq101alpha::WQAlpha" + string(n)
-    function = alphaName + alphaSyntax
-    
-    open, close, high, low, vol, vwap, cap, indclass = panel(data.tradetime, data.securityid, [data.open, data.close, data.high, data.low, data.vol, data.vwap, data.cap, data.indclass]) 
-    
-    d = dict(STRING, ANY)
-    d["close"] = close
-    d["open"] = open
-    d["high"] = high
-    d["low"] = low
-    d["vol"] = vol
-    d["vwap"] = vwap
-    d["cap"] = cap
-    d["indclass"] = indclass
-    
-    script = parseExpr(function, d, modules=`wq101alpha)
-    factorName = "WQAlpha" + string(n)
-    
-    if (tbType == "long"){
-        each(writePanelInLongTable{, , dbName, tbName}, script, factorName)
-    } else if (tbType == "wide"){
-        each(writePanelInWideTable{, , dbName, tbName}, script, factorName)
-    } else {
-        return "unsupported table type"
-    }
-}
-
-
-def calcAndWriteWQAlphasWithPrepare(data, startTime, endTime, tbType, dbName, tbName, n){
-    alphaName = exec name from defs() where name in "prepare101::calAlpha" + string(n)
-    alphaSyntax = exec syntax from defs() where name in "prepare101::calAlpha" + string(n)
-    function = alphaName + alphaSyntax
-    
-    d = dict(STRING, ANY)
-    d["data"] = data
-    d["startTime"] = startTime
-    d["endTime"] = endTime
-    
-    script = parseExpr(function, d, modules=`prepare101)
-    factorName = "WQAlpha" + string(n)
-    
-    if (tbType == "long"){
-        each(writePanelInLongTable{, , dbName, tbName}, script, factorName)
-    } else if (tbType == "wide"){
-        each(writePanelInWideTable{, , dbName, tbName}, script, factorName)
-    } else {
-        return "unsupported table type"
-    }
-}
-
-
-//1.load data
 login('admin', '123456')
 rawData = loadTable("dfs://k_day_level", "k_day")
 infoData = select * from loadTable("dfs://info", "info_data")
@@ -135,19 +45,10 @@ endTime = timestamp(2010.01.31)
 data = prepareData(rawData=rawData, startTime=startTime, endTime=endTime, securityidName="securityid", tradetimeName="tradetime", openName="open", closeName="close", highName="high", lowName="low", volumeName="vol", vwapName="vwap", capName="cap", indclassName="indclass", infoData=infoData, infoSecurityidName="securityid")
 
 
-//2.create long and wide factor table
-dbNameWide = "dfs://K_FACTOR_WIDE"
-tbNameWide = "factor_k_wide"
-dbNameLong = "dfs://K_FACTOR_LONG"
-tbNameLong = "factor_k_long"
+//Calculate and save factors
+createFactorWideDbTable("dfs://K_FACTOR_WIDE", "factor_k_wide")
 
-createFactorWideDbTable(dbNameWide, tbNameWide)
-createFactorLongDbTable(dbNameLong, tbNameLong)
-
-
-//3.1 calculate the WQ Alphas using module wq101alpha and write into wide table
-calcAndWriteWQAlphas(data, startTime, endTime, "wide", dbNameWide, tbNameWide, 1..101)
-
-
-//3.2 calculate the WQ Alphas using module prepare101 and write into long table
-calcAndWriteWQAlphasWithPrepare(data, startTime, endTime, "long", dbNameLong, tbNameLong, 1..101)
+for (i in 1:102){
+    res = parseExpr('calAlpha' + string(i) + '(data, startTime, endTime)').eval()
+    writePanelInWideTable(double(res), 'alpha' + string(i))
+}

@@ -1,0 +1,95 @@
+def cleanEnvironment(){
+	try{ dropStreamEngine("taReactiveSateEngine") } catch(ex){ print(ex) }
+	undef all
+}
+cleanEnvironment()
+go
+use ta
+go
+
+schema = table(`tradedate`symbol`high`low`open`close`volume`bs`periods as name, `DATE`SYMBOL`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`BOOL`INT as type)
+data=loadText(getHomeDir() + "/testData.csv" ,schema=schema)
+
+name = `tradedate`symbol`high`low`open`close`volume`bs`periods
+type = `DATE`SYMBOL`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`BOOL`INT
+inputTable = table(1:0, name, type)
+name = `symbol`tradedate`VAR`STDDEV`BETA`SMA`EMA`WMA`DEMA`TEMA`TRIMA`KAMA`T3`MA`BBANDS1`BBANDS2`BBANDS3`RSI`STOCHF1`STOCHF2`STOCH1`STOCH2`STOCHRSI1`STOCHRSI2`TRIX`CORREL`LINEARREG_SLOPE`LINEARREG_INTERCEPT`LINEARREG_ANGLE`LINEARREG`TSF`BOP`CCI`TRANGE`PLUS_DM`PLUS_DI`MINUS_DM`MINUS_DI`DX`ADX`ADXR`CMO`MACD1`MACD2`MACD3`MACDEXT1`MACDEXT2`MACDEXT3`MACDFIX1`MACDFIX2`MACDFIX3`MIDPRICE`MIDPOINT`MOM`ROC`ROCP`ROCR`ROCR100`PPO`MAVP`APO`AROON1`AROON2`AROONOSC`ULTOSC`WILLR`AD`OBV`AVGPRICE`MEDPRICE`TYPPRICE`WCLPRICE`ATR`NATR`MFI
+type = `SYMBOL`DATE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE
+outputTable = table(1:0, name, type)
+
+reactiveStateMetrics=<[
+    tradedate,
+    ta::var(close, timePeriod=5, nbdev=1) as `VAR,
+    ta::stddev(close, timePeriod=5, nbdev=1) as `STDDEV,
+    ta::beta(high, low, timePeriod=5) as `BETA, 
+    ta::sma(close, timePeriod=30) as `SMA, 
+    ta::ema(close, timePeriod=30) as `EMA, 
+    ta::wma(close, timePeriod=30) as `WMA, 
+    ta::dema(close, timePeriod=30) as `DEMA, 
+    ta::tema(close, timePeriod=30) as `TEMA, 
+    ta::trima(close, timePeriod=30) as `TRIMA, 
+    ta::kama(close, timePeriod=30) as `KAMA, 
+    ta::t3(close, timePeriod=5, vfactor=1) as `T3, 
+    ta::ma(close, timePeriod=30, maType=0) as `MA, 
+    ta::bBands(close, timePeriod=5, nbdevUp=2, nbdevDn=2, maType=0) as `BBANDS1`BBANDS2`BBANDS3, 
+    ta::rsi(close, timePeriod=14) as `RSI, 
+    ta::stochf(high, low, close, fastkPeriod=5, fastdPeriod=3, fastdMatype=0) as `STOCHF1`STOCHF2, 
+    ta::stoch(high, low, close, fastkPeriod=5, slowkPeriod=3, slowkMatype=0, slowdPeriod=3, slowdMatype=0) as `STOCH1`STOCH2, 
+    ta::stochRsi(close, timePeriod=14, fastkPeriod=5, fastdPeriod=3, fastdMatype=0) as `STOCHRSI1`STOCHRSI2, 
+    ta::trix(close, timePeriod=30) as `TRIX, 
+    ta::correl(high, low, timePeriod=30) as `CORREL, 
+    ta::linearreg_slope(close, timePeriod=14) as `LINEARREG_SLOPE, 
+    ta::linearreg_intercept(close, timePeriod=14) as `LINEARREG_INTERCEPT, 
+    ta::linearreg_angle(close, timePeriod=14) as `LINEARREG_ANGLE, 
+    ta::linearreg(close, timePeriod=14) as `LINEARREG, 
+    ta::tsf(close, timePeriod=14) as `TSF, 
+    ta::bop(open, high, low, close) as `BOP, 
+    ta::cci(high, low, close, timePeriod=14) as `CCI, 
+    ta::trange(high, low, close) as `TRANGE, 
+    ta::plus_dm(high, low, timePeriod=14) as `PLUS_DM, 
+    ta::plus_di(high, low, close, timePeriod=14) as `PLUS_DI, 
+    ta::minus_dm(high, low, timePeriod=14) as `MINUS_DM, 
+    ta::minus_di(high, low, close, timePeriod=14) as `MINUS_DI, 
+    ta::dx(high, low, close, timePeriod=14) as `DX, 
+    ta::adx(high, low, close, timePeriod=14) as `ADX, 
+    ta::adxr(high, low, close, timePeriod=14) as `ADXR, 
+    ta::cmo(close, timePeriod=14) as `CMO, 
+    ta::macd(close, fastPeriod=12, slowPeriod=26, signalPeriod=9) as `MACD1`MACD2`MACD3, 
+    ta::macdExt(close, fastPeriod=12, fastMaType=0, slowPeriod=26, slowMaType=0, signalPeriod=9, signalMaType=0) as `MACDEXT1`MACDEXT2`MACDEXT3, 
+    ta::macdFix(close, signalPeriod=9) as `MACDFIX1`MACDFIX2`MACDFIX3, 
+    ta::midPrice(high, low, timePeriod=14) as `MIDPRICE, 
+    ta::midPoint(close, timePeriod=14) as `MIDPOINT, 
+    ta::mom(close, timePeriod=10) as `MOM, 
+    ta::roc(close, timePeriod=10) as `ROC, 
+    ta::rocp(close, timePeriod=10) as `ROCP, 
+    ta::rocr(close, timePeriod=10) as `ROCR, 
+    ta::rocr100(close, timePeriod=10) as `ROCR100, 
+    ta::ppo(close, fastPeriod=12, slowPeriod=26, maType=0) as `PPO, 
+    ta::mavp(close, periods, minPeriod=2, maxPeriod=30, maType=0) as `MAVP, 
+    ta::apo(close, fastPeriod=12, slowPeriod=26, maType=0) as `APO, 
+    ta::aroon(high, low, timePeriod=14) as `AROON1`AROON2, 
+    ta::aroonOsc(high, low, timePeriod=14) as `AROONOSC, 
+    ta::ultOsc(high, low, close, timePeriod1=7, timePeriod2=14, timePeriod3=28) as `ULTOSC, 
+    ta::willr(high, low, close, timePeriod=14) as `WILLR, 
+    ta::ad(high, low, close, volume) as `AD, 
+    ta::obv(close, volume) as `OBV, 
+    ta::avgPrice(open, high, low, close) as `AVGPRICE, 
+    ta::medPrice(high, low) as `MEDPRICE, 
+    ta::typPrice(high, low, close) as `TYPPRICE, 
+    ta::wclPrice(high, low, close) as `WCLPRICE, 
+    ta::atr(high, low, close, timePeriod=14) as `ATR, 
+    ta::natr(high, low, close, timePeriod=14) as `NATR, 
+    ta::mfi(high, low, close, volume, timePeriod=14) as `MFI
+]>
+
+engine = createReactiveStateEngine(name="taReactiveSateEngine", metrics=reactiveStateMetrics, dummyTable=inputTable, outputTable=outputTable, keyColumn=`symbol, keepOrder=true)
+engine.append!(data)
+res_stream = select * from outputTable order by symbol, tradedate
+res_sql = select symbol, tradedate, ta::var(close, timePeriod=5, nbdev=1) as `VAR,ta::stddev(close, timePeriod=5, nbdev=1) as `STDDEV, ta::beta(high, low, timePeriod=5) as `BETA, ta::sma(close, timePeriod=30) as `SMA, ta::ema(close, timePeriod=30) as `EMA, ta::wma(close, timePeriod=30) as `WMA, ta::dema(close, timePeriod=30) as `DEMA, ta::tema(close, timePeriod=30) as `TEMA, ta::trima(close, timePeriod=30) as `TRIMA, ta::kama(close, timePeriod=30) as `KAMA, ta::t3(close, timePeriod=5, vfactor=1) as `T3, ta::ma(close, timePeriod=30, maType=0) as `MA, ta::bBands(close, timePeriod=5, nbdevUp=2, nbdevDn=2, maType=0) as `BBANDS1`BBANDS2`BBANDS3, ta::rsi(close, timePeriod=14) as `RSI, ta::stochf(high, low, close, fastkPeriod=5, fastdPeriod=3, fastdMatype=0) as `STOCHF1`STOCHF2, ta::stoch(high, low, close, fastkPeriod=5, slowkPeriod=3, slowkMatype=0, slowdPeriod=3, slowdMatype=0) as `STOCH1`STOCH2, ta::stochRsi(close, timePeriod=14, fastkPeriod=5, fastdPeriod=3, fastdMatype=0) as `STOCHRSI1`STOCHRSI2,  ta::trix(close, timePeriod=30) as `TRIX, ta::correl(high, low, timePeriod=30) as `CORREL, ta::linearreg_slope(close, timePeriod=14) as `LINEARREG_SLOPE, ta::linearreg_intercept(close, timePeriod=14) as `LINEARREG_INTERCEPT, ta::linearreg_angle(close, timePeriod=14) as `LINEARREG_ANGLE, ta::linearreg(close, timePeriod=14) as `LINEARREG, ta::tsf(close, timePeriod=14) as `TSF, ta::bop(open, high, low, close) as `BOP, ta::cci(high, low, close, timePeriod=14) as `CCI, ta::trange(high, low, close) as `TRANGE, ta::plus_dm(high, low, timePeriod=14) as `PLUS_DM, ta::plus_di(high, low, close, timePeriod=14) as `PLUS_DI, ta::minus_dm(high, low, timePeriod=14) as `MINUS_DM, ta::minus_di(high, low, close, timePeriod=14) as `MINUS_DI, ta::dx(high, low, close, timePeriod=14) as `DX, ta::adx(high, low, close, timePeriod=14) as `ADX, ta::adxr(high, low, close, timePeriod=14) as `ADXR, ta::cmo(close, timePeriod=14) as `CMO, ta::macd(close, fastPeriod=12, slowPeriod=26, signalPeriod=9) as `MACD1`MACD2`MACD3, ta::macdExt(close, fastPeriod=12, fastMaType=0, slowPeriod=26, slowMaType=0, signalPeriod=9, signalMaType=0) as `MACDEXT1`MACDEXT2`MACDEXT3, ta::macdFix(close, signalPeriod=9) as `MACDFIX1`MACDFIX2`MACDFIX3, ta::midPrice(high, low, timePeriod=14) as `MIDPRICE, ta::midPoint(close, timePeriod=14) as `MIDPOINT, ta::mom(close, timePeriod=10) as `MOM, ta::roc(close, timePeriod=10) as `ROC, ta::rocp(close, timePeriod=10) as `ROCP, ta::rocr(close, timePeriod=10) as `ROCR, ta::rocr100(close, timePeriod=10) as `ROCR100, ta::ppo(close, fastPeriod=12, slowPeriod=26, maType=0) as `PPO, ta::mavp(close, periods, minPeriod=2, maxPeriod=30, maType=0) as `MAVP, ta::apo(close, fastPeriod=12, slowPeriod=26, maType=0) as `APO, ta::aroon(high, low, timePeriod=14) as `AROON1`AROON2, ta::aroonOsc(high, low, timePeriod=14) as `AROONOSC, ta::ultOsc(high, low, close, timePeriod1=7, timePeriod2=14, timePeriod3=28) as `ULTOSC, ta::willr(high, low, close, timePeriod=14) as `WILLR, ta::ad(high, low, close, volume) as `AD, ta::obv(close, volume) as `OBV, ta::avgPrice(open, high, low, close) as `AVGPRICE, ta::medPrice(high, low) as `MEDPRICE, ta::typPrice(high, low, close) as `TYPPRICE, ta::wclPrice(high, low, close) as `WCLPRICE, ta::atr(high, low, close, timePeriod=14) as `ATR, ta::natr(high, low, close, timePeriod=14) as `NATR, ta::mfi(high, low, close, volume, timePeriod=14) as `MFI from data context by symbol
+
+res = []
+for (i in res_stream.colNames()[2:]){
+	res.append!(max(res_stream[i] - res_sql[i]))
+	print('gap of ' + i + ': ', max(res_stream[i] - res_sql[i]))
+}
+res_dict = dict(res_stream.colNames()[2:], res)
