@@ -310,16 +310,17 @@ updateAllLicenses()
 **语法**
 
 ```Python
-unsubscribeAll()
+unsubscribeAll(tbName=NULL)
 ```
 
 **参数**
 
-无
+- tbName: 字符串标量，表示要取消订阅的表名。默认值NULL，即如若不填参数，表示取消所有表的订阅。
+
 
 **详情**
 
-取消当前节点上的所有订阅。
+取消某个表的订阅，参数为NULL，即如若不填参数时可以取消所有表的订阅。
 
 **例子**
 
@@ -333,6 +334,15 @@ All subscriptions to the shared stream table [st] must be cancelled before it ca
 
 unsubscribeAll()
 undef(st, SHARED)
+```
+
+
+取消某个表的订阅：
+```python
+share streamTable(10:0, `id`val, [INT, DOUBLE]) as test_1
+res = table(10:0, `id`val, [INT, DOUBLE])
+subscribeTable(tableName=`test_1,handler=append!{res},actionName="sub_test_1")
+unsubscribeAll("test_1")
 ```
 
 ### 3.9 gatherClusterPerf <!-- omit in toc -->
@@ -483,3 +493,428 @@ checkChunkReplicas("dfs://rangedb", "pt", "af8268f0-151e-c18b-a84c-a77560b721e6"
 #output
 true
 ```
+
+### 3.13 clearAllSubscriptions <!-- omit in toc -->
+
+**语法**
+
+```Python
+clearAllSubscriptions()
+```
+
+**参数**
+
+- 该函数无参数
+
+**返回值**
+
+返回取消订阅的流数据表名称和句柄名称，并打印"All subscriptions have been cleared !"。
+
+**详情**
+
+取消当前节点所有的流数据表订阅。
+
+**例子**
+
+```Python
+clearAllSubscriptions()
+```
+unsub: st, sub1  
+All subscriptions have been cleared !
+
+### 3.14 dropAllEngines <!-- omit in toc -->
+
+**语法**
+
+```Python
+dropAllEngines()
+```
+
+**参数**
+
+- 该函数无参数
+
+**返回值**
+
+返回"All engines have been dropped !"。
+
+**详情**
+
+释放当前节点所有的流数据引擎的定义。
+
+**例子**
+
+```Python
+dropAllEngines()
+```
+All engines have been dropped !
+
+### 3.15 existsShareVariable <!-- omit in toc -->
+
+**语法**
+
+```Python
+existsShareVariable(names)
+```
+
+**参数**
+
+- names: 可以是字符串标量或向量，表示对象名。
+
+**返回值**
+
+返回一个标量/向量，表示names中的每个元素是否为共享变量。
+
+**详情**
+
+判断一个字符串标量或向量中的每个元素是否为共享变量。
+
+**例子**
+
+```Python
+share streamTable(10000:0, `timestamp`sym`val, [TIMESTAMP, SYMBOL, INT]) as variable1
+existsShareVariable("variable1")
+```
+true
+
+### 3.16 clearAllSharedTables <!-- omit in toc -->
+
+**语法**
+
+```Python
+clearAllSharedTables()
+```
+
+**参数**
+
+- 该函数无参数
+
+**返回值**
+
+返回删除的共享表的表名，并打印"All shared table have been cleared !"。
+
+**详情**
+
+删除当前节点所有的共享表。
+
+**例子**
+
+```Python
+clearAllSharedTables()
+```
+Drop Shared Table: st  
+All shared table have been cleared !
+
+### 3.17 clearAllStreamEnv <!-- omit in toc -->
+
+**语法**
+
+```Python
+clearAllStreamEnv()
+```
+
+**参数**
+
+- 该函数无参数
+
+**返回值**
+
+同clearAllSubscriptions()、dropAllEngines()、sclearAllSharedTables()三个函数的返回值汇总。
+
+**详情**
+
+清除当前节点所有的流数据环境，包括流数据表订阅、流数据引擎和共享表。
+
+**例子**
+
+```Python
+clearAllStreamEnv()
+```
+unsub: st, sub1  
+All subscriptions have been cleared !  
+All engines have been dropped !  
+Drop Stream Table: dummyTable1  
+All stream table have been cleared !  
+
+### 3.18 getPersistenceTableNames <!-- omit in toc -->
+
+**语法**
+
+```Python
+getPersistenceTableNames()
+```
+
+**参数**
+
+- 该函数无参数
+
+**返回值**
+
+所有共享持久化流表的表名。
+
+**详情**
+
+获得所有共享持久化流表的表名。
+
+**例子**
+
+```Python
+getPersistenceTableNames()
+```
+[st1,st2]
+
+### 3.19 getNonPersistenceTableNames <!-- omit in toc -->
+
+**语法**
+
+```Python
+getNonPersistenceTableNames()
+```
+
+**参数**
+
+- 该函数无参数
+
+**返回值**
+
+所有非持久化共享流表名。
+
+**详情**
+
+获取所有非持久化共享流表名。
+
+**例子**
+
+```Python
+getNonPersistenceTableNames()
+```
+[st1,st2]
+
+### 3.20 getPersistenceStat <!-- omit in toc -->
+
+**语法**
+
+```Python
+getPersistenceStat()
+```
+
+**参数**
+
+- 该函数无参数
+
+**返回值**
+
+返回所有启用了持久化的共享流数据表的元数据。
+
+**详情**
+
+获取所有持久化共享流表的状态。
+
+**例子**
+
+```Python
+getPersistenceStat()
+```
+| lastLogSeqNum | sizeInMemory | asynWrite | compress | retentionMinutes | sizeOnDisk | persistenceDir        | hashValue | diskOffset | totalSize | raftGroup | memoryOffset | tablename |
+| ------------- | ------------ | --------- | -------- | ---------------- | ---------- | --------------------- | --------- | ---------- | --------- | --------- | ------------ | --------- |
+| -1            | 0            | TRUE      | TRUE     | 1440             | 0          | C:/DolphinDB/Data/st2 | 1         | 0          | 0         | -1        | 0            | st2       |
+
+### 3.21 getNonPersistenceTableStat <!-- omit in toc -->
+
+**语法**
+
+```Python
+getNonPersistenceTableStat()
+```
+
+**参数**
+
+- 该函数无参数
+
+**返回值**
+
+返回所有非持久化的共享流数据表的元数据。
+
+**详情**
+
+获取所有非持久化共享流表状态。
+
+**例子**
+
+```Python
+getNonPersistenceTableStat()
+```
+| TableName | rows | columns | bytes |
+| --------- | ---- | ------- | ----- |
+| st3       | 0    | 3       | 20    |
+
+### 3.22 clearAllPersistenceTables <!-- omit in toc -->
+
+**语法**
+
+```Python
+clearAllPersistenceTables()
+```
+
+**参数**
+
+- 该函数无参数
+
+**返回值**
+
+该函数无返回值。
+
+**详情**
+
+删除所有持久化流表。
+
+**例子**
+
+```Python
+clearAllPersistenceTables()
+```
+
+
+### 3.23 getDatabaseDDL <!-- omit in toc -->
+
+**语法**
+
+```Python
+getDatabaseDDL(dbName)
+```
+
+**参数**
+
+- dbName : 库名（字符串标量）
+
+**返回值**
+
+建库语句（字符串标量）
+
+**详情**
+
+获得目标库的建库语句。
+
+
+**例子**
+
+```Python
+dbName = "dfs://testDatabaseRANGE"
+db1 = database(dbName, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01 2005.01.01 2010.01.01)
+getDatabaseDDL(dbName)
+
+#output
+database(directory = 'dfs://testDatabaseRANGE', partitionType = RANGE, partitionScheme =[1985.01.01,1990.01.01,1995.01.01,2000.01.01,2005.01.01,2010.01.01], engine= `OLAP, atomic = `TRANS)
+```
+
+
+### 3.24 getDBTableDDL <!-- omit in toc -->
+
+**语法**
+
+```Python
+getDBTableDDL(dbName,tbName)
+```
+
+**参数**
+
+- dbName : 库名（字符串标量）
+- tbName : 表名（字符串标量）
+
+**返回值**
+
+数据库中的建表语句（字符串标量）
+
+**详情**
+
+获得目标库内的表的建表语句。
+
+**例子**
+
+```Python
+dbName = "dfs://test_OLAP_RANGE"
+tbName1 = "partition1"
+tbName2= "dimension1"
+db1 = database(dbName, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01 2005.01.01 2010.01.01)
+tbSchema = table(1:0, `SecurityID`DateTime`Open`High`Low`Close, [SYMBOL, DATETIME, DOUBLE, DOUBLE, DOUBLE, DOUBLE])
+db = database(dbName)
+tb1 = createPartitionedTable(db, tbSchema, tbName1, ["DateTime"])
+tb2 = createTable(db, tbSchema, tbName2)
+getDBTableDDL(dbName,tbName1)
+getDBTableDDL(dbName,tbName2)
+
+#output
+createPartitionedTable(dbHandle = database('dfs://test_OLAP_RANGE'),table = table(1:0, ["SecurityID","DateTime","Open","High","Low","Close"],["SYMBOL","DATETIME","DOUBLE","DOUBLE","DOUBLE","DOUBLE"]),tableName = 'partition1',partitionColumns =["DateTime"],compressMethods = dict(["SecurityID","DateTime","Open","High","Low","Close"],["lz4","lz4","lz4","lz4","lz4","lz4"]))
+
+createTable(dbHandle = database('dfs://test_OLAP_RANGE'),table = table(1:0, ["SecurityID","DateTime","Open","High","Low","Close"],["SYMBOL","DATETIME","DOUBLE","DOUBLE","DOUBLE","DOUBLE"]),tableName = 'dimension1',compressMethods = dict(["SecurityID","DateTime","Open","High","Low","Close"],["lz4","lz4","lz4","lz4","lz4","lz4"]))
+```
+
+### 3.25 getChunkUsageByNode <!-- omit in toc -->
+
+**语法**
+
+```Python
+getChunkUsageByNode(dbName, tbName)
+```
+
+**参数**
+
+- dbName : 库名（字符串标量）
+- tbName : 表名（字符串标量）
+
+**返回值**
+
+返回一张表，里面包含了要检查的库表在各个节点分别有多少个 chunk，这些 chunk 的磁盘用量（单位：字节），以及每个节点 chunk 的磁盘用量占总 chunk 磁盘用量的比率。
+
+**详情**
+
+获取某个分布式表在各个节点的chunk分布情况、磁盘用量及占比。
+
+**例子**
+
+```Python
+getChunkUsageByNode("dfs://TL_level2", "trade")
+```
+
+| node        | count | diskUsage | percent    |
+| ----------- | ----- | --------- | ---------- |
+| dnode1      | 33    | 4897619   | 0.34497003 |
+| dnode2      | 35    | 4827365   | 0.34002160 |
+| dnode3      | 32    | 4472246   | 0.31500835 |
+
+### 3.26 getChunkUsageByVolume <!-- omit in toc -->
+
+**语法**
+
+```Python
+getChunkUsageByVolume(dbName, tbName, node=NULL)
+```
+
+**参数**
+
+- dbName : 库名（字符串标量）
+- tbName : 表名（字符串标量）
+- node : 节点名（字符串标量或向量，默认为 NULL）
+
+**返回值**
+
+返回一张表，里面包含了要检查的库表在各个节点的各个 volume 上分别有多少个 chunk，这些 chunk 的磁盘用量（单位：字节），以及各节点每个 volume 的 chunk 的磁盘用量占每个节点上 chunk 磁盘用量的比率。
+
+**详情**
+
+获取某个分布式表在各个节点的各个 volume 上的 chunk 分布情况和磁盘用量占比。
+
+**例子**
+
+```Python
+getChunkUsageByVolume("dfs://TL_level2", "trade")
+```
+
+| node     | path          | count | diskUsage | percent    |
+| -------- | ------------- | ----- | --------- | ---------- |
+| P1-node1 | /hdd0/volumes | 3     | 638678    | 0.40908590 |
+| P1-node1 | /hdd1/volumes | 5     | 922554    | 0.59091409 |
+| P2-node1 | /hdd0/volumes | 7     | 709995    | 0.43487914 |
+| P2-node1 | /hdd1/volumes | 5     | 922631    | 0.56512085 |
+| P3-node1 | /hdd0/volumes | 4     | 426067    | 0.54544744 |
+| P3-node1 | /hdd1/volumes | 2     | 355066    | 0.45455255 |

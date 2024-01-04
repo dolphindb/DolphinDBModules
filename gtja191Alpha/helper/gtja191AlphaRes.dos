@@ -2,139 +2,23 @@
 *  @ brief  
 *  This script is to show the implementation of gtja 191 alpha in DolphinDB.
 *  @ Author: DolphinDB
-*  @ Last modification time: 2023.05.25
+*  @ Last modification time: 2022.12.15
 *  @ DolphinDB server version: 2.00.9
 *  @ FileName: gtja191AlphaRes.dos
 *  Don't forget to change your directory.
 */
 
+idList = "sz"+lpad(string(000001..00010), 6, `0)
+data = select * from loadText("/YOURDIR/datatest.csv") where securityid in idList 
+
 use gtja191Alpha
 use gtja191Prepare
-
-//Necessary functions
-def createFactorWideDbTable(dbName, tbName){
-	if(existsDatabase(dbName)){
-		dropDatabase(dbName)
-	}
-
-	dbDate = database("", VALUE,  2010.01M + (0..10)*12)
-	dbSymbol=database("", VALUE, `gtjaAlpha + string(1..101))
-	db = database(directory=dbName, partitionType=COMPO, partitionScheme=[dbDate,dbSymbol],engine="TSDB")
-
-	baseColNames = `tradetime`factorname join ("sz"+lpad(string(000001..004000), 6, `0))
-	baseColType = ([TIMESTAMP, SYMBOL]).append!(take(DOUBLE, 4000))
-
-	mtable=table(1:0, baseColNames, baseColType);
-	min_factor = db.createPartitionedTable(table=mtable, tableName=tbName, partitionColumns=`tradetime`factorname,sortColumns=`factorname`tradetime, compressMethods={tradetime:"delta"}, keepDuplicates=LAST)
-}
-
-
-def createFactorLongDbTable(dbName, tbName){
-	if(existsDatabase(dbName)){
-		dropDatabase(dbName)
-	}
-
-	dbDate = database("", VALUE,  2010.01M + (0..10)*12)
-	dbSymbol=database("", VALUE, `gtjaAlpha + string(1..101))
-	db = database(directory=dbName, partitionType=COMPO, partitionScheme=[dbDate,dbSymbol], engine="TSDB")
-
-	baseColNames = `tradetime`securityid`factorname`value
-	baseColType = [TIMESTAMP, SYMBOL, SYMBOL, DOUBLE]
-
-	mtable=table(1:0, baseColNames,baseColType);
-	min_factor = db.createPartitionedTable(table=mtable, tableName=tbName, partitionColumns=`tradetime`factorname, sortColumns=`securityid`tradetime, compressMethods={tradetime:"delta"},keepDuplicates=LAST)
-}
-
-
-def writePanelInWideTable(result, factor, dbName, tbName){
-    if (typestr(result) == CODE){
-        res = result.eval()$DOUBLE
-    } else {
-        res = result
-    }
-	resWide = table(res.rowNames() as tradetime, res).rename!(array(STRING,0,100).append!(["tradetime"]).append!(res.colNames()))
-	resWide[`factorname] = factor
-	reorderColumns!(resWide,`tradetime`factorname)
-	loadTable(dbName, tbName).append!(resWide)
-}
-
-
-def writePanelInLongTable(result, factor, dbName, tbName){
-    if (typestr(result) == CODE){
-        res = result.eval()$DOUBLE
-    } else {
-        res = result
-    }
-    resWide = table(res.rowNames() as tradetime, res).rename!(array(STRING,0,100).append!(["tradetime"]).append!(res.colNames()))
-    returnTable = resWide.unpivot(`tradetime, resWide.colNames()[1:])
-    returnTable[`factorname] = factor
-    returnTable.rename!(`valueType, `securityid)
-    returnTable.reorderColumns!(`tradetime`securityid`factorname`value)
-    loadTable(dbName, tbName).append!(returnTable)
-} 
-
-
-def calcAndWriteGtjaAlphas(data, startTime, endTime, tbType, dbName, tbName, n){
-    alphaName = exec name from defs() where name in "gtja191Alpha::gtjaAlpha" + string(n)
-    alphaSyntax = exec syntax from defs() where name in "gtja191Alpha::gtjaAlpha" + string(n)
-    function = alphaName + alphaSyntax
-    
-    open, close, high, low, vol, vwap, index_open, index_close = panel(data.tradetime, data.securityid, [data.open, data.close, data.high, data.low, data.vol, data.vwap, data.index_open, data.index_close])
-    
-    d = dict(STRING, ANY)
-    d["open"] = open
-    d["close"] = close
-    d["high"] = high
-    d["low"] = low
-    d["vol"] = vol
-    d["vwap"] = vwap
-    d["index_open"] = index_open
-    d["index_close"] = index_close
-    
-    script = parseExpr(function, d, modules=`gtja191Alpha)
-    factorName = "gtjaAlpha" + string(n)
-    
-    if (tbType == "long"){
-        each(writePanelInLongTable{, , dbName, tbName}, script, factorName)
-    } else if (tbType == "wide"){
-        each(writePanelInWideTable{, , dbName, tbName}, script, factorName)
-    } else {
-        return "unsupported table type"
-    }
-}
-
-
-def calcAndWriteGtjaAlphasWithPrepare(data, startTime, endTime, tbType, dbName, tbName, n){
-    alphaName = exec name from defs() where name in "gtja191Prepare::gtjaCalAlpha" + string(n)
-    alphaSyntax = exec syntax from defs() where name in "gtja191Prepare::gtjaCalAlpha" + string(n)
-    function = alphaName + alphaSyntax
-    
-    d = dict(STRING, ANY)
-    d["data"] = data
-    d["startTime"] = startTime
-    d["endTime"] = endTime
-    
-    script = parseExpr(function, d, modules=`gtja191Prepare)
-    factorName = "gtjaAlpha" + string(n)
-
-    if (tbType == "long"){
-        each(writePanelInLongTable{, , dbName, tbName}, script, factorName)
-    } else if (tbType == "wide"){
-        each(writePanelInWideTable{, , dbName, tbName}, script, factorName)
-    } else {
-        return "unsupported table type"
-    }
-}
-
-//load and prepare data
-idList = "sz"+lpad(string(000001..00010), 6, `0)
-data = select * from loadText("/YOUR_DIR/datatest.csv") where securityid in idList 
 
 startTime = timestamp(2010.01.01)
 endTime = timestamp(2010.12.31)
 resTable = select tradetime from data where securityid = "sz000001"
 resTableCal = select tradetime from data where securityid = "sz000001"
-
+input = panel(data.tradetime, data.securityid, [data.open, data.close, data.high, data.low, data.vol, data.vwap, data.index_open, data.index_close])
 open, close, high, low, vol, vwap, index_open, index_close = panel(data.tradetime, data.securityid, [data.open, data.close, data.high, data.low, data.vol, data.vwap, data.index_open, data.index_close])
 
 //The No. 30 factor involves the Fama French Three-factor. When calculating, you need to obtain the MKT, SMB, and HML corresponding to the timestamp, and input these three values ​​as vectors into parameters.
@@ -173,20 +57,3 @@ for (i in 1:192){
 
 login(`admin,`123456)
 saveText(resTable,"/YOUR_DIR/ddbVerifyRes.csv")
-
-//calculate and store the gtja 191 alphas into database
-//1.create long and wide factor table
-dbNameWide = "dfs://K_FACTOR_WIDE"
-tbNameWide = "factor_k_wide"
-dbNameLong = "dfs://K_FACTOR_LONG"
-tbNameLong = "factor_k_long"
-
-createFactorWideDbTable(dbNameWide, tbNameWide)
-createFactorLongDbTable(dbNameLong, tbNameLong)
-
-//2.1 calculate the gtja 191 alphas using module gtja191Alpha and write into wide table
-fullList = set(1..191) - set(passList)
-calcAndWriteGtjaAlphas(data, startTime, endTime, "wide", dbNameWide, tbNameWide, fullList)
-
-//2.2 calculate the gtja 191 alphas using module gtja191Prepare and write into long table
-calcAndWriteGtjaAlphasWithPrepare(data, startTime, endTime, "long", dbNameLong, tbNameLong, fullList)

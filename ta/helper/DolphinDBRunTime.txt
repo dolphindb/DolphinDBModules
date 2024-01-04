@@ -1,0 +1,215 @@
+
+
+/**
+DolphinDBRunTime.txt
+Script to test DolphinDB ta operating efficiency
+DolphinDB Inc.
+DolphinDB server version: 1.30.20 2022.09.28 / 2.00.8 2022.09.28
+Last modification time: 2022.12.07
+*/
+
+/**
+Attention:
+1. The developer need to download mytt.dos and put in [home]/modules in advance
+2. The developer need to download test data in advance
+3. There one place in the script that need to be modified according to the environment
+*/
+
+//login account and clean up the environment
+login("admin", "123456")
+clearAllCache()
+undef(all)
+go
+
+//load module
+use ta
+
+/**
+modified location 1: dataPath
+*/
+dataPath = "/data/DolphinDB/200.8/server/testData.csv"
+schema = table(`tradedate`symbol`high`low`open`close`volume`bs`periods as name, `DATE`SYMBOL`DOUBLE`DOUBLE`DOUBLE`DOUBLE`DOUBLE`BOOL`INT as type)
+data = loadText(dataPath, schema=schema)
+
+print("VAR")
+timer(1){ var = select ta::var(close, timePeriod=5, nbdev=1) as `VAR from data context by symbol }
+
+print("STDDEV")
+timer(1){ stddev = select ta::stddev(close, timePeriod=5, nbdev=1) as `STDDEV from data context by symbol }
+
+print("BETA")
+timer(1){ beta = select ta::beta(high, low, timePeriod=5) as `BETA from data context by symbol }
+
+print("SMA")
+timer(1){ sma = select ta::sma(close, timePeriod=30) as `SMA from data context by symbol }
+
+print("EMA")
+timer(1){ ema = select ta::ema(close, timePeriod=30) as `EMA from data context by symbol }
+
+print("WMA")
+timer(1){ wma = select ta::wma(close, timePeriod=30) as `WMA from data context by symbol }
+
+print("DEMA")
+timer(1){ dema = select ta::dema(close, timePeriod=30) as `DEMA from data context by symbol }
+
+print("TEMA")
+timer(1){ tema = select ta::tema(close, timePeriod=30) as `TEMA from data context by symbol }
+
+print("TRIMA")
+timer(1){ trima = select ta::trima(close, timePeriod=30) as `TRIMA from data context by symbol }
+
+print("KAMA")
+timer(1){ kama = select ta::kama(close, timePeriod=30) as `KAMA from data context by symbol }
+
+print("T3")
+timer(1){ t3 = select ta::t3(close, timePeriod=5, vfactor=1) as `T3 from data context by symbol }
+
+print("MA")
+timer(1){ ma = select ta::ma(close, timePeriod=30, maType=0) as `MA from data context by symbol }
+
+print("BBANDS")
+timer(1){ bbands = select ta::bBands(close, timePeriod=5, nbdevUp=2, nbdevDn=2, maType=0) as `BBANDS1`BBANDS2`BBANDS3 from data context by symbol }
+
+print("RSI")
+timer(1){ rsi = select ta::rsi(close, timePeriod=14) as `RSI from data context by symbol }
+
+print("STOCHF")
+timer(1){ stochf = select ta::stochf(high, low, close, fastkPeriod=5, fastdPeriod=3, fastdMatype=0) as `STOCHF1`STOCHF2 from data context by symbol }
+
+print("STOCH")
+timer(1){ stoch = select ta::stoch(high, low, close, fastkPeriod=5, slowkPeriod=3, slowkMatype=0, slowdPeriod=3, slowdMatype=0) as `STOCH1`STOCH2 from data context by symbol }
+
+print("STOCHRSI")
+timer(1){ stochrsi = select ta::stochRsi(close, timePeriod=14, fastkPeriod=5, fastdPeriod=3, fastdMatype=0) as `STOCHRSI1`STOCHRSI2 from data context by symbol }
+
+print("TRIX")
+timer(1){ trix = select ta::trix(close, timePeriod=30) as `TRIX from data context by symbol }
+
+print("CORREL")
+timer(1){ correl = select ta::correl(high, low, timePeriod=30) as `CORREL from data context by symbol }
+
+print("LINEARREG_SLOPE")
+timer(1){ linearreg_slope = select ta::linearreg_slope(close, timePeriod=14) as `LINEARREG_SLOPE from data context by symbol }
+
+print("LINEARREG_INTERCEPT")
+timer(1){ linearreg_intercept = select ta::linearreg_intercept(close, timePeriod=14) as `LINEARREG_INTERCEPT from data context by symbol }
+
+print("LINEARREG_ANGLE")
+timer(1){ linearreg_angle = select ta::linearreg_angle(close, timePeriod=14) as `LINEARREG_ANGLE from data context by symbol }
+
+print("LINEARREG")
+timer(1){ linearreg = select ta::linearreg(close, timePeriod=14) as `LINEARREG from data context by symbol }
+
+print("TSF")
+timer(1){ tsf = select ta::tsf(close, timePeriod=14) as `TSF from data context by symbol }
+
+print("BOP")
+timer(1){ bop = select ta::bop(open, high, low, close) as `BOP from data context by symbol }
+
+print("CCI")
+timer(1){ cci = select ta::cci(high, low, close, timePeriod=14) as `CCI from data context by symbol }
+
+print("TRANGE")
+timer(1){ trange = select ta::trange(high, low, close) as `TRANGE from data context by symbol }
+
+print("PLUS_DM")
+timer(1){ plus_dm = select ta::plus_dm(high, low, timePeriod=14) as `PLUS_DM from data context by symbol }
+
+print("PLUS_DI")
+timer(1){ plus_di = select ta::plus_di(high, low, close, timePeriod=14) as `PLUS_DI from data context by symbol }
+
+print("MINUS_DM")
+timer(1){ minus_dm = select ta::minus_dm(high, low, timePeriod=14) as `MINUS_DM from data context by symbol }
+
+print("MINUS_DI")
+timer(1){ minus_di = select ta::minus_di(high, low, close, timePeriod=14) as `MINUS_DI from data context by symbol }
+
+print("DX")
+timer(1){ dx = select ta::dx(high, low, close, timePeriod=14) as `DX from data context by symbol }
+
+print("ADX")
+timer(1){ adx = select ta::adx(high, low, close, timePeriod=14) as `ADX from data context by symbol }
+
+print("ADXR")
+timer(1){ adxr = select ta::adxr(high, low, close, timePeriod=14) as `ADXR from data context by symbol }
+
+print("CMO")
+timer(1){ cmo = select ta::cmo(close, timePeriod=14) as `CMO from data context by symbol }
+
+print("MACD")
+timer(1){ macd = select ta::macd(close, fastPeriod=12, slowPeriod=26, signalPeriod=9) as `MACD1`MACD2`MACD3 from data context by symbol }
+
+print("MACDEXT")
+timer(1){ macdext = select ta::macdExt(close, fastPeriod=12, fastMaType=0, slowPeriod=26, slowMaType=0, signalPeriod=9, signalMaType=0) as `MACDEXT1`MACDEXT2`MACDEXT3 from data context by symbol }
+
+print("MACDFIX")
+timer(1){ macdfix = select ta::macdFix(close, signalPeriod=9) as `MACDFIX1`MACDFIX2`MACDFIX3 from data context by symbol }
+
+print("MIDPRICE")
+timer(1){ midprice = select ta::midPrice(high, low, timePeriod=14) as `MIDPRICE from data context by symbol }
+
+print("MIDPOINT")
+timer(1){ midpoint = select ta::midPoint(close, timePeriod=14) as `MIDPOINT from data context by symbol }
+
+print("MOM")
+timer(1){ mom = select ta::mom(close, timePeriod=10) as `MOM from data context by symbol }
+
+print("ROC")
+timer(1){ roc = select ta::roc(close, timePeriod=10) as `ROC from data context by symbol }
+
+print("ROCP")
+timer(1){ rocp = select ta::rocp(close, timePeriod=10) as `ROCP from data context by symbol }
+
+print("ROCR")
+timer(1){ rocr = select ta::rocr(close, timePeriod=10) as `ROCR from data context by symbol }
+
+print("ROCR100")
+timer(1){ rocr100 = select ta::rocr100(close, timePeriod=10) as `ROCR100 from data context by symbol }
+
+print("PPO")
+timer(1){ ppo = select ta::ppo(close, fastPeriod=12, slowPeriod=26, maType=0) as `PPO from data context by symbol }
+
+print("MAVP")
+timer(1){ mavp = select ta::mavp(close, periods, minPeriod=2, maxPeriod=30, maType=0) as `MAVP from data context by symbol }
+
+print("APO")
+timer(1){ apo = select ta::apo(close, fastPeriod=12, slowPeriod=26, maType=0) as `APO from data context by symbol }
+
+print("AROON")
+timer(1){ aroon = select ta::aroon(high, low, timePeriod=14) as `AROON1`AROON2 from data context by symbol }
+
+print("AROONOSC")
+timer(1){ aroonosc = select ta::aroonOsc(high, low, timePeriod=14) as `AROONOSC from data context by symbol }
+
+print("ULTOSC")
+timer(1){ ultosc = select ta::ultOsc(high, low, close, timePeriod1=7, timePeriod2=14, timePeriod3=28) as `ULTOSC from data context by symbol }
+
+print("WILLR")
+timer(1){ willr = select ta::willr(high, low, close, timePeriod=14) as `WILLR from data context by symbol }
+
+print("AD")
+timer(1){ ad = select ta::ad(high, low, close, volume) as `AD from data context by symbol }
+
+print("OBV")
+timer(1){ obv = select ta::obv(close, volume) as `OBV from data context by symbol }
+
+print("AVGPRICE")
+timer(1){ avgprice = select ta::avgPrice(open, high, low, close) as `AVGPRICE from data context by symbol }
+
+print("MEDPRICE")
+timer(1){ medprice = select ta::medPrice(high, low) as `MEDPRICE from data context by symbol }
+
+print("TYPPRICE")
+timer(1){ typprice = select ta::typPrice(high, low, close) as `TYPPRICE from data context by symbol }
+
+print("WCLPRICE")
+timer(1){ wclprice = select ta::wclPrice(high, low, close) as `WCLPRICE from data context by symbol }
+
+print("ATR")
+timer(1){ atr = select ta::atr(high, low, close, timePeriod=14) as `ATR from data context by symbol }
+
+print("NATR")
+timer(1){ natr = select ta::natr(high, low, close, timePeriod=14) as `NATR from data context by symbol }
+
+print("MFI")
+timer(1){ mfi = select ta::mfi(high, low, close, volume, timePeriod=14) as `MFI from data context by symbol }
