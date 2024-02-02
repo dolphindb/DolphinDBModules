@@ -325,7 +325,6 @@ getMarketCalendar("XDDB",2023.03.01, 2023.03.10)
 [2023.03.01,2023.03.02,2023.03.03,2023.03.06,2023.03.09,2023.03.10]
 ```
 
-
 ## 3. 交易日历出处
 
 本章里列举了 *marketHoliday* 目录下的所有交易所的信息。为了方便国内用户使用，除了用交易所的 ISO Code 标识交易所名（[交易所 ISO CODE 列表](https://docs.dolphindb.cn/zh/modules/MarketHoliday/mkt_calendar.html#:~:text=%E7%AE%80%E7%A7%B0%E5%88%97%E8%A1%A8%EF%BC%89%E3%80%82-,%E5%9B%BD%E9%99%85%E4%BA%A4%E6%98%93%E6%89%80%20ISO%20CODE%20%E5%88%97%E8%A1%A8,-%E9%92%88%E5%AF%B9%E4%B8%96%E7%95%8C%E5%90%84%E5%9B%BD)）之外，增加了对国内六大交易所（上交所、深交所、中金所、上期所、郑商所、大商所、上能源）采用国内交易所简称作为标识名（[中国交易所简称列表](https://docs.dolphindb.cn/zh/modules/MarketHoliday/mkt_calendar.html#:~:text=2004-,%E4%B8%AD%E5%9B%BD%E5%A4%A7%E9%99%86%E4%BA%A4%E6%98%93%E6%89%80%E7%AE%80%E7%A7%B0%E5%88%97%E8%A1%A8,-%E4%B8%BA%E6%96%B9%E4%BE%BF%E4%B8%AD%E5%9B%BD)）。
