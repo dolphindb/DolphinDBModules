@@ -304,27 +304,26 @@ temporalAdd(2023.01.01,2,"XDDB")
 
 ### 2.2 替换交易日历
 
-假设需要更新已建好的 “DDB” 交易所的交易日历，可以使用函数 [`updateMarketHoliday(marketName, holiday)`](https://docs.dolphindb.cn/zh/funcs/u/updateMarketHoliday.html?hl=updatemarketholiday) 重新设置该文件的节假日信息，进而更新该交易所的交易日历。
+假设需要更新已建好的 “XDDB” 交易所的交易日历，可以使用函数 [`updateMarketHoliday(marketName, holiday)`](https://docs.dolphindb.cn/zh/funcs/u/updateMarketHoliday.html) 重新设置该文件的节假日信息，进而更新该交易所的交易日历。
 
-> **注意**：该函数设置的节假日信息将覆盖旧的交易日历文件，不可单独对该文件更新或新增节假日信息。
+**注意**：该函数设置的节假日信息将覆盖旧的交易日历文件，不可单独对该文件更新或新增节假日信息。
 
-以下做法可以将已有的 “DDB” 交易所重新指定 2023.03.07、2023.03.08 为交易所节假日，且不保留之前的 holiday 日期。通过 `temporalAdd` 查询 2022.01.01 的下一个交易日的脚本如下：
+以下做法可以将已有的 “XDDB” 交易所重新指定 2023.03.07、2023.03.08 为交易所节假日，且不保留之前的 holiday 日期。通过 `temporalAdd` 查询 2022.01.01 的下一个交易日的脚本如下：
 
 ```c++
 //将 2023.03.07 2023.03.08(周二, 周三) 重新设置为节假日
-updateMarketHoliday("DDB",2023.03.07 2023.03.08)
+updateMarketHoliday("XDDB",2023.03.07 2023.03.08)
 
 //2023.01.03 2023.01.04(周二, 周三) 不再是节假日
-getMarketCalendar("DDB",2023.01.01, 2023.01.10)
+getMarketCalendar("XDDB",2023.01.01, 2023.01.10)
 #output
 [2023.01.02,2023.01.03,2023.01.04,2023.01.05,2023.01.06,2023.01.09,2023.01.10]
 
 //2023.03.07, 2023.03.08(周二, 周三) 作为节假日，不会出现在交易日历中
-getMarketCalendar("DDB",2023.03.01, 2023.03.10)
+getMarketCalendar("XDDB",2023.03.01, 2023.03.10)
 #output
 [2023.03.01,2023.03.02,2023.03.03,2023.03.06,2023.03.09,2023.03.10]
 ```
-
 
 ## 3. 交易日历出处
 
