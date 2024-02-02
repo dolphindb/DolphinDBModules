@@ -5,24 +5,30 @@
 本教程将会从交易日历的查询和应用、如何自定义交易日历、以及交易日历的来源等三个方面介绍如何使用 DolphinDB 的交易日历。
 
 
-- [1. 交易日历的查询和应用](#1-交易日历的查询和应用)
-  - [1.1 查询交易日历-getMarketCalendar](#11-查询交易日历-getmarketcalendar)
-  - [1.2 基于交易日历的日期偏移计算 - temporalAdd](#12-基于交易日历的日期偏移计算---temporaladd)
-  - [1.3 基于交易日历取最近的交易日 - transFreq](#13-基于交易日历取最近的交易日---transfreq)
-  - [1.4 基于交易日的数据采样 - asFreq/resample](#14-基于交易日的数据采样---asfreqresample)
-  - [1.5 duration 类型支持交易日历](#15-duration-类型支持交易日历)
-- [2. 自定义及更新内置交易日历](#2-自定义及更新内置交易日历)
-  - [2.1 新增交易日历](#21-新增交易日历)
-  - [2.2 替换交易日历](#22-替换交易日历)
-- [3. 交易日历出处](#3-交易日历出处)
-  - [3.1 国际交易所 ISO CODE 列表](#31-国际交易所-iso-code-列表)
-  - [3.2 中国大陆交易所简称列表](#32-中国大陆交易所简称列表)
+- [交易日历](#交易日历)
+  - [1. 交易日历的查询和应用](#1-交易日历的查询和应用)
+    - [1.1 查询交易日历-getMarketCalendar](#11-查询交易日历-getmarketcalendar)
+    - [1.2 基于交易日历的日期偏移计算 - temporalAdd](#12-基于交易日历的日期偏移计算---temporaladd)
+    - [1.3 基于交易日历取最近的交易日 - transFreq](#13-基于交易日历取最近的交易日---transfreq)
+    - [1.4 基于交易日的数据采样 - asFreq/resample](#14-基于交易日的数据采样---asfreqresample)
+    - [1.5 duration 类型支持交易日历](#15-duration-类型支持交易日历)
+      - [1.5.1 duration 函数支持交易日历](#151-duration-函数支持交易日历)
+      - [1.5.2 基于交易日历 duration 的窗口连接 - window join](#152-基于交易日历-duration-的窗口连接---window-join)
+      - [1.5.3 基于交易日历 duration 的滑动窗口计算 - m系列/tm系列/twindow/tmovingWindowData](#153-基于交易日历-duration-的滑动窗口计算---m系列tm系列twindowtmovingwindowdata)
+      - [1.5.4 基于交易日历 duration 的偏移计算 - move/tmove](#154-基于交易日历-duration-的偏移计算---movetmove)
+  - [2. 自定义及更新内置交易日历](#2-自定义及更新内置交易日历)
+    - [2.1 新增交易日历](#21-新增交易日历)
+    - [2.2 替换交易日历](#22-替换交易日历)
+  - [3. 交易日历出处](#3-交易日历出处)
+    - [3.1 国际交易所 ISO CODE 列表](#31-国际交易所-iso-code-列表)
+    - [3.2 中国大陆交易所简称列表](#32-中国大陆交易所简称列表)
 
 ## 1. 交易日历的查询和应用
 
 DolphinDB 内置的交易日历可以支持多个场景的应用：
 1. 搭配 `getMarketCalendar` 函数查询指定范围内的交易日；
 2. 搭配 `temporalAdd` , `transFreq` , `asFreq` , `resample` 等内置函数，基于交易日进行计算。
+3. duration 类型支持交易日历，可以用正负数字 + 4个大写字母，表示交易所交易日历时间。
 
 ### 1.1 查询交易日历-getMarketCalendar
 
@@ -31,7 +37,7 @@ DolphinDB 内置的交易日历可以支持多个场景的应用：
 ```c++
 getMarketCalendar("XNYS",2022.01.01, 2022.01.10)
 
-// output
+#output
 [2022.01.03,2022.01.04,2022.01.05,2022.01.06,2022.01.07,2022.01.10]
 ```
 
@@ -43,16 +49,17 @@ getMarketCalendar("XNYS",2022.01.01, 2022.01.10)
 dates=[2023.01.01, 2023.01.02, 2023.01.03, 2023.01.04, 2023.01.05, 2023.01.06]
 temporalAdd(dates,2,"XNYS")
 
-// output
+#output
 [2023.01.04,2023.01.04,2023.01.05,2023.01.06,2023.01.09,2023.01.10]
 ```
 
-自 2.00.11.1 版本起，还可以直接用正负数字 + 4 个大写字母，表示交易所交易日历时间。上面的脚本可改写为：
-```
+自 2.00.11.1 版本起，还可以直接用正负数字 + 4个大写字母，表示交易所交易日历时间。上面的脚本可改写为：
+
+```c++
 dates=[2023.01.01, 2023.01.02, 2023.01.03, 2023.01.04, 2023.01.05, 2023.01.06]
 temporalAdd(dates, 2XNYS)
 
-// output
+#output
 [2023.01.04,2023.01.04,2023.01.05,2023.01.06,2023.01.09,2023.01.10]
 ```
 
@@ -64,20 +71,20 @@ temporalAdd(dates, 2XNYS)
 dates=[2023.01.01, 2023.01.02, 2023.01.03, 2023.01.04, 2023.01.05, 2023.01.06]
 dates.transFreq("XNYS")
 
-// output
+#output
 [2022.12.30,2022.12.30,2023.01.03,2023.01.04,2023.01.05,2023.01.06]
 ```
 
-2.00.11/1.30.23 版本后，transFreq支持多个交易日作为“rule”参数的输入。例如：
+- 2.00.11/1.30.23 版本后，transFreq支持多个交易日作为“rule”参数的输入。例如：
 
-```
+```c++
 dates.transFreq("2XNYS")
 
-// output
+#output
 [2022.12.30,2022.12.30,2022.12.30,2023.01.04,2023.01.04,2023.01.06]
 ```
 
-**注意**：2.00.11/1.30.23 版本之后，交易日历的名字必须为 4 个大写英文字母。
+**注意**：2.00.11/1.30.23 版本之后，交易日历的名字必须为4个大写英文字母。
 
 ### 1.4 基于交易日的数据采样 - asFreq/resample
 
@@ -91,7 +98,7 @@ close = [100.10, 100.10, 100.10, 78.89, 88.99, 88.67, 78.78]
 s=indexedSeries(timestampv, close)
 s.asFreq("XNYS")
 
-// output
+#output
            #0                 
            ------
 2022.12.30|100.10
@@ -110,7 +117,7 @@ close = [100.10, 100.10, 100.10, 78.89, 88.99, 88.67, 78.78]
 s=indexedSeries(timestampv, close)
 s.resample("XNYS", last)
 
-// output
+#output
            #0                 
            ------
 2022.12.30|100.10
@@ -121,14 +128,14 @@ s.resample("XNYS", last)
 ```
 
 
-- 2.00.11/1.30.23 版本后，`asFreq`/`resample` 函数均支持多个交易日作为 *rule* 参数的输入。例如：
+- 2.00.11/1.30.23 版本后，asFreq/resample函数均支持多个交易日作为“rule”参数的输入。例如：
 
 ```c++
 s.asFreq("2XNYS")
 s.resample("2XNYS", last)
 ```
 
-**注意**：2.00.11/1.30.23 版本之后，交易日历的名字必须为 4 个大写英文字母。
+**注意**：2.00.11/1.30.23 版本之后，交易日历的名字必须为4个大写英文字母。
 
 ### 1.5 duration 类型支持交易日历
 
@@ -299,9 +306,10 @@ DolphinDB 也支持管理员用户自定义交易日历，或者对现有交易�
 
 DolphinDB 在处理 holiday 文件时会自动过滤周末（周六、周日），因此在提交 holiday 文件时，不需要添加周末日期，只添加非周末的节假日信息即可。
 
-新增交易日历后，可直接调用 `getMarketCalendar` 等函数对新的交易日历进行操作。
+新增交易日历后，可直接调用 `getMarketCalendar` 等函数对新的交易日历进行操作：
 
-**注意**：2.00.11/1.30.23 版本之后，交易日历的名字必须为 4 个大写英文字母。
+**注意**：2.00.11/1.30.23 版本之后，交易日历的名字必须为4个大写英文字母。
+
 
 ```c++
 //将 2023.01.03 2023.01.04(周二, 周三) 设置为节假日
@@ -313,11 +321,11 @@ addMarketHoliday("XDDB",holiday)
 
 //获取指定日期区间的交易日历
 getMarketCalendar("XDDB",2023.01.01, 2023.01.10)
-// output
+#output
 [2023.01.02,2023.01.05,2023.01.06,2023.01.09,2023.01.10]
 
 temporalAdd(2023.01.01,2,"XDDB")
-// output
+#output
 2023.01.05
 ```
 
@@ -325,7 +333,7 @@ temporalAdd(2023.01.01,2,"XDDB")
 
 ### 2.2 替换交易日历
 
-假设需要更新已建好的 “XDDB” 交易所的交易日历，可以使用函数 [`updateMarketHoliday(marketName, holiday)`](https://docs.dolphindb.cn/zh/funcs/u/updateMarketHoliday.html) 重新设置该文件的节假日信息，进而更新该交易所的交易日历。
+假设需要更新已建好的 “XDDB” 交易所的交易日历，可以使用函数 [`updateMarketHoliday(marketName, holiday)`](https://docs.dolphindb.cn/zh/funcs/u/updateMarketHoliday.html?hl=updatemarketholiday) 重新设置该文件的节假日信息，进而更新该交易所的交易日历。
 
 **注意**：该函数设置的节假日信息将覆盖旧的交易日历文件，不可单独对该文件更新或新增节假日信息。
 
@@ -337,14 +345,15 @@ updateMarketHoliday("XDDB",2023.03.07 2023.03.08)
 
 //2023.01.03 2023.01.04(周二, 周三) 不再是节假日
 getMarketCalendar("XDDB",2023.01.01, 2023.01.10)
-// output
+#output
 [2023.01.02,2023.01.03,2023.01.04,2023.01.05,2023.01.06,2023.01.09,2023.01.10]
 
 //2023.03.07, 2023.03.08(周二, 周三) 作为节假日，不会出现在交易日历中
 getMarketCalendar("XDDB",2023.03.01, 2023.03.10)
-// output
+#output
 [2023.03.01,2023.03.02,2023.03.03,2023.03.06,2023.03.09,2023.03.10]
 ```
+
 
 ## 3. 交易日历出处
 
@@ -400,7 +409,7 @@ getMarketCalendar("XDDB",2023.03.01, 2023.03.10)
 | XPRA | Prague Stock Exchange | Czech Republic | https://www.pse.cz/en/trading/trading-information/trading-calendar |  | marketHoliday/XPRA.csv | 2004 |
 | XSES | Singapore Exchange | Singapore | https://www.mom.gov.sg/employment-practices/public-holidays | 删除了 2023.12.25、2023.11.13、2023.08.09、2023.06.29、2023.06.02、2023.05.01、2023.04.07、2023.01.24、2023.01.23 | marketHoliday/XSES.csv | 2004 |
 | XSGO | Santiago Stock Exchange | Chile | https://www.euronext.com/en/trade/trading-hours-holidays |  | marketHoliday/XSGO.csv | 2004 |
-| XSHE | Shenzhen Stock Exchange | China | http://www.szse.cn/disclosure/index.html | 新增2023.10.06、2023.06.23、2023.05.03、2023.05.02，剔除1991年数据（2023.05.06更新） | marketHoliday/XSHE.csv | 1992 |
+| XSHE | Shenzhen Stocak Exchange | China | http://www.szse.cn/disclosure/index.html |  | marketHoliday/XSHE.csv | 1991 |
 | XSHG | Shanghai Stock Exchange | China | http://www.sse.com.cn/market/view/ |  | marketHoliday/XSHG.csv | 1991 |
 | XSTO | Stockholm Stock Exchange | Sweden | https://www.nasdaqomxnordic.com/tradinghours/ |  | marketHoliday/XSTO.csv | 2004 |
 | XSWX | SIX Swiss Exchange | Switzerland | https://www.six-group.com/en/products-services/the-swiss-stock-exchange/market-data/news-tools/trading-currency-holiday-calendar.html#/ |  | marketHoliday/XSWX.csv | 2004 |
@@ -416,11 +425,11 @@ getMarketCalendar("XDDB",2023.03.01, 2023.03.10)
 
 | 标识码 <br>(ISO Code) | 交易所 | 国家 | 交易所节假日的公布网站 | 交易日历备注 | CSV 文件路径 | 开始年份 |
 |:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| SSE | Shanghai Stock Exchange | China | http://www.sse.com.cn/market/view/ | 剔除2024.01.01（2023.05.06更新） | marketHoliday/SSE.csv | 1991 |
-| SZSE | Shenzhen Stock Exchange | China | http://www.szse.cn/disclosure/index.html | 剔除2024.01.01（2023.05.06更新） | marketHoliday/SZSE.csv | 1991 |
-| CFFEX | China Finacial Futures Exchange | China | http://www.cffex.com.cn/jyrl/ | 剔除2006年数据（2023.05.06更新） | marketHoliday/CFFEX.csv | 2007 |
-| SHFE | Shanghai Futures Exchange | China | https://www.shfe.com.cn/bourseService/businessdata/calendar/ |  | marketHoliday/SHFE.csv | 1992 |
-| CZCE | Zhengzhou Commodity Exchange | China | http://www.czce.com.cn/cn/jysj/jyyl/H770313index_1.htm |  | marketHoliday/CZCE.csv | 1991 |
-| DCE | Dalian Commodity Exchange | China | http://big5.dce.com.cn:1980/SuniT/www.dce.com.cn/DCE/TradingClearing/Exchange%20Notice/1516085/index.html | 新增2022.09.12（2023.05.06更新） | marketHoliday/DCE.csv | 1994 |
-| INE | Shanghai International Energey Exchange | China | https://www.ine.cn/en/news/notice/6598.html |  | marketHoliday/INE.csv | 2017 |
+| SSE | Shanghai Stock Exchange | China | http://www.sse.com.cn/market/view/ | 删除了 2023.05.03、2023.05.02、2023.06.23、2023.10.06 | marketHoliday/SSE.csv | 1991 |
+| SZSE | Shenzhen Stocak Exchange | China | http://www.szse.cn/disclosure/index.html | 删除了 2023.05.03、2023.05.02、2023.06.23、2023.10.06 | marketHoliday/SZSE.csv | 1991 |
+| CFFEX | China Finacial Futures Exchange | China | http://www.cffex.com.cn/jyrl/ | 删除了 2023.05.03、2023.05.02、2023.06.23、2023.10.06 | marketHoliday/CFFEX.csv | 2006 |
+| SHFE | Shanghai Futures Exchange | China | https://www.shfe.com.cn/bourseService/businessdata/calendar/ | 删除了 2023.05.03、2023.05.02、2023.06.23、2023.10.06 | marketHoliday/SHFE.csv | 1992 |
+| CZCE | Zhengzhou Commodity Exchange | China | http://www.czce.com.cn/cn/jysj/jyyl/H770313index_1.htm | 删除了 2023.05.03、2023.05.02、2023.06.23、2023.10.06 | marketHoliday/CZCE.csv | 1991 |
+| DCE | Dalian Commodity Exchange | China | http://big5.dce.com.cn:1980/SuniT/www.dce.com.cn/DCE/TradingClearing/Exchange%20Notice/1516085/index.html | 删除了 2023.05.03、2023.05.02、2023.06.23、2023.10.06 | marketHoliday/DCE.csv | 1994 |
+| INE | Shanghai International Energey Exchange | China | https://www.ine.cn/en/news/notice/6598.html | 删除了 2023.05.03、2023.05.02、2023.06.23、2023.10.06 | marketHoliday/INE.csv | 2017 |
 
