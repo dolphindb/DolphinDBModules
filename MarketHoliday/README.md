@@ -5,18 +5,19 @@
 本教程将会从交易日历的查询和应用、如何自定义交易日历、以及交易日历的来源等三个方面介绍如何使用 DolphinDB 的交易日历。
 
 
-- [1. 交易日历的查询和应用](#1-交易日历的查询和应用)
-  - [1.1 查询交易日历-getMarketCalendar](#11-查询交易日历-getmarketcalendar)
-  - [1.2 基于交易日历的日期偏移计算 - temporalAdd](#12-基于交易日历的日期偏移计算---temporaladd)
-  - [1.3 基于交易日历取最近的交易日 - transFreq](#13-基于交易日历取最近的交易日---transfreq)
-  - [1.4 基于交易日的数据采样 - asFreq/resample](#14-基于交易日的数据采样---asfreqresample)
-  - [1.5 duration 类型支持交易日历](#15-duration-类型支持交易日历)
-- [2. 自定义及更新内置交易日历](#2-自定义及更新内置交易日历)
-  - [2.1 新增交易日历](#21-新增交易日历)
-  - [2.2 替换交易日历](#22-替换交易日历)
-- [3. 交易日历出处](#3-交易日历出处)
-  - [3.1 国际交易所 ISO CODE 列表](#31-国际交易所-iso-code-列表)
-  - [3.2 中国大陆交易所简称列表](#32-中国大陆交易所简称列表)
+- [交易日历](#交易日历)
+  - [1. 交易日历的查询和应用](#1-交易日历的查询和应用)
+    - [1.1 查询交易日历-getMarketCalendar](#11-查询交易日历-getmarketcalendar)
+    - [1.2 基于交易日历的日期偏移计算 - temporalAdd](#12-基于交易日历的日期偏移计算---temporaladd)
+    - [1.3 基于交易日历取最近的交易日 - transFreq](#13-基于交易日历取最近的交易日---transfreq)
+    - [1.4 基于交易日的数据采样 - asFreq/resample](#14-基于交易日的数据采样---asfreqresample)
+    - [1.5 duration 类型支持交易日历](#15-duration-类型支持交易日历)
+  - [2. 自定义及更新内置交易日历](#2-自定义及更新内置交易日历)
+    - [2.1 新增交易日历](#21-新增交易日历)
+    - [2.2 替换交易日历](#22-替换交易日历)
+  - [3. 交易日历出处](#3-交易日历出处)
+    - [3.1 国际交易所 ISO CODE 列表](#31-国际交易所-iso-code-列表)
+    - [3.2 中国大陆交易所简称列表](#32-中国大陆交易所简称列表)
 
 ## 1. 交易日历的查询和应用
 
@@ -420,11 +421,11 @@ getMarketCalendar("XDDB",2023.03.01, 2023.03.10)
 
 | 标识码 <br>(ISO Code) | 交易所 | 国家 | 交易所节假日的公布网站 | 交易日历备注 | CSV 文件路径 | 开始年份 |
 |:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| SSE | Shanghai Stock Exchange | China | http://www.sse.com.cn/market/view/ | 删除了 2023.05.03、2023.05.02、2023.06.23、2023.10.06 | marketHoliday/SSE.csv | 1991 |
+| XSHG | Shanghai Stock Exchange | China | http://www.sse.com.cn/market/view/ | 删除了 2023.05.03、2023.05.02、2023.06.23、2023.10.06 | marketHoliday/SSE.csv | 1991 |
 | SZSE | Shenzhen Stocak Exchange | China | http://www.szse.cn/disclosure/index.html | 删除了 2023.05.03、2023.05.02、2023.06.23、2023.10.06 | marketHoliday/SZSE.csv | 1991 |
-| CFFEX | China Finacial Futures Exchange | China | http://www.cffex.com.cn/jyrl/ | 删除了 2023.05.03、2023.05.02、2023.06.23、2023.10.06 | marketHoliday/CFFEX.csv | 2006 |
+| CCFX | China Finacial Futures Exchange | China | http://www.cffex.com.cn/jyrl/ | 删除了 2023.05.03、2023.05.02、2023.06.23、2023.10.06 | marketHoliday/CFFEX.csv | 2006 |
 | SHFE | Shanghai Futures Exchange | China | https://www.shfe.com.cn/bourseService/businessdata/calendar/ | 删除了 2023.05.03、2023.05.02、2023.06.23、2023.10.06 | marketHoliday/SHFE.csv | 1992 |
 | CZCE | Zhengzhou Commodity Exchange | China | http://www.czce.com.cn/cn/jysj/jyyl/H770313index_1.htm | 删除了 2023.05.03、2023.05.02、2023.06.23、2023.10.06 | marketHoliday/CZCE.csv | 1991 |
-| DCE | Dalian Commodity Exchange | China | http://big5.dce.com.cn:1980/SuniT/www.dce.com.cn/DCE/TradingClearing/Exchange%20Notice/1516085/index.html | 删除了 2023.05.03、2023.05.02、2023.06.23、2023.10.06 | marketHoliday/DCE.csv | 1994 |
-| INE | Shanghai International Energey Exchange | China | https://www.ine.cn/en/news/notice/6598.html | 删除了 2023.05.03、2023.05.02、2023.06.23、2023.10.06 | marketHoliday/INE.csv | 2017 |
+| XDCE | Dalian Commodity Exchange | China | http://big5.dce.com.cn:1980/SuniT/www.dce.com.cn/DCE/TradingClearing/Exchange%20Notice/1516085/index.html | 删除了 2023.05.03、2023.05.02、2023.06.23、2023.10.06 | marketHoliday/DCE.csv | 1994 |
+| XINE | Shanghai International Energey Exchange | China | https://www.ine.cn/en/news/notice/6598.html | 删除了 2023.05.03、2023.05.02、2023.06.23、2023.10.06 | marketHoliday/INE.csv | 2017 |
 
