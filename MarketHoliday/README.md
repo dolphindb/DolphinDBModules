@@ -421,11 +421,11 @@ getMarketCalendar("XDDB",2023.03.01, 2023.03.10)
 
 | 标识码 <br>(ISO Code) | 交易所 | 国家 | 交易所节假日的公布网站 | 交易日历备注 | CSV 文件路径 | 开始年份 |
 |:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| XSHG | Shanghai Stock Exchange | China | http://www.sse.com.cn/market/view/ | 删除了 2023.05.03、2023.05.02、2023.06.23、2023.10.06 | marketHoliday/SSE.csv | 1991 |
+| XSHG | Shanghai Stock Exchange | China | http://www.sse.com.cn/market/view/ | 删除了 2023.05.03、2023.05.02、2023.06.23、2023.10.06 | marketHoliday/XSHG.csv | 1991 |
 | SZSE | Shenzhen Stocak Exchange | China | http://www.szse.cn/disclosure/index.html | 删除了 2023.05.03、2023.05.02、2023.06.23、2023.10.06 | marketHoliday/SZSE.csv | 1991 |
-| CCFX | China Finacial Futures Exchange | China | http://www.cffex.com.cn/jyrl/ | 删除了 2023.05.03、2023.05.02、2023.06.23、2023.10.06 | marketHoliday/CFFEX.csv | 2006 |
+| CCFX | China Finacial Futures Exchange | China | http://www.cffex.com.cn/jyrl/ | 删除了 2023.05.03、2023.05.02、2023.06.23、2023.10.06 | marketHoliday/CCFX.csv | 2006 |
 | SHFE | Shanghai Futures Exchange | China | https://www.shfe.com.cn/bourseService/businessdata/calendar/ | 删除了 2023.05.03、2023.05.02、2023.06.23、2023.10.06 | marketHoliday/SHFE.csv | 1992 |
 | CZCE | Zhengzhou Commodity Exchange | China | http://www.czce.com.cn/cn/jysj/jyyl/H770313index_1.htm | 删除了 2023.05.03、2023.05.02、2023.06.23、2023.10.06 | marketHoliday/CZCE.csv | 1991 |
-| XDCE | Dalian Commodity Exchange | China | http://big5.dce.com.cn:1980/SuniT/www.dce.com.cn/DCE/TradingClearing/Exchange%20Notice/1516085/index.html | 删除了 2023.05.03、2023.05.02、2023.06.23、2023.10.06 | marketHoliday/DCE.csv | 1994 |
-| XINE | Shanghai International Energey Exchange | China | https://www.ine.cn/en/news/notice/6598.html | 删除了 2023.05.03、2023.05.02、2023.06.23、2023.10.06 | marketHoliday/INE.csv | 2017 |
+| XDCE | Dalian Commodity Exchange | China | http://big5.dce.com.cn:1980/SuniT/www.dce.com.cn/DCE/TradingClearing/Exchange%20Notice/1516085/index.html | 删除了 2023.05.03、2023.05.02、2023.06.23、2023.10.06 | marketHoliday/XDCE.csv | 1994 |
+| XINE | Shanghai International Energey Exchange | China | https://www.ine.cn/en/news/notice/6598.html | 删除了 2023.05.03、2023.05.02、2023.06.23、2023.10.06 | marketHoliday/XINE.csv | 2017 |
 
