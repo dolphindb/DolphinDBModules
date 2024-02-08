@@ -42,7 +42,7 @@
 
 * 与 TA-Lib 中所有函数名大写以及所有参数名小写的规范不同，ta 模块中，函数名及参数名均采用驼峰式命名法。
 
-	例如，TA-Lib 中 DEMA 函数的语法为 `DEMA(close, timeperiod=30)`。在 ta 模块中相应的函数为 `dema(close, timePeriod)`。
+    例如，TA-Lib 中 DEMA 函数的语法为 `DEMA(close, timeperiod=30)`。在 ta 模块中相应的函数为 `dema(close, timePeriod)`。
 
 * TA-Lib 中某些函数有可选参数。ta 模块中，如果应用于流计算中，所有参数皆为必选。
 * 为得到有意义的结果，ta 模块中函数的参数 timePeriod 要求至少是2。
@@ -160,7 +160,7 @@ Python TA-Lib 库中的 `EMA` 函数耗时为418ms，是 DolphinDB ta module 中
 * 计算逻辑为按照股票代码进行分组计算各指标。    
 * 为了测试函数计算性能，DolphinDB 和Python 测试代码都是单线程运行。    
 * [DolphinDB, Python使用性能测试代码](src/Correctness_verification.ipynb)    
-* [测试数据](src/testData.csv)    
+* [测试数据](src/testData.7z)    
 
 测试结果如下表所示：
 
@@ -560,4 +560,4 @@ submitJob("replay", "replay",  replay{data, inputTable, `tradedate, `tradedate, 
 * [DolphinDB, Python 运行时间对比测试代码](src/DolphinDB_vs_Python_runtime.ipynb)
 * [DolphinDB, Python 正确性验证测试代码](src/Correctness_verification.ipynb)
 * [DolphinDB 流批一致性测试代码](src/stream_batch_consistency.txt)
-* [测试数据](src/testData.csv) 
+* [测试数据](src/testData.7z) 
