@@ -1,40 +1,47 @@
 # Trading Calendar 
+> **Note: As of version 2.00.12/3.00.0 (2024/4/1), this document is no longer maintained. For the latest documentation, please refer to [DolphinDB Manual>Trading Calendar](https://docs.dolphindb.com/en/Tutorials/trading_calendar.html).**
 
-Trading calendar is a frequently used tool for data analysis, which helps to quickly obtain exchange calendars and perform calculations based on trading calendars. Starting from version 2.00.9/1.30.21, DolphinDB provides built-in trading calendars of more than fifty exchanges.
+Trading calendar is a frequently used tool for data analysis, which helps to quickly obtain exchange calendars and perform calculations based on trading calendars. Starting from version 2.00.9/1.30.21, DolphinDB provides built-in trading calendars of more than fifty exchanges. Refer to [Release](./Release_EN.md) for information on the latest calendars.
 
 This tutorial describes how to use and customize trading calendars in DolphinDB. Specifically: check trading days; perform calculations based on trading calendars; create your own trading calendars; update trading calendars.
 
-- [Trading Calendar](#trading-calendar)
-  - [1. Use Trading Calendars](#1-use-trading-calendars)
-    - [1.1 Check Trading Days](#11-check-trading-days)
-    - [1.2 Create the DateOffset of Trading Days](#12-create-the-dateoffset-of-trading-days)
-    - [1.3 Obtain the Closest Trading Day](#13-obtain-the-closest-trading-day)
-    - [1.4 Data Sampling Based on Trading Days](#14-data-sampling-based-on-trading-days)
-  - [2. Customize Trading Calendars](#2-customize-trading-calendars)
-    - [2.1 Add a New Trading Calendar](#21-add-a-new-trading-calendar)
-    - [2.2 Update the Trading Calendar](#22-update-the-trading-calendar)
-  - [3. Calendar Support](#3-calendar-support)
+- [Use Trading Calendars](#use-trading-calendars)
+  - [Check Trading Days](#check-trading-days)
+  - [Create the DateOffset of Trading Days](#create-the-dateoffset-of-trading-days)
+  - [Obtain the Closest Trading Day](#obtain-the-closest-trading-day)
+  - [Data Sampling Based on Trading Days](#data-sampling-based-on-trading-days)
+  - [Use Trading Days as DURATION Type （Only for Server 200）](#use-trading-days-as-duration-type-only-for-server-200)
+- [Customize Trading Calendars](#customize-trading-calendars)
+  - [Add a New Trading Calendar](#add-a-new-trading-calendar)
+  - [Update the Trading Calendar](#update-the-trading-calendar)
+- [Calendar Support](#calendar-support)
 
-## 1. Use Trading Calendars
+## Use Trading Calendars
 
 The built-in trading calendars can be used for various scenarios.
 
-### 1.1 Check Trading Days
+**Note**: 
 
-You can use function [`getMarketCalendar(marketName, [startDate], [endDate])`](https://www.dolphindb.com/help200/FunctionsandCommands/FunctionReferences/g/getMarketCalendar.html) to get trading days of the corresponding exchange in the date range determined by *startDate* and *endDate*.
+- Starting from version 1.30.23/2.00.11, multiple trading days frequency is supported for functions transFreq, asFreq, and resample with the number specified before the trading calendar identifier in rule.
+
+- Starting from version 2.00.11.1,  trading calendar, specified as “integers + identifiers“, can be used and calculated as DURATION data.
+
+### Check Trading Days
+
+You can use function [`getMarketCalendar(marketName, [startDate], [endDate])`](../Functions/g/getMarketCalendar.dita) to get trading days of the corresponding exchange in the date range determined by *startDate* and *endDate*.
 
 To check the trading days of New York Stock Exchange (XNYS) between 2022.1.1 and 2022.1.10:
 
 ```c++
 getMarketCalendar("XNYS",2022.01.01, 2022.01.10)
 
-#output
+// output
 [2022.01.03,2022.01.04,2022.01.05,2022.01.06,2022.01.07,2022.01.10]
 ```
 
-### 1.2 Create the DateOffset of Trading Days
+### Create the DateOffset of Trading Days
 
-To shift a trading day forward or backward, you can use function [`temporalAdd(date, duration, exchangeId)`](https://www.dolphindb.com/help200/FunctionsandCommands/FunctionReferences/t/temporalAdd.html).
+To shift a trading day forward or backward, you can use function [`temporalAdd(date, duration, exchangeId)`](../Functions/t/temporalAdd.dita).
 
 Take XNYS for example, we add two trading days to the dates between 2023.1.1 and 2023.1.6:
 
@@ -42,14 +49,22 @@ Take XNYS for example, we add two trading days to the dates between 2023.1.1 and
 dates=[2023.01.01, 2023.01.02, 2023.01.03, 2023.01.04, 2023.01.05, 2023.01.06]
 temporalAdd(dates,2,"XNYS")
 
-#output
+// output
+[2023.01.04,2023.01.04,2023.01.05,2023.01.06,2023.01.09,2023.01.10]
+```
+Or you can also use the following script if you use version 2.00.11.1 or higher. For detailed usage of trading calendar as DURATION type, refer to section "Use Trading Days as DURATION Type".
+
+```c++
+dates=[2023.01.01, 2023.01.02, 2023.01.03, 2023.01.04, 2023.01.05, 2023.01.06]
+temporalAdd(dates, 2XNYS)
+
+//output
 [2023.01.04,2023.01.04,2023.01.05,2023.01.06,2023.01.09,2023.01.10]
 ```
 
+### Obtain the Closest Trading Day
 
-### 1.3 Obtain the Closest Trading Day
-
-You can get the closest trading day of a certain day with function [`transFreq(X,rule)`](https://www.dolphindb.com/help200/FunctionsandCommands/FunctionReferences/t/transFreq.html).
+You can get the closest trading day of a certain day with function [`transFreq(X,rule)`](../Functions/t/transFreq.dita).
 
 For example, specify parameter *rule* as XNYS. We can get the closest trading days of each date between 2023.1.1 and 2023.1.6:
 
@@ -57,13 +72,13 @@ For example, specify parameter *rule* as XNYS. We can get the closest trading da
 dates=[2023.01.01, 2023.01.02, 2023.01.03, 2023.01.04, 2023.01.05, 2023.01.06]
 dates.transFreq("XNYS")
 
-#output
+// output
 [2022.12.30,2022.12.30,2023.01.03,2023.01.04,2023.01.05,2023.01.06]
 ```
 
-### 1.4 Data Sampling Based on Trading Days
+### Data Sampling Based on Trading Days
 
-You can choose functions [`asFreq(X,rule)`](https://www.dolphindb.com/help200/FunctionsandCommands/FunctionReferences/a/asFreq.html) or [`resample(X,rule,func)`](https://www.dolphindb.com/help200/FunctionsandCommands/FunctionReferences/r/resample.html) to sample data on trading days. The only difference of the two lies in whether data can be aggregated.
+You can choose functions [`asFreq(X,rule)`](../Functions/a/asFreq.dita) or [`resample(X,rule,func)`](../Functions/r/resample.dita) to sample data on trading days. The only difference of the two lies in whether data can be aggregated.
 
 Function `asFreq(X,rule)` will return the result by trading days. If there are multiple records in the same trading day, only the first value will be taken. If there is no data in a trading day, it will be filled with NULL.
 
@@ -75,7 +90,7 @@ close = [100.10, 100.10, 100.10, 78.89, 88.99, 88.67, 78.78]
 s=indexedSeries(timestampv, close)
 s.asFreq("XNYS")
 
-#output
+// output
            #0                 
            ------
 2022.12.30|100.10
@@ -96,7 +111,7 @@ close = [100.10, 100.10, 100.10, 78.89, 88.99, 88.67, 78.78]
 s=indexedSeries(timestampv, close)
 s.resample("XNYS", last)
 
-#output
+// output
            #0                 
            ------
 2022.12.30|100.10
@@ -105,15 +120,181 @@ s.resample("XNYS", last)
 2023.01.05|                   
 2023.01.06|78.78
 ```
+### Use Trading Days as DURATION Type （Only for Server 200）
 
+Starting from version 2.00.11.1, trading calendar, specified as “integers + identifiers“, can be used as DURATION data.
 
-## 2. Customize Trading Calendars
+#### Convert Trading Days to DURATION Type
+
+Trading days of DURATION type can be specified by converting a string of trading calendar identifier with the`duration` function.
+
+Take XNYS for example, we can convert string “2XNYS“ to DURATION type and query the average closing price every two trading days with `interval` specified:
+
+```
+y = duration("2XNYS")
+date = [2022.12.30, 2023.01.03, 2023.01.04, 2023.01.05, 2023.01.06]
+close = [100.10, 78.89, 88.99, 88.67, 78.78]
+t = table(date, close)
+select avg(close) from t group by interval(date, y, "prev")
+
+// output
+   | interval_date | avg_close 
+---|---------------|-----------
+ 0 | 2022.12.30    | 89.495    
+ 1 | 2023.01.04    | 88.83     
+ 2 | 2023.01.06    | 78.78     
+```
+
+#### Trading Days as Windows for `wj`
+
+The *window* parameter of `wj` now can be specified as trading calendar identifiers.
+
+The following example performs the window join operation on “t1“ and “t2“ and obtain the average closing price over each window [-2XNYS:0XNYS]:
+
+```
+t1 = table(2023.01.03 2023.01.06 as date)
+date = [2022.12.30, 2023.01.03, 2023.01.04, 2023.01.05, 2023.01.06]
+close = [100.10, 78.89, 88.99, 88.67, 78.78]
+t2 = table(date, close)
+wj(t1, t2, -2XNYS:0XNYS, <avg(close)>, `date);
+
+// output
+   | date       | avg_close         
+---|------------|-------------------
+ 0 | 2023.01.03 | 89.495            
+ 1 | 2023.01.06 | 85.48 
+```
+
+#### Trading Days as Sliding Windows
+
+The trading days can be used for measuring sliding windows for the moving, time-based moving, `twindow`, and `tmovingWindowData` functions.
+
+**Moving Functions**
+
+Take `msum` as an example, we obtain the sum of closing prices of an XNYS stock every two trading days:
+
+```
+date = [2022.12.30, 2023.01.03, 2023.01.04, 2023.01.05, 2023.01.06]
+close = [100.10, 78.89, 88.99, 88.67, 78.78]
+X1 = indexedSeries(date, close)
+msum(X1, window=2XNYS)
+
+// output
+           #0                 
+           ------
+2022.12.30|100.1
+2023.01.03|178.99
+2023.01.04|167.88
+2023.01.05|177.66
+2023.01.06|167.45
+```
+
+**Time-based Moving Functions**
+
+Take `tmavg` for example, we obtain the average closing prices of an XNYS stock every two trading days:
+
+```
+date = [2022.12.30, 2023.01.03, 2023.01.04, 2023.01.05, 2023.01.06]
+close = [100.10, 78.89, 88.99, 88.67, 78.78]
+t = table(date, close)
+select tmavg(date, close, 2XNYS) from t
+
+// output
+   | tmavg_date         
+---|------------
+ 0 | 100.1              
+ 1 | 89.495
+ 2 | 83.94
+ 3 | 88.83
+ 4 | 83.725
+```
+
+**Function** `twindow`
+
+The following example calculates the average closing price of an XNYS stock over each window [-1XNYS:2XNYS]:
+
+```
+date = [2022.12.30, 2023.01.03, 2023.01.04, 2023.01.05, 2023.01.06]
+close = [100.10, 78.89, 88.99, 88.67, 78.78]
+t = table(date, close)
+select twindow(avg, close, date, -1XNYS:2XNYS) from t
+
+// output
+   | twindow_avg       
+---|-------------------
+ 0 | 89.327 
+ 1 | 89.163 
+ 2 | 83.833
+ 3 | 85.48
+ 4 | 83.725
+```
+
+**Function** `tmovingWindowData`
+
+The following example returns an array vector where each row indicates the closing prices of each window (i.e., two trading days).
+
+```
+date = [2022.12.30, 2023.01.03, 2023.01.04, 2023.01.05, 2023.01.06]
+close = [100.10, 78.89, 88.99, 88.67, 78.78]
+tmovingWindowData(date, close, 2XNYS)
+
+// output
+[[100.1],[100.1, 78.89],[78.89, 88.99],[88.99, 88.67],[88.67, 78.78]]
+```
+
+#### Shift Elements Based on Trading Days
+
+Use functions `move` and `tmove` to shift elements based on trading days.
+
+**Function** `move`
+
+The following example shifts the closing prices of an XNYS stock to the right for two trading days:
+
+```
+date = [2022.12.30, 2023.01.03, 2023.01.04, 2023.01.05, 2023.01.06]
+close = [100.10, 78.89, 88.99, 88.67, 78.78]
+X1 = indexedSeries(date, close)
+move(X1, 2XNYS)
+
+// output
+          #0                 
+           ------
+2022.12.30|
+2023.01.03|
+2023.01.04|100.1
+2023.01.05|78.89
+2023.01.06|88.99
+```
+
+**Function** `tmove`
+
+The following example obtains the closing prices from two trading days before the current day.
+
+```
+date = [2022.12.30, 2023.01.03, 2023.01.04, 2023.01.05, 2023.01.06]
+close = [100.10, 78.89, 88.99, 88.67, 78.78]
+t = table(date, close)
+select *, tmove(date, close, 2XNYS) from t
+
+// output
+      | date       | close | tmove_date
+------|------------|-------|-----------
+ 0    | 2022.12.30 | 100.1 |       
+ 1    | 2023.01.03 | 78.89 |       
+ 2    | 2023.01.04 | 88.99 | 100.1 
+ 3    | 2023.01.05 | 88.67 | 78.89 
+ 4    | 2023.01.06 | 78.78 | 88.99
+```
+
+## Customize Trading Calendars
 
 DolphinDB also allows administrators to customize trading calendars with built-in functions.
 
-### 2.1 Add a New Trading Calendar
+**Note**: Since version 1.30.23/2.00.11, naming the trading calendar identifier with digits is no longer permitted. It must consist of four uppercase letters and cannot be the same as the file name in *marketHolidayDir*.
 
-Suppose there is an exchange named “DDB“, function [`addMarketHoliday(marketName, holiday)`](https://www.dolphindb.com/help200/FunctionsandCommands/CommandsReferences/a/addMarketHoliday.html) can be used to add a new DDB calendar. A *DDB.csv* file will be added to the */marketHoliday/* directory. Weekends are recognized as holidays in DolphinDB by default, therefore, only weekday holidays need to be filled in the file.
+### Add a New Trading Calendar
+
+Suppose there is an exchange named “XDDB“, function [`addMarketHoliday(marketName, holiday)`](../Functions/a/addMarketHoliday.dita) can be used to add a new XDDB calendar. A *XDDB.csv* file will be added to the */marketHoliday/* directory. Weekends are recognized as holidays in DolphinDB by default, therefore, only weekday holidays need to be filled in the file.
 
 Once a new trading calendar has been generated, functions such as getMarketCalendar can be used directly based on the new calendar:
 
@@ -123,49 +304,49 @@ holiday = 2023.01.03 2023.01.04
 //user login
 login(`admin,`123456)
 //generate a trading calendar
-addMarketHoliday("DDB",holiday)
+addMarketHoliday("XDDB",holiday)
 
 //get the trading days of the new calendar in a date range
-getMarketCalendar("DDB",2023.01.01, 2023.01.10)
-#output
+getMarketCalendar("XDDB",2023.01.01, 2023.01.10)
+//output
 [2023.01.02,2023.01.05,2023.01.06,2023.01.09,2023.01.10]
 
-temporalAdd(2023.01.01,2,"DDB")
-#output
+temporalAdd(2023.01.01,2,"XDDB")
+//output
 2023.01.05
 ```
 
-> The newly added trading calendar is only valid on the current node. Execute function `addMarketHoliday` on other nodes for it to take effect on those nodes. 
+**Note**: The newly added trading calendar is only valid on the current node. Execute function `addMarketHoliday` on other nodes for it to take effect on those nodes. 
 
-### 2.2 Update the Trading Calendar
+### Update the Trading Calendar
 
-If you want to update the existing calendar of DDB exchange, function [`updateMarketHoliday(marketName, holiday)`](https://www.dolphindb.com/help200/FunctionsandCommands/CommandsReferences/u/updateMarketHoliday.html) can be used to reset the holidays.
+If you want to update the existing calendar of XDDB exchange, function [`updateMarketHoliday(marketName, holiday)`](../Functions/u/updateMarketHoliday.dita) can be used to reset the holidays.
 
-> **Note**: The file will be overwritten. The original holidays will be replaced with the holidays specified by this function. 
+**Note**: The file will be overwritten. The original holidays will be replaced with the holidays specified by this function. 
 
-The following example resets the dates 2023.03.07 and 2023.03.08 as holidays for the DDB calendar. Check the next trading day after 2022.01.01 with function `temporalAdd`:
+The following example resets the dates 2023.03.07 and 2023.03.08 as holidays for the XDDB calendar. Check the next trading day after 2022.01.01 with function `temporalAdd`:
 
 ```c++
 //set 2023.03.07 (Tue.) and 2023.03.08 (Wed.) as holiday
-updateMarketHoliday("DDB",2023.03.07 2023.03.08)
+updateMarketHoliday("XDDB",2023.03.07 2023.03.08)
 
 //the original holidays 2023.01.03 and 2023.01.04 are no longer holidays
-getMarketCalendar("DDB",2023.01.01, 2023.01.10)
-#output
+getMarketCalendar("XDDB",2023.01.01, 2023.01.10)
+//output
 [2023.01.02,2023.01.03,2023.01.04,2023.01.05,2023.01.06,2023.01.09,2023.01.10]
 
 //As holidays, 2023.03.07 and 2023.03.08 are not included in the trading calendar
-getMarketCalendar("DDB",2023.03.01, 2023.03.10)
-#output
+getMarketCalendar("XDDB",2023.03.01, 2023.03.10)
+//output
 [2023.03.01,2023.03.02,2023.03.03,2023.03.06,2023.03.09,2023.03.10]
 ```
 
 
-## 3. Calendar Support
+## Calendar Support
 
 All exchange calendars supported are listed below. 
 
-Note that calendars are updated according to the holidays announced on the official website of each exchange and the local governments.
+Note that calendars are updated according to the holidays announced on the official website of each exchange and the local governments. Refer to [Release](https://github.com/dolphindb/DolphinDBModules/blob/200.11/MarketHoliday/Release_EN.md) for information on the latest calendars.
 
 
 - **Major Stock Exchanges**
@@ -175,8 +356,13 @@ Note that calendars are updated according to the holidays announced on the offic
 | AIXK | Astana International Exchange | Kazakhstan | https://aix.kz/trading/trading-calendar/ | marketHoliday/AIXK.csv | 2017 |
 | ASEX | Athens Stock Exchange | Greece | https://www.athexgroup.gr/market-alternative-holidays | marketHoliday/ASEX.csv | 2004 |
 | BVMF | BMF Bovespa | Brazil | https://www.b3.com.br/en_us/solutions/platforms/puma-trading-system/for-members-and-traders/trading-calendar/holidays/ | marketHoliday/BVMF.csv | 2004 |
+| CCFX | China Finacial Futures Exchange | China | http://www.cffex.com.cn/jyrl/ | marketHoliday/CCFX.csv | 2007 |
 | CMES | Chicago Mercantile Exchange | USA | https://www.cmegroup.com/tools-information/holiday-calendar.html#cmeGlobex | marketHoliday/CMES.csv | 2004 |
+| CZCE | Zhengzhou Commodity Exchange | China | http://www.czce.com.cn/cn/jysj/jyyl/H770313index_1.htm | marketHoliday/CZCE.csv | 1991 |
+| XDCE | Dalian Commodity Exchange | China | http://big5.dce.com.cn:1980/SuniT/www.dce.com.cn/DCE/TradingClearing/Exchange%20Notice/1516085/index.html | marketHoliday/XDCE.csv | 1994 |
 | IEPA | ICE US | US | https://www.theice.com/holiday-hours?utm_source=website&utm_medium=search&utm_campaign=spotlight | marketHoliday/IEPA.csv | 2004 |
+| XINE | Shanghai International Energey Exchange | China | https://www.ine.cn/en/news/notice/6598.html | marketHoliday/XINE.csv | 2017 |
+| SHFE | Shanghai Futures Exchange | China | https://www.shfe.com.cn/bourseService/businessdata/calendar/ | marketHoliday/SHFE.csv | 1992 |
 | XAMS | Euronext Amsterdam | Netherlands | https://www.euronext.com/en/trade/trading-hours-holidays | marketHoliday/XAMS.csv | 2004 |
 | XASX | Austrialian Securities Exchange | Australia | https://www2.asx.com.au/markets/market-resources/asx-24-trading-calendar | marketHoliday/XASX.csv | 2004 |
 | XBKK | Stock Exchange of Thailand | Thailand | https://www.set.or.th/en/about/event-calendar/holiday?year=2023 | marketHoliday/XBKK.csv | 2004 |
@@ -185,7 +371,7 @@ Note that calendars are updated according to the holidays announced on the offic
 | XBRU | Euronext Brussels | Belgium | https://www.euronext.com/en/trade/trading-hours-holidays#:~:text=Calendar%20of%20business%20days%202023%20%20%20Euronext:%20%20Closed%20%2012%20more%20rows%20 | marketHoliday/XBRU.csv | 2004 |
 | XBSE | Bucharest Stock Exchange | Romania | https://www.bvb.ro/TradingAndStatistics/TradingSessionSchedule | marketHoliday/XBSE.csv | 2004 |
 | XBUD | Budapest Stock Exchange | Hungary | https://www.bse.hu/Products-and-Services/Trading-information/trading-calendar-2023 | marketHoliday/XBUD.csv | 2004 |
-| XBUE | Buenos Aires Stock Exchange | Argentina | marketHoliday/XBUE.csv | 2004 |
+| XBUE | Buenos Aires Stock Exchange | Argentina | |marketHoliday/XBUE.csv | 2004 ||
 | XCBF | CBOE Futures | USA | https://www.cboe.com/about/hours/us-futures/ | marketHoliday/XCBF.csv | 2004 |
 | XCSE | Copenhagen Stock Exchange | Denmark | https://www.nasdaqomxnordic.com/tradinghours/ | marketHoliday/XCSE.csv | 2004 |
 | XDUB | Irish Stock Exchange | Ireland | https://www.euronext.com/en/trade/trading-hours-holidays | marketHoliday/XDUB.csv | 2004 |
@@ -215,7 +401,7 @@ Note that calendars are updated according to the holidays announced on the offic
 | XPRA | Prague Stock Exchange | Czech Republic | https://www.pse.cz/en/trading/trading-information/trading-calendar | marketHoliday/XPRA.csv | 2004 |
 | XSES | Singapore Exchange | Singapore | https://www.mom.gov.sg/employment-practices/public-holidays | marketHoliday/XSES.csv | 2004 |
 | XSGO | Santiago Stock Exchange | Chile | https://www.euronext.com/en/trade/trading-hours-holidays | marketHoliday/XSGO.csv | 2004 |
-| XSHE | Shenzhen Stocak Exchange | China | http://www.szse.cn/disclosure/index.html | marketHoliday/XSHE.csv | 1992 |
+| XSHE | Shenzhen Stock Exchange | China | http://www.szse.cn/disclosure/index.html | marketHoliday/XSHE.csv | 1992 |
 | XSHG | Shanghai Stock Exchange | China | http://www.sse.com.cn/market/view/ | marketHoliday/XSHG.csv | 1991 |
 | XSTO | Stockholm Stock Exchange | Sweden | https://www.nasdaqomxnordic.com/tradinghours/ | marketHoliday/XSTO.csv | 2004 |
 | XSWX | SIX Swiss Exchange | Switzerland | https://www.six-group.com/en/products-services/the-swiss-stock-exchange/market-data/news-tools/trading-currency-holiday-calendar.html#/ | marketHoliday/XSWX.csv | 2004 |
@@ -224,16 +410,3 @@ Note that calendars are updated according to the holidays announced on the offic
 | XTSE | Toronto Stock Exchange | Canada | https://www.tsx.com/trading/calendars-and-trading-hours/calendar | marketHoliday/XTSE.csv | 2004 |
 | XWAR | Poland Stock Exchange | Poland |  | marketHoliday/XWAR.csv | 2004 |
 | XWBO | Wiener Borse | Austria | https://www.wienerborse.at/en/trading/trading-information/trading-calendar/ | marketHoliday/XWBO.csv | 2004 |
-
-- **Exchanges in Mainland, China**
-
-| ISO Code| Exchange | Country | Exchange Website | CSV File Path | Starting from |
-|:---:|:---:|:---:|:---:|:---:|:---:|
-| SSE | Shanghai Stock Exchange | China | http://www.sse.com.cn/market/view/ | marketHoliday/SSE.csv | 1991 |
-| SZSE | Shenzhen Stocak Exchange | China | http://www.szse.cn/disclosure/index.html | marketHoliday/SZSE.csv | 1991 |
-| CFFEX | China Finacial Futures Exchange | China | http://www.cffex.com.cn/jyrl/ | marketHoliday/CFFEX.csv | 2007 |
-| SHFE | Shanghai Futures Exchange | China | https://www.shfe.com.cn/bourseService/businessdata/calendar/ | marketHoliday/SHFE.csv | 1992 |
-| CZCE | Zhengzhou Commodity Exchange | China | http://www.czce.com.cn/cn/jysj/jyyl/H770313index_1.htm | marketHoliday/CZCE.csv | 1991 |
-| DCE | Dalian Commodity Exchange | China | http://big5.dce.com.cn:1980/SuniT/www.dce.com.cn/DCE/TradingClearing/Exchange%20Notice/1516085/index.html | marketHoliday/DCE.csv | 1994 |
-| INE | Shanghai International Energey Exchange | China | https://www.ine.cn/en/news/notice/6598.html | marketHoliday/INE.csv | 2017 |
-
