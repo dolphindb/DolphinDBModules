@@ -1,0 +1,647 @@
+module DolphinDBModules::easyTLDataImport::loadData::loadOneDayData::loadOneDaySnapshot
+
+use DolphinDBModules::easyTLDataImport::tbSchema::csvSchema::snapshotCsvSchema
+use DolphinDBModules::easyTLDataImport::tbSchema::csvSchema::orderQueueCsvSchema
+
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "DolphinDBModules"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+/*
+ * @FunctionName: transformOrderQueueSH
+ * @Brief: Transforms order queue data for the Shanghai market into a standardized format.
+ * @Param: orderTB: The input data table containing the original order queue data.
+ * @Return: A table containing transformed order queue data with bid and offer orders.
+ */
+def transformOrderQueueSH(orderTB){
+	tempData = select ImageStatus, TradeTime, SecurityID, fixedLengthArrayVector(OrderQty1, OrderQty2, OrderQty3, OrderQty4, OrderQty5, OrderQty6, OrderQty7, OrderQty8, OrderQty9, OrderQty10, OrderQty11, OrderQty12, OrderQty13, OrderQty14, OrderQty15, OrderQty16, OrderQty17, OrderQty18, OrderQty19, OrderQty20, OrderQty21, OrderQty22, OrderQty23, OrderQty24, OrderQty25, OrderQty26, OrderQty27, OrderQty28, OrderQty29, OrderQty30, OrderQty31, OrderQty32, OrderQty33, OrderQty34, OrderQty35, OrderQty36, OrderQty37, OrderQty38, OrderQty39, OrderQty40, OrderQty41, OrderQty42, OrderQty43, OrderQty44, OrderQty45, OrderQty46, OrderQty47, OrderQty48, OrderQty49, OrderQty50) as Orders, Side from orderTB
+	tempSell = select TradeTime, SecurityID, ImageStatus, Orders as OfferOrders from tempData where Side = `S
+	tempData = select TradeTime, SecurityID, ImageStatus, Orders as BidOrders from tempData where Side = `B
+	tempSell = select * from tempSell where isDuplicated([TradeTime, SecurityID, ImageStatus], LAST)=false
+	tempData = select * from tempData where isDuplicated([TradeTime, SecurityID, ImageStatus], LAST)=false
+	tempData = lj(tempSell, tempData, `TradeTime`SecurityID`ImageStatus)
+	tempSell = NULL
+	return tempData
+}
+
+/*
+ * @FunctionName: transformSnapshotSH
+ * @Brief: Transforms snapshot data for the Shanghai market into a standardized format.
+ * @Param: snapshotTB: The input data table containing the original snapshot data.
+ * @Param: day: The specific trading day for which the data is being processed.
+ * @Param: merge: A boolean flag indicating whether to merge the data from different exchanges.
+ * @Param: isDataDuplicated: A boolean flag indicating whether to remove duplicate entries from the data.
+ * @Return: A table containing transformed snapshot data in the specified format.
+ */
+def transformSnapshotSH(snapshotTB, day, merge, isDataDuplicated){
+	// Remove duplicate entries from the snapshot data if specified
+	if(isDataDuplicated==true){
+		tmpData = select * from snapshotTB where isDuplicated([UpdateTime, SecurityID, ImageStatus], LAST)=false
+	}else{
+		tmpData = select * from snapshotTB
+	}
+
+	// Handle BidNumOrders and OfferNumOrders columns
+	if("NumOrdersB1" in snapshotTB.colNames()){
+		update tmpData set BidNumOrders=fixedLengthArrayVector(NumOrdersB1,NumOrdersB2,NumOrdersB3,NumOrdersB4,NumOrdersB5,NumOrdersB6,NumOrdersB7,NumOrdersB8,NumOrdersB9,NumOrdersB10),
+							OfferNumOrders=fixedLengthArrayVector(NumOrdersS1,NumOrdersS2,NumOrdersS3,NumOrdersS4,NumOrdersS5,NumOrdersS6,NumOrdersS7,NumOrdersS8,NumOrdersS9,NumOrdersS10)
+	}else{
+		update tmpData set BidNumOrders=fixedLengthArrayVector(take(double(NULL),tmpData.size())),
+							OfferNumOrders=fixedLengthArrayVector(take(double(NULL),tmpData.size()))
+	}
+	
+	// Process the snapshot data based on the merging option
+	if(merge==true){
+		tmpData = select 'SH' as Market, 
+							day as TradeDate, 
+							UpdateTime as TradeTime, 
+							string(NULL) as MDStreamID, 
+							SecurityID as SecurityID, 
+							string(NULL) as SecurityIDSource, 
+							InstruStatus as TradingPhaseCode, 
+							ImageStatus as ImageStatus,
+							PreCloPrice as PreCloPrice, 			
+							TradNumber as NumTrades, 
+							TradVolume as TotalVolumeTrade, 
+							Turnover as TotalValueTrade, 
+							LastPrice as LastPrice, 
+							OpenPrice as OpenPrice, 
+							HighPrice as HighPrice, 
+							LowPrice as LowPrice, 
+							ClosePrice as ClosePrice, 	
+							double(NULL) as DifPrice1, 
+							double(NULL) as DifPrice2, 
+							double(NULL) as PE1, 
+							double(NULL) as PE2, 
+							double(NULL) as PreCloseIOPV, 
+							IOPV as IOPV, 
+							TotalBidVol as TotalBidQty, 
+							WAvgBidPri as WeightedAvgBidPx, 
+							AltWAvgBidPri as AltWAvgBidPri, 
+							TotalAskVol as TotalOfferQty, 
+							WAvgAskPri as WeightedAvgOfferPx, 
+							AltWAvgAskPri as AltWAvgAskPri, 
+							WarUpperPri as UpLimitPx, 
+							WarLowerPri as DownLimitPx, 
+							long(NULL) as OpenInt, 
+							double(NULL) as OptPremiumRatio, 
+							fixedLengthArrayVector(AskPrice1,AskPrice2,AskPrice3,AskPrice4,AskPrice5,AskPrice6,AskPrice7,AskPrice8,AskPrice9,AskPrice10) as OfferPrice, 
+							fixedLengthArrayVector(BidPrice1,BidPrice2,BidPrice3,BidPrice4,BidPrice5,BidPrice6,BidPrice7,BidPrice8,BidPrice9,BidPrice10) as BidPrice, 
+							fixedLengthArrayVector(AskVolume1,AskVolume2,AskVolume3,AskVolume4,AskVolume5,AskVolume6,AskVolume7,AskVolume8,AskVolume9,AskVolume10) as OfferOrderQty, fixedLengthArrayVector(BidVolume1,BidVolume2,BidVolume3,BidVolume4,BidVolume5,BidVolume6,BidVolume7,BidVolume8,BidVolume9,BidVolume10) as BidOrderQty, 
+							BidNumOrders as BidNumOrders, 
+							OfferNumOrders as OfferNumOrders, 
+							EtfBuyNumber as ETFBuyNumber, 
+							EtfBuyVolume as ETFBuyAmount, 
+							EtfBuyMoney as ETFBuyMoney, 
+							EtfSellNumber as ETFSellNumber, 
+							EtfSellVolume as ETFSellAmount, 
+							ETFSellMoney as ETFSellMoney, 
+							YieldToMatu as YieldToMatu, 
+							TotWarExNum as TotWarExNum, 
+							WiDBuyNum as WithdrawBuyNumber, 
+							WiDBuyVol as WithdrawBuyAmount, 
+							WiDBuyMon as WithdrawBuyMoney, 
+							WiDSellNum as WithdrawSellNumber, 
+							WiDSellVol as WithdrawSellAmount, 
+							WiDSellMon as WithdrawSellMoney, 
+							TotBidNum as TotalBidNumber, 
+							TotSellNum as TotalOfferNumber, 
+							MaxBidDur as MaxBidDur, 
+							MaxSellDur as MaxSellDur, 
+							BidNum as BidNum, 
+							SellNum as SellNum, 
+							LocalTime as LocalTime, 
+							SeqNo as SeqNo 
+						from tmpData
+	}else{
+		tmpData = select day as TradeDate, 
+							UpdateTime as TradeTime, 
+							SecurityID as SecurityID, 
+							ImageStatus as ImageStatus, 
+							PreCloPrice as PreCloPrice, 
+							OpenPrice as OpenPrice, 
+							HighPrice as HighPrice, 
+							LowPrice as LowPrice, 
+							LastPrice as LastPrice, 
+							ClosePrice as ClosePrice, 
+							InstruStatus as TradingPhaseCode, 
+							TradNumber as NumTrades, 
+							TradVolume as TotalVolumeTrade, 
+							Turnover as TotalValueTrade, 
+							TotalBidVol as TotalBidQty, 
+							WAvgBidPri as WeightedAvgBidPx, 
+							AltWAvgBidPri as AltWAvgBidPri, 
+							TotalAskVol as TotalOfferQty, 
+							WAvgAskPri as WeightedAvgOfferPx, 
+							AltWAvgAskPri as AltWAvgAskPri, 
+							EtfBuyNumber as ETFBuyNumber, 
+							EtfBuyVolume as ETFBuyAmount, 
+							EtfBuyMoney as ETFBuyMoney, 
+							EtfSellNumber as ETFSellNumber, 
+							EtfSellVolume as ETFSellAmount, 
+							ETFSellMoney as ETFSellMoney, 
+							YieldToMatu as YieldToMatu, 
+							TotWarExNum as TotWarExNum, 
+							WarUpperPri as UpLimitPx, 
+							WarLowerPri as DownLimitPx, 
+							WiDBuyNum as WithdrawBuyNumber, 
+							WiDBuyVol as WithdrawBuyAmount, 
+							WiDBuyMon as WithdrawBuyMoney, 
+							WiDSellNum as WithdrawSellNumber, 
+							WiDSellVol as WithdrawSellAmount, 
+							WiDSellMon as WithdrawSellMoney, 
+							TotBidNum as TotalBidNumber, 
+							TotSellNum as TotalOfferNumber, 
+							MaxBidDur as MaxBidDur, 
+							MaxSellDur as MaxSellDur, 
+							BidNum as BidNum, 
+							SellNum as SellNum, 
+							IOPV as IOPV, 
+							fixedLengthArrayVector(AskPrice1,AskPrice2,AskPrice3,AskPrice4,AskPrice5,AskPrice6,AskPrice7,AskPrice8,AskPrice9,AskPrice10) as OfferPrice, 
+							fixedLengthArrayVector(BidPrice1,BidPrice2,BidPrice3,BidPrice4,BidPrice5,BidPrice6,BidPrice7,BidPrice8,BidPrice9,BidPrice10) as BidPrice, 
+							fixedLengthArrayVector(AskVolume1,AskVolume2,AskVolume3,AskVolume4,AskVolume5,AskVolume6,AskVolume7,AskVolume8,AskVolume9,AskVolume10) as OfferOrderQty, 
+							fixedLengthArrayVector(BidVolume1,BidVolume2,BidVolume3,BidVolume4,BidVolume5,BidVolume6,BidVolume7,BidVolume8,BidVolume9,BidVolume10) as BidOrderQty, 
+							BidNumOrders as BidNumOrders, 
+							OfferNumOrders as OfferNumOrders, 
+							LocalTime as LocalTime, 
+							SeqNo as SeqNo 
+						from tmpData
+	}
+	return tmpData
+}
+
+/*
+ * @FunctionName: transformOrderQueueSZ
+ * @Brief: Transforms order queue data for the Shenzhen market into a standardized format.
+ * @Param: orderTB1: The input data table containing the original order queue data for the buy and sell sides.
+ * @Param: orderTB2=NULL: An optional input data table containing the additional order queue data for the sell side.
+ *                  	  If not provided, the function will only work with orderTB1.
+ * @Return: A table containing transformed order queue data with bid and offer orders.
+ */
+def transformOrderQueueSZ(orderTB1, orderTB2=NULL){
+	if(typestr(orderTB2)=="VOID"){
+		// If the second order table is not provided, process orderTB1
+		tempData = select 1 as ImageStatus, TradeTime, SecurityID, fixedLengthArrayVector(OrderQty1, OrderQty2, OrderQty3, OrderQty4, OrderQty5, OrderQty6, OrderQty7, OrderQty8, OrderQty9, OrderQty10, OrderQty11, OrderQty12, OrderQty13, OrderQty14, OrderQty15, OrderQty16, OrderQty17, OrderQty18, OrderQty19, OrderQty20, OrderQty21, OrderQty22, OrderQty23, OrderQty24, OrderQty25, OrderQty26, OrderQty27, OrderQty28, OrderQty29, OrderQty30, OrderQty31, OrderQty32, OrderQty33, OrderQty34, OrderQty35, OrderQty36, OrderQty37, OrderQty38, OrderQty39, OrderQty40, OrderQty41, OrderQty42, OrderQty43, OrderQty44, OrderQty45, OrderQty46, OrderQty47, OrderQty48, OrderQty49, OrderQty50) as Orders, Side from orderTB1
+		tempSell = select ImageStatus, TradeTime, SecurityID, Orders as OfferOrders from tempData where Side = `S
+		tempData = select ImageStatus, TradeTime, SecurityID, Orders as BidOrders from tempData where Side = `B
+		tempSell = select * from tempSell where isDuplicated([TradeTime, SecurityID, ImageStatus], LAST)=false
+		tempData = select * from tempData where isDuplicated([TradeTime, SecurityID, ImageStatus], LAST)=false
+		tempData = lj(tempSell, tempData, `TradeTime`SecurityID`ImageStatus)
+	}else{
+		// Process both order tables when both are provided
+		tempSell = select 1 as ImageStatus, TradeTime, SecurityID, fixedLengthArrayVector(OrderQty1, OrderQty2, OrderQty3, OrderQty4, OrderQty5, OrderQty6, OrderQty7, OrderQty8, OrderQty9, OrderQty10, OrderQty11, OrderQty12, OrderQty13, OrderQty14, OrderQty15, OrderQty16, OrderQty17, OrderQty18, OrderQty19, OrderQty20, OrderQty21, OrderQty22, OrderQty23, OrderQty24, OrderQty25, OrderQty26, OrderQty27, OrderQty28, OrderQty29, OrderQty30, OrderQty31, OrderQty32, OrderQty33, OrderQty34, OrderQty35, OrderQty36, OrderQty37, OrderQty38, OrderQty39, OrderQty40, OrderQty41, OrderQty42, OrderQty43, OrderQty44, OrderQty45, OrderQty46, OrderQty47, OrderQty48, OrderQty49, OrderQty50) as OfferOrders from orderTB1 
+		tempData = select 1 as ImageStatus, TradeTime, SecurityID, fixedLengthArrayVector(OrderQty1, OrderQty2, OrderQty3, OrderQty4, OrderQty5, OrderQty6, OrderQty7, OrderQty8, OrderQty9, OrderQty10, OrderQty11, OrderQty12, OrderQty13, OrderQty14, OrderQty15, OrderQty16, OrderQty17, OrderQty18, OrderQty19, OrderQty20, OrderQty21, OrderQty22, OrderQty23, OrderQty24, OrderQty25, OrderQty26, OrderQty27, OrderQty28, OrderQty29, OrderQty30, OrderQty31, OrderQty32, OrderQty33, OrderQty34, OrderQty35, OrderQty36, OrderQty37, OrderQty38, OrderQty39, OrderQty40, OrderQty41, OrderQty42, OrderQty43, OrderQty44, OrderQty45, OrderQty46, OrderQty47, OrderQty48, OrderQty49, OrderQty50) as BidOrders from orderTB2 
+		tempSell = select * from tempSell where isDuplicated([TradeTime, SecurityID, ImageStatus], LAST)=false
+		tempData = select * from tempData where isDuplicated([TradeTime, SecurityID, ImageStatus], LAST)=false
+		tempData = lj(tempSell, tempData, `TradeTime`SecurityID`ImageStatus)
+	}
+	tempSell = NULL
+	return tempData
+}
+
+/*
+ * @FunctionName: transformSnapshotSZ
+ * @Brief: Transforms snapshot data for the Shenzhen market into a standardized format.
+ * @Param: snapshotTB: The input data table containing the original snapshot data.
+ * @Param: day: The specific trading day for which the data is being processed.
+ * @Param: merge: A boolean flag indicating whether to merge the data from different exchanges.
+ * @Param: isDataDuplicated: A boolean flag indicating whether to remove duplicate entries from the data.
+ * @Return: A table containing transformed snapshot data in the specified format.
+ */
+def transformSnapshotSZ(snapshotTB, day, merge, isDataDuplicated){
+	// Remove duplicate entries from the snapshot data if specified
+	if(isDataDuplicated==true){
+		if(day < 2016.05.07){
+			tmpData = select * from snapshotTB where isDuplicated([DataTimeStamp, SecurityID], LAST)=false	
+		}else{
+			tmpData = select * from snapshotTB where isDuplicated([UpdateTime, SecurityID], LAST)=false
+		}
+	}else{
+		tmpData = select * from snapshotTB
+	}
+
+	// Handle BidNumOrders and OfferNumOrders columns
+	if("NumOrdersB1" in snapshotTB.colNames()){
+		update tmpData set BidNumOrders=fixedLengthArrayVector(NumOrdersB1,NumOrdersB2,NumOrdersB3,NumOrdersB4,NumOrdersB5,NumOrdersB6,NumOrdersB7,NumOrdersB8,NumOrdersB9,NumOrdersB10),
+							OfferNumOrders=fixedLengthArrayVector(NumOrdersS1,NumOrdersS2,NumOrdersS3,NumOrdersS4,NumOrdersS5,NumOrdersS6,NumOrdersS7,NumOrdersS8,NumOrdersS9,NumOrdersS10)
+	}else{
+		update tmpData set BidNumOrders=fixedLengthArrayVector(take(double(NULL),tmpData.size())),
+							OfferNumOrders=fixedLengthArrayVector(take(double(NULL),tmpData.size()))
+	}
+	
+	// Process the snapshot data based on the merging option
+	if(day < 2016.05.07){	// For data prior to 2016.05.06
+		if(merge == true){
+			tmpData = select 'SZ' as Market, 
+							day as TradeDate, 
+							DataTimeStamp as TradeTime, 
+							string(NULL) as MDStreamID, 
+							SecurityID as SecurityID, 
+							string(NULL) as SecurityIDSource, 
+							EndOfDayMaker as TradingPhaseCode, 
+							int(1) as ImageStatus, 
+							PreClosePx as PreCloPrice, 
+							NumTrades as NumTrades, 
+							TotalVolumeTrade as TotalVolumeTrade, 
+							TotalValueTrade as TotalValueTrade, 
+							LastPx as LastPrice, 
+							OpenPx as OpenPrice, 
+							HighPx as HighPrice, 
+							LowPx as LowPrice, 
+							double(NULL) as ClosePrice, 
+							double(NULL) as DifPrice1, 
+							double(NULL) as DifPrice2, 
+							PERatio1 as PE1, 
+							PERatio2 as PE2, 
+							double(NULL) as PreCloseIOPV, 
+							double(NULL) as IOPV, 
+							TotalBidQty as TotalBidQty, 
+							WeightedAvgBidPx as WeightedAvgBidPx, 
+							double(NULL) as AltWAvgBidPri, 
+							TotalOfferQty as TotalOfferQty, 
+							WeightedAvgOfferPx as WeightedAvgOfferPx, 
+							double(NULL) as AltWAvgAskPri, 
+							double(NULL) as UpLimitPx, 
+							double(NULL) as DownLimitPx, 
+							TotalLongPosition as OpenInt, 
+							double(NULL) as OptPremiumRatio, 
+							fixedLengthArrayVector(AskPrice1,AskPrice2,AskPrice3,AskPrice4,AskPrice5,AskPrice6,AskPrice7,AskPrice8,AskPrice9,AskPrice10) as OfferPrice, 
+							fixedLengthArrayVector(BidPrice1,BidPrice2,BidPrice3,BidPrice4,BidPrice5,BidPrice6,BidPrice7,BidPrice8,BidPrice9,BidPrice10) as BidPrice, 
+							fixedLengthArrayVector(AskVolume1,AskVolume2,AskVolume3,AskVolume4,AskVolume5,AskVolume6,AskVolume7,AskVolume8,AskVolume9,AskVolume10) as OfferOrderQty, 
+							fixedLengthArrayVector(BidVolume1,BidVolume2,BidVolume3,BidVolume4,BidVolume5,BidVolume6,BidVolume7,BidVolume8,BidVolume9,BidVolume10) as BidOrderQty, 
+							BidNumOrders as BidNumOrders, 
+							OfferNumOrders as OfferNumOrders, 
+							int(NULL) as ETFBuyNumber, 
+							long(NULL) as ETFBuyAmount, 
+							double(NULL) as ETFBuyMoney, 
+							int(NULL) as ETFSellNumber, 
+							long(NULL) as ETFSellAmount, 
+							double(NULL) as ETFSellMoney, 
+							double(NULL) as YieldToMatu, 
+							double(NULL) as TotWarExNum, 
+							int(NULL) as WithdrawBuyNumber, 
+							long(NULL) as WithdrawBuyAmount, 
+							double(NULL) as WithdrawBuyMoney, 
+							int(NULL) as WithdrawSellNumber, 
+							long(NULL) as WithdrawSellAmount, 
+							double(NULL) as WithdrawSellMoney, 
+							int(NULL) as TotalBidNumber, 
+							int(NULL) as TotalOfferNumber, 
+							int(NULL) as MaxBidDur, 
+							int(NULL) as MaxSellDur, 
+							int(NULL) as BidNum, 
+							int(NULL) as SellNum, 
+							LocalTime as LocalTime, 
+							SeqNo as SeqNo 
+						from tmpData
+		}else{
+			tmpData = select int(1) as ImageStatus, 
+							day as TradeDate, 
+							DataTimeStamp as TradeTime, 
+							string(NULL) as MDStreamID, 
+							SecurityID as SecurityID, 
+							string(NULL) as SecurityIDSource, 
+							EndOfDayMaker as TradingPhaseCode, 
+							PreClosePx as PreCloPrice, 
+							NumTrades as NumTrades, 
+							TotalVolumeTrade as TotalVolumeTrade, 
+							TotalValueTrade as TotalValueTrade, 
+							LastPx as LastPrice, 
+							OpenPx as OpenPrice, 
+							HighPx as HighPrice, 
+							LowPx as LowPrice, 
+							double(NULL) as DifPrice1, 
+							double(NULL) as DifPrice2, 
+							PERatio1 as PE1, 
+							PERatio2 as PE2, 
+							double(NULL) as PreCloseIOPV, 
+							double(NULL) as IOPV, 
+							TotalBidQty as TotalBidQty, 
+							WeightedAvgBidPx as WeightedAvgBidPx, 
+							TotalOfferQty as TotalOfferQty, 
+							WeightedAvgOfferPx as WeightedAvgOfferPx, 
+							double(NULL) as UpLimitPx, 
+							double(NULL) as DownLimitPx, 
+							TotalLongPosition as OpenInt, 
+							double(NULL) as OptPremiumRatio, 
+							fixedLengthArrayVector(AskPrice1,AskPrice2,AskPrice3,AskPrice4,AskPrice5,AskPrice6,AskPrice7,AskPrice8,AskPrice9,AskPrice10) as OfferPrice, 
+							fixedLengthArrayVector(BidPrice1,BidPrice2,BidPrice3,BidPrice4,BidPrice5,BidPrice6,BidPrice7,BidPrice8,BidPrice9,BidPrice10) as BidPrice, 
+							fixedLengthArrayVector(AskVolume1,AskVolume2,AskVolume3,AskVolume4,AskVolume5,AskVolume6,AskVolume7,AskVolume8,AskVolume9,AskVolume10) as OfferOrderQty, 
+							fixedLengthArrayVector(BidVolume1,BidVolume2,BidVolume3,BidVolume4,BidVolume5,BidVolume6,BidVolume7,BidVolume8,BidVolume9,BidVolume10) as BidOrderQty, 
+							BidNumOrders as BidNumOrders, 
+							OfferNumOrders as OfferNumOrders, 
+							LocalTime as LocalTime, 
+							SeqNo as SeqNo 
+						from tmpData
+		}
+	}else{	// 2016.05.07 — now
+		if(merge == true){
+			tmpData = select 'SZ' as Market, 
+								day as TradeDate, 
+								UpdateTime as TradeTime, 
+								MDStreamID as MDStreamID, 
+								SecurityID as SecurityID, 
+								SecurityIDSource as SecurityIDSource, 
+								TradingPhaseCode as TradingPhaseCode, 
+								int(1) as ImageStatus, 
+								PreCloPrice as PreCloPrice, 
+								TurnNum as NumTrades, 
+								Volume as TotalVolumeTrade, 
+								Turnover as TotalValueTrade, 
+								LastPrice as LastPrice, 
+								OpenPrice as OpenPrice, 
+								HighPrice as HighPrice, 
+								LowPrice as LowPrice, 
+								double(NULL) as ClosePrice, 
+								DifPrice1 as DifPrice1, 
+								DifPrice2 as DifPrice2, 
+								PE1 as PE1, 
+								PE2 as PE2, 
+								PreCloseIOPV as PreCloseIOPV, 
+								IOPV as IOPV, 
+								TotalBidQty as TotalBidQty, 
+								WeightedAvgBidPx as WeightedAvgBidPx, 
+								double(NULL) as AltWAvgBidPri, 
+								TotalOfferQty as TotalOfferQty, 
+								WeightedAvgOfferPx as WeightedAvgOfferPx, 
+								double(NULL) as AltWAvgAskPri, 
+								HighLimitPrice as UpLimitPx, 
+								LowLimitPrice as DownLimitPx, 
+								OpenInt as OpenInt, 
+								OptPremiumRatio as OptPremiumRatio, 
+								fixedLengthArrayVector(AskPrice1,AskPrice2,AskPrice3,AskPrice4,AskPrice5,AskPrice6,AskPrice7,AskPrice8,AskPrice9,AskPrice10) as OfferPrice, 
+								fixedLengthArrayVector(BidPrice1,BidPrice2,BidPrice3,BidPrice4,BidPrice5,BidPrice6,BidPrice7,BidPrice8,BidPrice9,BidPrice10) as BidPrice, 
+								fixedLengthArrayVector(AskVolume1,AskVolume2,AskVolume3,AskVolume4,AskVolume5,AskVolume6,AskVolume7,AskVolume8,AskVolume9,AskVolume10) as OfferOrderQty, 
+								fixedLengthArrayVector(BidVolume1,BidVolume2,BidVolume3,BidVolume4,BidVolume5,BidVolume6,BidVolume7,BidVolume8,BidVolume9,BidVolume10) as BidOrderQty, 
+								BidNumOrders as BidNumOrders, 
+								OfferNumOrders as OfferNumOrders, 
+								int(NULL) as ETFBuyNumber, 
+								long(NULL) as ETFBuyAmount, 
+								double(NULL) as ETFBuyMoney, 
+								int(NULL) as ETFSellNumber, 
+								long(NULL) as ETFSellAmount, 
+								double(NULL) as ETFSellMoney, 
+								double(NULL) as YieldToMatu, 
+								double(NULL) as TotWarExNum, 
+								int(NULL) as WithdrawBuyNumber, 
+								long(NULL) as WithdrawBuyAmount, 
+								double(NULL) as WithdrawBuyMoney, 
+								int(NULL) as WithdrawSellNumber, 
+								long(NULL) as WithdrawSellAmount, 
+								double(NULL) as WithdrawSellMoney, 
+								int(NULL) as TotalBidNumber, 
+								int(NULL) as TotalOfferNumber, 
+								int(NULL) as MaxBidDur, 
+								int(NULL) as MaxSellDur, 
+								int(NULL) as BidNum, 
+								int(NULL) as SellNum, 
+								LocalTime as LocalTime, 
+								SeqNo as SeqNo 
+							from tmpData
+		}else{
+			tmpData = select int(1) as ImageStatus, 
+								day as TradeDate, 
+								UpdateTime as TradeTime, 
+								MDStreamID as MDStreamID, 
+								SecurityID as SecurityID, 
+								SecurityIDSource as SecurityIDSource, 
+								TradingPhaseCode as TradingPhaseCode, 
+								PreCloPrice as PreCloPrice, 
+								TurnNum as NumTrades, 
+								Volume as TotalVolumeTrade, 
+								Turnover as TotalValueTrade, 
+								LastPrice as LastPrice, 
+								OpenPrice as OpenPrice, 
+								HighPrice as HighPrice, 
+								LowPrice as LowPrice, 
+								DifPrice1 as DifPrice1, 
+								DifPrice2 as DifPrice2, 
+								PE1 as PE1, 
+								PE2 as PE2, 
+								PreCloseIOPV as PreCloseIOPV, 
+								IOPV as IOPV, 
+								TotalBidQty as TotalBidQty, 
+								WeightedAvgBidPx as WeightedAvgBidPx, 
+								TotalOfferQty as TotalOfferQty, 
+								WeightedAvgOfferPx as WeightedAvgOfferPx, 
+								HighLimitPrice as UpLimitPx, 
+								LowLimitPrice as DownLimitPx, 
+								OpenInt as OpenInt, 
+								OptPremiumRatio as OptPremiumRatio, 
+								fixedLengthArrayVector(AskPrice1,AskPrice2,AskPrice3,AskPrice4,AskPrice5,AskPrice6,AskPrice7,AskPrice8,AskPrice9,AskPrice10) as OfferPrice, 
+								fixedLengthArrayVector(BidPrice1,BidPrice2,BidPrice3,BidPrice4,BidPrice5,BidPrice6,BidPrice7,BidPrice8,BidPrice9,BidPrice10) as BidPrice, 
+								fixedLengthArrayVector(AskVolume1,AskVolume2,AskVolume3,AskVolume4,AskVolume5,AskVolume6,AskVolume7,AskVolume8,AskVolume9,AskVolume10) as OfferOrderQty, 
+								fixedLengthArrayVector(BidVolume1,BidVolume2,BidVolume3,BidVolume4,BidVolume5,BidVolume6,BidVolume7,BidVolume8,BidVolume9,BidVolume10) as BidOrderQty, 
+								BidNumOrders as BidNumOrders, 
+								OfferNumOrders as OfferNumOrders, 
+								LocalTime as LocalTime, 
+								SeqNo as SeqNo 
+							from tmpData 
+		}
+	}
+	return tmpData
+}
+
+/*
+ * @FunctionName: appendSnapshot
+ * @Brief: Appends or upserts transformed snapshot data to the specified table in the database.
+ * @Param: orderTB: The input data table containing the order queue data (if needed).
+ * @Param: snapshotTB: The input data table containing the original snapshot data.
+ * @Param: day: The specific trading day for which the data is being processed.
+ * @Param: merge: A boolean flag indicating whether to merge the data from different exchanges.
+ * @Param: isConcatTime: A boolean flag indicating whether to concatenate trade date and time into a single timestamp.
+ * @Param: isDataDuplicated: A boolean flag indicating whether to remove duplicate entries from the data.
+ * @Param: isNeedOrderQueue: A boolean flag indicating whether to include order queue data in the transformed snapshot.
+ * @Param: dbNameSnapshot: The name of the database where the snapshot data will be stored.
+ * @Param: tbNameSnapshot: The name of the table where the snapshot data will be loaded.
+ * @Param: transformFunc: A function reference used for transforming the snapshot data format.
+ */
+def appendSnapshot(orderTB, snapshotTB, day, merge, isConcatTime, isDataDuplicated, isNeedOrderQueue, dbNameSnapshot, tbNameSnapshot, transformFunc){
+	// Transform the snapshot data using the provided transformation function
+	tmpData = transformFunc(snapshotTB, day, merge, isDataDuplicated)
+
+	// Handle order queue data based on the isNeedOrderQueue flag
+	if(isNeedOrderQueue==false){
+		update tmpData set OfferOrders=fixedLengthArrayVector(take(long(NULL), tmpData.rows())),
+							BidOrders=fixedLengthArrayVector(take(long(NULL), tmpData.rows()))
+	}else{
+		tmpData = lj(tmpData, orderTB, `TradeTime`SecurityID`ImageStatus)
+	}
+
+	// Handle concatenation of trade date and time if specified
+	if(isConcatTime==true){
+		tmpData.replaceColumn!(`TradeTime, concatDateTime(tmpData["TradeDate"], tmpData["TradeTime"]))
+		tmpData.dropColumns!(`TradeDate)
+	}
+
+	// Handle the ImageStatus column based on the target table's schema
+	pt = loadTable(dbNameSnapshot, tbNameSnapshot)
+	keyColNames=`TradeTime`SecurityID
+	if(!("ImageStatus" in pt.colNames())){
+		dropColumns!(tmpData, `ImageStatus)
+	}else{
+		keyColNames = keyColNames<-`ImageStatus
+	}
+
+	// Determine how to handle data entry based on duplication flag
+	if(isDataDuplicated==true){
+		upsert!(pt, tmpData, keyColNames=keyColNames) 
+	}else{
+		append!(pt, tmpData)
+	}
+}
+
+
+/*
+ * @FunctionName: loadOneDaySnapshotSH
+ * @Brief: Loads one day's worth of snapshot data for the Shanghai market from the specified CSV files.
+ * @Param: csvFiles: A vector of CSV file paths containing the snapshot and order queue data for the specified day.
+ * @Param: day: The specific trading day for which the data is being loaded.
+ * @Param: dbNameSnapshot: The name of the database where the snapshot data will be stored.
+ * @Param: tbNameSnapshot: The name of the table where the snapshot data will be loaded.
+ * @Param: merge: A boolean flag indicating whether to merge the data from different exchanges.
+ * @Param: isConcatTime: A boolean flag indicating whether to concatenate trade date and time into a single timestamp.
+ * @Param: isDataDuplicated: A boolean flag indicating whether to handle duplicate data entries during loading.
+ * @Param: isNeedOrderQueue: A boolean flag indicating whether to include order queue data in the snapshot.
+ * @Return: A message indicating the success or failure of the loading process, or an error message if an error occurs.
+ */
+def loadOneDaySnapshotSH(csvFiles, day, dbNameSnapshot, tbNameSnapshot, merge, isConcatTime, isDataDuplicated, isNeedOrderQueue){
+	// Check if the required data file exists for the specified trading day
+	if(isNeedOrderQueue==true)	csvNames = ["MarketData.csv", "OrderQueue.csv"]
+	else						csvNames = ["MarketData.csv"]
+	if(each(endsWith{csvFiles}, csvNames).sum().sum() < size(csvNames)){
+		errorMessage = dict(`message`code, ["上交所 [" + string(day) + "] 日期的 [" + csvNames.concat(", ") + "] 的 csv 文件不全或者不存在", "error"])
+		return errorMessage
+	}
+
+	// Import order queue data if specified
+	if(isNeedOrderQueue==true){
+		// Check the schema of the order queue data
+		csvPath = csvFiles[endsWith(csvFiles, "OrderQueue.csv")][0]
+		schemaTB = orderQueueCsvSchema()
+		schemaTest = extractTextSchema(csvPath)
+		if(schemaTB.rows() != schemaTest.rows()){
+			errorMessage = dict(`message`code, ["[" + csvPath + "] 的数据格式有误，列数不匹配", "error"])
+			return errorMessage
+		}
+
+		// Load and transform the order queue data
+		try{
+			orderTB = ploadText(filename=csvPath, schema=schemaTB)
+			orderTB = transformOrderQueueSH(orderTB)	
+		}catch(ex){
+			errorMessage = dict(`message`code, [string(ex[0])+":"+string(ex[1]), "error"])
+			return errorMessage
+		}
+	}else{
+		orderTB = NULL
+	}
+
+	// Check the schema of the MarketData file
+	csvPath = csvFiles[endsWith(csvFiles, "MarketData.csv")][0]
+	schemaTB = snapshotCsvSchemaSH(day)
+	schemaTest = extractTextSchema(csvPath)
+	if(schemaTB.rows() != schemaTest.rows()){
+		errorMessage = dict(`message`code, ["[" + csvPath + "] 的数据格式有误，列数不匹配", "error"])
+		return errorMessage
+	}
+	
+	try{
+		// Create a data source for loading the CSV in chunks
+		ds = textChunkDS(filename=csvPath, chunkSize=512, schema=schemaTB)
+		// Use map-reduce to process the data, appending the transformed entries to the database
+		mr(ds, appendSnapshot{orderTB, , day, merge, isConcatTime, isDataDuplicated, isNeedOrderQueue, dbNameSnapshot, tbNameSnapshot, transformSnapshotSH}, parallel=false)
+	}catch(ex){
+		errorMessage = dict(`message`code, [string(ex[0])+":"+string(ex[1]), "error"])
+		return errorMessage
+	}
+	return true
+}
+
+
+/*
+ * @FunctionName: loadOneDaySnapshotSZ
+ * @Brief: Loads one day's worth of snapshot data for the Shenzhen market from the specified CSV files.
+ * @Param: csvFiles: A vector of CSV file paths containing the snapshot and order queue data for the specified day.
+ * @Param: day: The specific trading day for which the data is being loaded.
+ * @Param: dbNameSnapshot: The name of the database where the snapshot data will be stored.
+ * @Param: tbNameSnapshot: The name of the table where the snapshot data will be loaded.
+ * @Param: merge: A boolean flag indicating whether to merge the data from different exchanges.
+ * @Param: isConcatTime: A boolean flag indicating whether to concatenate trade date and time into a single timestamp.
+ * @Param: isDataDuplicated: A boolean flag indicating whether to handle duplicate data entries during loading.
+ * @Param: isNeedOrderQueue: A boolean flag indicating whether to include order queue data in the snapshot.
+ * @Return: A message indicating the success or failure of the loading process, or an error message if an error occurs.
+ */
+def loadOneDaySnapshotSZ(csvFiles, day, dbNameSnapshot, tbNameSnapshot, merge, isConcatTime, isDataDuplicated, isNeedOrderQueue){
+	// Check if the required data file exists for the specified trading day
+	if(day < 2016.05.07){
+		if(isNeedOrderQueue==true)	csvNames = ["MarketData.csv", "OrderQueue.csv"]
+		else						csvNames = ["MarketData.csv"]
+	}else{
+		if(isNeedOrderQueue==true)	csvNames = ["mdl_6_28_0.csv", "mdl_6_28_1.csv", "mdl_6_28_2.csv"]
+		else						csvNames = ["mdl_6_28_0.csv"]
+	}
+
+	if(each(endsWith{csvFiles}, csvNames).sum().sum() < size(csvNames)){
+		errorMessage = dict(`message`code, ["深交所 [" + string(day) + "] 日期的 [" + csvNames.concat(", ") + "] 的 csv 文件不全或者不存在", "error"])
+		return errorMessage
+	}
+
+	// Import order queue data if specified
+	if(isNeedOrderQueue==true){
+		// Check the schema of the order queue data
+		for(csvname in csvNames[1:]){
+			csvPath = csvFiles[endsWith(csvFiles, csvname)][0]
+			schemaTB = orderQueueCsvSchema()
+			schemaTest = extractTextSchema(csvPath)
+			if(schemaTB.rows() != schemaTest.rows()){
+				errorMessage = dict(`message`code, ["[" + csvPath + "] 的数据格式有误，列数不匹配", "error"])
+				return errorMessage
+			}
+		}
+
+		// Load and transform the order queue data
+		try{
+			if(day < 2016.05.07){
+				csvPath = csvFiles[endsWith(csvFiles, "OrderQueue.csv")][0]
+				orderTB = ploadText(filename=csvPath, schema=schemaTB)
+				orderTB = transformOrderQueueSZ(orderTB, NULL)
+			}else{
+				csvPath = csvFiles[endsWith(csvFiles, "mdl_6_28_1.csv")][0]
+				orderTB = ploadText(filename=csvPath, schema=schemaTB)
+				csvPath = csvFiles[endsWith(csvFiles, "mdl_6_28_2.csv")][0]
+				orderTB2 = ploadText(filename=csvPath, schema=schemaTB)
+				orderTB = transformOrderQueueSZ(orderTB, orderTB2)
+				orderTB2 = NULL
+			}
+		}catch(ex){
+			errorMessage = dict(`message`code, [string(ex[0])+":"+string(ex[1]), "error"])
+			return errorMessage
+		}
+	}else{
+		orderTB = NULL
+	}
+
+	// Check the schema of the MarketData file
+	csvPath = csvFiles[endsWith(csvFiles, csvNames[0])][0]
+	schemaTB = snapshotCsvSchemaSZ(day)
+	schemaTest = extractTextSchema(csvPath)
+	if(schemaTB.rows() != schemaTest.rows()){
+		errorMessage = dict(`message`code, ["[" + csvPath + "] 的数据格式有误，列数不匹配", "error"])
+		return errorMessage
+	}
+	
+	try{
+		// Create a data source for loading the CSV in chunks
+		ds = textChunkDS(filename=csvPath, chunkSize=512, schema=schemaTB)
+		// Use map-reduce to process the data, appending the transformed entries to the database
+		mr(ds, appendSnapshot{orderTB, , day, merge, isConcatTime, isDataDuplicated, isNeedOrderQueue, dbNameSnapshot, tbNameSnapshot, transformSnapshotSZ}, parallel=false)
+	}catch(ex){
+		errorMessage = dict(`message`code, [string(ex[0])+":"+string(ex[1]), "error"])
+		return errorMessage
+	}
+	return true
+}

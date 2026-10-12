@@ -1,0 +1,79 @@
+module EasyTushare::bond::BondInit
+use EasyTushare::TsInit
+
+/* 
+*  @Brief: 债券历史数据导入函数模块
+*  @Author: DolphinDB
+*  @Last modification time: 2026.03.31
+*  @DolphinDB server version: 3.00.5 2026.02.06 LINUX x86_64
+*/
+
+use EasyTushare::bond::BondCreateTable
+
+/*
+*  @FunctionName: module_info
+*  @Brief: 模块信息,一个相同模块dir下的每个dos都需要有module_info函数,且是相同的
+*  @Param: None
+*  @Return: dict
+*  @SampleUsage: module_info()
+*/
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "EasyTushare"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+
+/*
+*  @FunctionName: llm_init
+*  @Brief: 初始化数据库表
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: bondInitTables()
+*/
+def bondInitTables(table_names = []){
+    if (size(table_names) == 0){
+       ts_create_tables = exec name from defs() where name like "EasyTushare::bond::BondCreateTable%"
+        for(table in ts_create_tables){
+            funcByName(table)()
+        }
+    } else {
+        for (table_name in table_names){ 
+            funcByName("EasyTushare::bond::BondCreateTable::create" + snakeToUpperCamel(table_name))()
+        }   
+    }
+}
+
+use EasyTushare::bond::BondLoadData
+
+/**
+*  @FunctionName: getBondTableNames
+*  @Brief: 获取债券数据导入函数表名
+*  @Param: None
+*  @Return: list
+*  @SampleUsage: getBondTableNames()
+ */
+def bondGetAllTableNames(){
+    ts_create_tables = exec name from defs() where name like "EasyTushare::bond::BondLoadData::append%"
+    return each(upperCamelToSnake, ts_create_tables.split("::")[3].substr(6))
+}
+/*
+*  @FunctionName: bondHistoryDataLoad
+*  @Brief: 债券历史数据导入函数
+*  @Param: token, start_date, end_date
+*  @Return: None
+*  @SampleUsage: bondHistoryDataLoad(token,start_date,end_date)
+*/
+def bondHistoryDataLoad(token,start_date,end_date,table_names = []) {
+    // 本次需要导入的所有表名
+    all_table_names = []
+    if (size(table_names) == 0){
+        all_table_names = bondGetAllTableNames()        
+    } else {
+        all_table_names = table_names
+    }
+    for (table_name in all_table_names){
+        submitJob("append_" + table_name, "append_" + table_name,  funcByName("EasyTushare::bond::BondLoadData::append" + snakeToUpperCamel(table_name)), token, start_date, end_date)
+    }
+}

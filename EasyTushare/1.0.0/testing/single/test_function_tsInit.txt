@@ -1,0 +1,28 @@
+#include "setup/settings.txt"
+
+login("admin", "123456")
+use EasyTushare::TsInit
+
+@testing:case="test_snakeToUpperCamel"
+assert 1, snakeToUpperCamel("stock_basic") == "StockBasic"
+assert 2, snakeToUpperCamel("stock_1min_k") == "Stock1minK"
+assert 3, snakeToUpperCamel("anns_d") == "AnnsD"
+assert 4, snakeToUpperCamel("") == ""
+
+@testing:case="test_upperCamelToSnake"
+assert 1, upperCamelToSnake("StockBasic") == "stock_basic"
+assert 2, upperCamelToSnake("Stock1minK") == "stock_1min_k"
+assert 3, upperCamelToSnake("AnnsD") == "anns_d"
+assert 4, upperCamelToSnake("") == ""
+assert 5, isNull(upperCamelToSnake(NULL))
+
+@testing:case="test_createDb_idempotent"
+// createDb is intentionally idempotent; do not drop shared databases here.
+createDb()
+assert 1, existsDatabase("dfs://tushare_basic_db")
+assert 2, existsDatabase("dfs://tushare_daily_db")
+assert 3, existsDatabase("dfs://tushare_minute_db")
+createDb()
+assert 4, existsDatabase("dfs://tushare_basic_db")
+assert 5, existsDatabase("dfs://tushare_daily_db")
+assert 6, existsDatabase("dfs://tushare_minute_db")

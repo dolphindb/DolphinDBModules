@@ -1,0 +1,503 @@
+module EasyTushare::etf::EtfCreateTable
+
+/*
+*  @FunctionName: module_info
+*  @Brief: 模块信息,一个相同模块dir下的每个dos都需要有module_info函数,且是相同的
+*  @Param: None
+*  @Return: dict
+*  @SampleUsage: module_info()
+*/
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "EasyTushare"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+
+/*
+*  @FunctionName: createTableEtfBasic
+*  @Brief: Create a DFS table for ETF basic information
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableEtfBasic()
+*/
+def createTableEtfBasic(){
+    dbName = "dfs://tushare_basic_db"
+    tbName = "etf_basic"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,               // 基金交易代码
+            array(STRING, 0) as csname,             // ETF中文简称
+            array(STRING, 0) as extname,            // ETF扩位简称
+            array(STRING, 0) as cname,              // 基金中文全称
+            array(SYMBOL, 0) as index_code,         // ETF基准指数代码
+            array(STRING, 0) as index_name,         // ETF基准指数中文全称
+            array(DATE, 0) as setup_date,           // 设立日期
+            array(DATE, 0) as list_date,            // 上市日期
+            array(SYMBOL, 0) as list_status,        // 存续状态
+            array(SYMBOL, 0) as exchange,           // 交易所
+            array(STRING, 0) as mgr_name,           // 基金管理人简称
+            array(STRING, 0) as custod_name,        // 基金托管人名称
+            array(DOUBLE, 0) as mgt_fee,            // 基金管理人收取的费用
+            array(SYMBOL, 0) as etf_type,           // 基金投资通道类型
+            array(TIMESTAMP, 0) as update_time      // 更新时间
+        )
+        db.createTable(
+            table = schemaTB,
+            tableName = tbName
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "基金交易代码"
+        columnComments["csname"] = "ETF中文简称"
+        columnComments["extname"] = "ETF扩位简称"
+        columnComments["cname"] = "基金中文全称"
+        columnComments["index_code"] = "ETF基准指数代码"
+        columnComments["index_name"] = "ETF基准指数中文全称"
+        columnComments["setup_date"] = "设立日期"
+        columnComments["list_date"] = "上市日期"
+        columnComments["list_status"] = "存续状态"
+        columnComments["exchange"] = "交易所"
+        columnComments["mgr_name"] = "基金管理人简称"
+        columnComments["custod_name"] = "基金托管人名称"
+        columnComments["mgt_fee"] = "基金管理人收取的费用"
+        columnComments["etf_type"] = "基金投资通道类型"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableEtfIndex
+*  @Brief: Create a DFS table for ETF benchmark index list
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableEtfIndex()
+*/
+def createTableEtfIndex(){
+    dbName = "dfs://tushare_basic_db"
+    tbName = "etf_index"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,               // 指数代码
+            array(STRING, 0) as indx_name,          // 指数全称
+            array(STRING, 0) as indx_csname,        // 指数简称
+            array(STRING, 0) as pub_party_name,     // 指数发布机构
+            array(DATE, 0) as pub_date,             // 指数发布日期
+            array(DATE, 0) as base_date,            // 指数基日
+            array(DOUBLE, 0) as bp,                 // 指数基点(点)
+            array(STRING, 0) as adj_circle,         // 指数成份证券调整周期
+            array(TIMESTAMP, 0) as update_time      // 更新时间
+        )
+        db.createTable(
+            table = schemaTB,
+            tableName = tbName
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "指数代码"
+        columnComments["indx_name"] = "指数全称"
+        columnComments["indx_csname"] = "指数简称"
+        columnComments["pub_party_name"] = "指数发布机构"
+        columnComments["pub_date"] = "指数发布日期"
+        columnComments["base_date"] = "指数基日"
+        columnComments["bp"] = "指数基点(点)"
+        columnComments["adj_circle"] = "指数成份证券调整周期"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableEtfShareSize
+*  @Brief: Create a DFS table for ETF share size data
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableEtfShareSize()
+*/
+def createTableEtfShareSize(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "etf_share_size"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(DATE, 0) as trade_date,           // 交易日期
+            array(SYMBOL, 0) as security_id,               // ETF代码
+            array(STRING, 0) as etf_name,           // 基金名称
+            array(DOUBLE, 0) as total_share,        // 总份额（万份）
+            array(DOUBLE, 0) as total_size,         // 总规模（万元）
+            array(DOUBLE, 0) as nav,                // 基金份额净值(元)
+            array(DOUBLE, 0) as close,              // 收盘价（元）
+            array(SYMBOL, 0) as exchange,           // 交易所
+            array(TIMESTAMP, 0) as update_time      // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["trade_date"] = "交易日期"
+        columnComments["security_id"] = "ETF代码"
+        columnComments["etf_name"] = "基金名称"
+        columnComments["total_share"] = "总份额（万份）"
+        columnComments["total_size"] = "总规模（万元）"
+        columnComments["nav"] = "基金份额净值(元)"
+        columnComments["close"] = "收盘价（元）"
+        columnComments["exchange"] = "交易所"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableFundAdj
+*  @Brief: Create a DFS table for fund adjustment factors
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableFundAdj()
+*/
+def createTableFundAdj(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "fund_adj"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,               // ts基金代码
+            array(DATE, 0) as trade_date,           // 交易日期
+            array(DOUBLE, 0) as adj_factor,         // 复权因子
+            array(TIMESTAMP, 0) as update_time      // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "ts基金代码"
+        columnComments["trade_date"] = "交易日期"
+        columnComments["adj_factor"] = "复权因子"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableEtfDaily
+*  @Brief: Create a DFS table for ETF daily market data
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableEtfDaily()
+*/
+def createTableEtfDaily(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "fund_daily"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,               // TS代码
+            array(DATE, 0) as trade_date,           // 交易日期
+            array(DOUBLE, 0) as open,               // 开盘价(元)
+            array(DOUBLE, 0) as high,               // 最高价(元)
+            array(DOUBLE, 0) as low,                // 最低价(元)
+            array(DOUBLE, 0) as close,              // 收盘价(元)
+            array(DOUBLE, 0) as pre_close,          // 昨收盘价(元)
+            array(DOUBLE, 0) as change,             // 涨跌额(元)
+            array(DOUBLE, 0) as pct_chg,            // 涨跌幅(%)
+            array(DOUBLE, 0) as vol,                // 成交量(手)
+            array(DOUBLE, 0) as amount,             // 成交额(千元)
+            array(TIMESTAMP, 0) as update_time      // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "TS代码"
+        columnComments["trade_date"] = "交易日期"
+        columnComments["open"] = "开盘价(元)"
+        columnComments["high"] = "最高价(元)"
+        columnComments["low"] = "最低价(元)"
+        columnComments["close"] = "收盘价(元)"
+        columnComments["pre_close"] = "昨收盘价(元)"
+        columnComments["change"] = "涨跌额(元)"
+        columnComments["pct_chg"] = "涨跌幅(%)"
+        columnComments["vol"] = "成交量(手)"
+        columnComments["amount"] = "成交额(千元)"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableEtfStk1Mins
+*  @Brief: Create a DFS table for ETF historical minute data
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableEtfStk1Mins()
+*/
+def createTableEtfStk1Mins(){
+    dbName = "dfs://tushare_minute_db"
+    tbName = "stk_1_mins"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,               // ETF代码
+            array(TIMESTAMP, 0) as trade_time,      // 交易时间
+            array(DOUBLE, 0) as open,               // 开盘价
+            array(DOUBLE, 0) as close,              // 收盘价
+            array(DOUBLE, 0) as high,               // 最高价
+            array(DOUBLE, 0) as low,                // 最低价
+            array(INT, 0) as vol,                   // 成交量（股）
+            array(DOUBLE, 0) as amount,             // 成交金额（元）
+            array(TIMESTAMP, 0) as update_time      // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_time"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "ETF代码"
+        columnComments["trade_time"] = "交易时间"
+        columnComments["open"] = "开盘价"
+        columnComments["close"] = "收盘价"
+        columnComments["high"] = "最高价"
+        columnComments["low"] = "最低价"
+        columnComments["vol"] = "成交量（股）"
+        columnComments["amount"] = "成交金额（元）"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableEtfStk5Mins
+*  @Brief: Create a DFS table for ETF historical minute data
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableEtfStk5Mins()
+*/
+def createTableEtfStk5Mins(){
+    dbName = "dfs://tushare_minute_db"
+    tbName = "stk_5_mins"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,               // ETF代码
+            array(TIMESTAMP, 0) as trade_time,      // 交易时间
+            array(DOUBLE, 0) as open,               // 开盘价
+            array(DOUBLE, 0) as close,              // 收盘价
+            array(DOUBLE, 0) as high,               // 最高价
+            array(DOUBLE, 0) as low,                // 最低价
+            array(INT, 0) as vol,                   // 成交量（股）
+            array(DOUBLE, 0) as amount,             // 成交金额（元）
+            array(TIMESTAMP, 0) as update_time      // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_time"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "ETF代码"
+        columnComments["trade_time"] = "交易时间"
+        columnComments["open"] = "开盘价"
+        columnComments["close"] = "收盘价"
+        columnComments["high"] = "最高价"
+        columnComments["low"] = "最低价"
+        columnComments["vol"] = "成交量（股）"
+        columnComments["amount"] = "成交金额（元）"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableEtfStk15Mins
+*  @Brief: Create a DFS table for ETF historical minute data
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableEtfStk15Mins()
+*/
+def createTableEtfStk15Mins(){
+    dbName = "dfs://tushare_minute_db"
+    tbName = "stk_15_mins"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,               // ETF代码
+            array(TIMESTAMP, 0) as trade_time,      // 交易时间
+            array(DOUBLE, 0) as open,               // 开盘价
+            array(DOUBLE, 0) as close,              // 收盘价
+            array(DOUBLE, 0) as high,               // 最高价
+            array(DOUBLE, 0) as low,                // 最低价
+            array(INT, 0) as vol,                   // 成交量（股）
+            array(DOUBLE, 0) as amount,             // 成交金额（元）
+            array(TIMESTAMP, 0) as update_time      // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_time"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "ETF代码"
+        columnComments["trade_time"] = "交易时间"
+        columnComments["open"] = "开盘价"
+        columnComments["close"] = "收盘价"
+        columnComments["high"] = "最高价"
+        columnComments["low"] = "最低价"
+        columnComments["vol"] = "成交量（股）"
+        columnComments["amount"] = "成交金额（元）"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableEtfStk30Mins
+*  @Brief: Create a DFS table for ETF historical minute data
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableEtfStk30Mins()
+*/
+def createTableEtfStk30Mins(){
+    dbName = "dfs://tushare_minute_db"
+    tbName = "stk_30_mins"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,               // ETF代码
+            array(TIMESTAMP, 0) as trade_time,      // 交易时间
+            array(DOUBLE, 0) as open,               // 开盘价
+            array(DOUBLE, 0) as close,              // 收盘价
+            array(DOUBLE, 0) as high,               // 最高价
+            array(DOUBLE, 0) as low,                // 最低价
+            array(INT, 0) as vol,                   // 成交量（股）
+            array(DOUBLE, 0) as amount,             // 成交金额（元）
+            array(TIMESTAMP, 0) as update_time      // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_time"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "ETF代码"
+        columnComments["trade_time"] = "交易时间"
+        columnComments["open"] = "开盘价"
+        columnComments["close"] = "收盘价"
+        columnComments["high"] = "最高价"
+        columnComments["low"] = "最低价"
+        columnComments["vol"] = "成交量（股）"
+        columnComments["amount"] = "成交金额（元）"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName:  createTableEtfStk60Mins
+*  @Brief: Create a DFS table for ETF historical minute data
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableEtfStk60Mins()
+*/
+def createTableEtfStk60Mins(){
+    dbName = "dfs://tushare_minute_db"
+    tbName = "stk_60_mins"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,               // ETF代码
+            array(TIMESTAMP, 0) as trade_time,      // 交易时间
+            array(DOUBLE, 0) as open,               // 开盘价
+            array(DOUBLE, 0) as close,              // 收盘价
+            array(DOUBLE, 0) as high,               // 最高价
+            array(DOUBLE, 0) as low,                // 最低价
+            array(INT, 0) as vol,                   // 成交量（股）
+            array(DOUBLE, 0) as amount,             // 成交金额（元）
+            array(TIMESTAMP, 0) as update_time      // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_time"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "ETF代码"
+        columnComments["trade_time"] = "交易时间"
+        columnComments["open"] = "开盘价"
+        columnComments["close"] = "收盘价"
+        columnComments["high"] = "最高价"
+        columnComments["low"] = "最低价"
+        columnComments["vol"] = "成交量（股）"
+        columnComments["amount"] = "成交金额（元）"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}

@@ -1,0 +1,71 @@
+#include "setup/settings.txt"
+
+login("admin", "123456")
+use EasyTushare::stock::StockScheduleJob
+use EasyTushare::etf::EtfScheduleJob
+use EasyTushare::fund::FundScheduleJob
+use EasyTushare::futures::FuturesScheduleJob
+use EasyTushare::bond::BondScheduleJob
+use EasyTushare::index::IndexScheduleJob
+use EasyTushare::options::OptionsScheduleJob
+use EasyTushare::foreignExchangre::FxScheduleJob
+use EasyTushare::spot::SpotScheduleJob
+use EasyTushare::llm::LlmScheduleJob
+use EasyTushare::macroeconomics::MacroeconomicsScheduleJob
+
+// These tests validate the function-reference maps used by scheduleJob*.
+// They do not register a real timer or call the Tushare network API.
+@testing:case="test_stockGetTablesFuncDefs_selected"
+defs = stockGetTablesFuncDefs(["stock_basic"])
+assert 1, eqObj(defs.keys(), ["stock_basic"])
+assert 2, !isNull(defs["stock_basic"])
+
+@testing:case="test_etfGetTablesFuncDefs_selected"
+defs = etfGetTablesFuncDefs(["etf_basic"])
+assert 1, eqObj(defs.keys(), ["etf_basic"])
+assert 2, !isNull(defs["etf_basic"])
+
+@testing:case="test_fundGetTablesFuncDefs_selected"
+defs = fundGetTablesFuncDefs(["fund_basic"])
+assert 1, eqObj(defs.keys(), ["fund_basic"])
+assert 2, !isNull(defs["fund_basic"])
+
+@testing:case="test_futuresGetTablesFuncDefs_selected"
+defs = futuresGetTablesFuncDefs(["fut_basic"])
+assert 1, eqObj(defs.keys(), ["fut_basic"])
+assert 2, !isNull(defs["fut_basic"])
+
+@testing:case="test_bondGetTablesFuncDefs_selected"
+defs = bondGetTablesFuncDefs(["cb_basic"])
+assert 1, eqObj(defs.keys(), ["cb_basic"])
+assert 2, !isNull(defs["cb_basic"])
+
+@testing:case="test_indexGetTablesFuncDefs_selected"
+defs = indexGetTablesFuncDefs(["index_basic"])
+assert 1, eqObj(defs.keys(), ["index_basic"])
+assert 2, !isNull(defs["index_basic"])
+
+@testing:case="test_optionsGetTablesFuncDefs_selected"
+defs = optionsGetTablesFuncDefs(["opt_basic"])
+assert 1, eqObj(defs.keys(), ["opt_basic"])
+assert 2, !isNull(defs["opt_basic"])
+
+@testing:case="test_fxGetTablesFuncDefs_selected"
+defs = fxGetTablesFuncDefs(["fx_obasic"])
+assert 1, eqObj(defs.keys(), ["fx_obasic"])
+assert 2, !isNull(defs["fx_obasic"])
+
+@testing:case="test_spotGetTablesFuncDefs_selected"
+defs = spotGetTablesFuncDefs(["sge_basic"])
+assert 1, eqObj(defs.keys(), ["sge_basic"])
+assert 2, !isNull(defs["sge_basic"])
+
+@testing:case="test_llmGetTablesFuncDefs_selected"
+defs = llmGetTablesFuncDefs(["anns_d"])
+assert 1, eqObj(defs.keys(), ["anns_d"])
+assert 2, !isNull(defs["anns_d"])
+
+@testing:case="test_macroeconomicsGetTablesFuncDefs_selected"
+defs = macroeconomicsGetTablesFuncDefs(["shibor"])
+assert 1, eqObj(defs.keys(), ["shibor"])
+assert 2, !isNull(defs["shibor"])

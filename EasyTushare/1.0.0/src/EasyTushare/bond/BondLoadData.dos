@@ -1,0 +1,778 @@
+module EasyTushare::bond::BondLoadData
+
+/* 
+*  @Brief: 债券数据单个表导入函数模块
+*  @Author: DolphinDB
+*  @Last modification time: 2026.03.31
+*  @DolphinDB server version: 3.00.5 2026.02.06 LINUX x86_64
+*/
+use EasyTushare::TsInit
+/*
+*  @FunctionName: module_info
+*  @Brief: 模块信息,一个相同模块dir下的每个dos都需要有module_info函数,且是相同的
+*  @Param: None
+*  @Return: dict
+*  @SampleUsage: module_info()
+*/
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "EasyTushare"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+
+/*
+ * @Description: bc_bestotcqt data import
+ * @DolphinDB server version:
+ * @Last modification time: 2026-03-18 10:52:57
+ * @dev:
+ * @Author: fangwu
+ */
+def appendBcBestotcqt(token, start_date, end_date){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "bc_bestotcqt"
+    api = "bc_bestotcqt"
+    cols = ["trade_date", "ts_code", "name", "remain_maturity", "bond_type", "best_buy_bank", "best_buy_yield", "best_buy_price", "best_sell_bank", "best_sell_yield", "best_sell_price"]
+    out = loadTable(dbName, tbName)
+    delete from loadTable(dbName, tbName) where trade_date between start_date and end_date
+    
+    for(oneDate in getMarketCalendar("SSE", start_date, end_date)){ // oneDate = 2026.03.21 
+        dateText = temporalFormat(oneDate, "yyyyMMdd")
+        p = {"trade_date":dateText}
+        res = getApiData(token, api, p, cols)
+        if(!res.isVoid() and res.count() != 0){
+            replaceColumn!(res, "trade_date", temporalParse(string(res[`trade_date]), "yyyyMMdd"))
+            replaceColumn!(res, "ts_code", symbol(string(res[`ts_code])))
+            replaceColumn!(res, "name", string(res[`name]))
+            replaceColumn!(res, "remain_maturity", string(res[`remain_maturity]))
+            replaceColumn!(res, "bond_type", symbol(string(res[`bond_type])))
+            replaceColumn!(res, "best_buy_bank", symbol(string(res[`best_buy_bank])))
+            replaceColumn!(res, "best_buy_yield", double(res[`best_buy_yield]))
+            replaceColumn!(res, "best_buy_price", double(res[`best_buy_price]))
+            replaceColumn!(res, "best_sell_bank", symbol(string(res[`best_sell_bank])))
+            replaceColumn!(res, "best_sell_yield", double(res[`best_sell_yield]))
+            replaceColumn!(res, "best_sell_price", double(res[`best_sell_price]))
+            res = select *, now() as update_time from res
+            out.append!(res)
+            print("Success append data for Table " + api + " for date: " + dateText)
+        } else {
+            print("no data for Table " + api + " for date: " + dateText)
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+ * @Description: bc_otcqt data import
+ * @DolphinDB server version:
+ * @Last modification time: 2026-03-18 10:52:57
+ * @dev:
+ * @Author: fangwu
+ */
+def appendBcOtcqt(token, start_date, end_date){
+
+    dbName = "dfs://tushare_daily_db"
+    tbName = "bc_otcqt"
+    api = "bc_otcqt"
+    cols = ["trade_date", "qt_time", "bank", "ts_code", "name", "maturity", "remain_maturity", "bond_type", "coupon_rate", "buy_price", "sell_price", "buy_yield", "sell_yield"]
+    out = loadTable(dbName, tbName)
+    delete from loadTable(dbName, tbName) where trade_date between start_date and end_date
+
+    // 翻页处理
+    // 单天会超出两千行（接口限制）
+    for(oneDate in getMarketCalendar("SSE", start_date, end_date)){ // oneDate = 2024.04.29
+        dateText = temporalFormat(oneDate, "yyyyMMdd")
+        offset_ = 0 
+        prev_count_ = 0
+        do {
+            res = getApiData(token, api, {"trade_date":dateText,"offset":offset_}, cols)
+            cur_count_ = res.count()
+            if(!res.isVoid() and cur_count_ != 0){
+                // 按日期拉取数据
+                replaceColumn!(res, "trade_date", temporalParse(string(res[`trade_date]), "yyyyMMdd"))
+                replaceColumn!(res, "qt_time", time(temporalParse(string(res[`qt_time]), "HH:mm:ss")))
+                replaceColumn!(res, "bank", symbol(string(res[`bank])))
+                replaceColumn!(res, "ts_code", symbol(string(res[`ts_code])))
+                replaceColumn!(res, "name", string(res[`name]))
+                replaceColumn!(res, "maturity", string(res[`maturity]))
+                replaceColumn!(res, "remain_maturity", string(res[`remain_maturity]))
+                replaceColumn!(res, "bond_type", symbol(string(res[`bond_type])))
+                replaceColumn!(res, "coupon_rate", double(res[`coupon_rate]))
+                replaceColumn!(res, "buy_price", double(res[`buy_price]))
+                replaceColumn!(res, "sell_price", double(res[`sell_price]))
+                replaceColumn!(res, "buy_yield", double(res[`buy_yield]))
+                replaceColumn!(res, "sell_yield", double(res[`sell_yield]))
+                res = select *, now() as update_time from res
+                out.append!(res)
+                offset_ = prev_count_ + cur_count_ + 1
+                prev_count_ = prev_count_ + cur_count_
+                print("Success append data for Table " + api + " for date: " + dateText+ ",count:"+cur_count_.string())
+            }else {
+                break
+            }
+        } while(true)
+        print("Success append data for Table " + api + " for date: " + dateText)
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+ * @Description: bond_blk data import
+ * @DolphinDB server version:
+ * @Last modification time: 2026-03-18 10:52:57
+ * @dev:
+ * @Author: fangwu
+ */
+def appendBondBlk(token, start_date, end_date){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "bond_blk"
+    api = "bond_blk"
+    cols = ["trade_date", "ts_code", "name", "price", "vol", "amount"]
+    out = loadTable(dbName, tbName)
+    delete from loadTable(dbName, tbName) where trade_date between start_date and end_date
+    // start_date =  2026.08.26
+    // end_date =  2026.08.28
+    for(oneDate in getMarketCalendar("SSE", start_date, end_date)){ // oneDate = 2026.08.29
+        dateText = temporalFormat(oneDate, "yyyyMMdd")
+        p = {"trade_date":dateText}
+        res = getApiData(token, api, p, cols)
+        if(!res.isVoid() and res.count() != 0){
+            replaceColumn!(res, "trade_date", temporalParse(string(res[`trade_date]), "yyyyMMdd"))
+            replaceColumn!(res, "ts_code", symbol(string(res[`ts_code])))
+            replaceColumn!(res, "name", string(res[`name]))
+            replaceColumn!(res, "price", double(res[`price]))
+            replaceColumn!(res, "vol", double(res[`vol]))
+            replaceColumn!(res, "amount", double(res[`amount]))
+            res = select *, now() as update_time from res
+            out.append!(res)
+            print("Success append data for Table " + api + " for date: " + dateText)
+        } else {
+            print("no data for Table " + api + " for date: " + dateText)
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+ * @Description: bond_blk_detail data import
+ * @DolphinDB server version:
+ * @Last modification time: 2026-03-18 10:52:57
+ * @dev:
+ * @Author: fangwu
+ */
+def appendBondBlkDetail(token, start_date, end_date){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "bond_blk_detail"
+    api = "bond_blk_detail"
+    cols = ["trade_date", "ts_code", "name", "price", "vol", "amount", "buy_dp", "sell_dp"]
+    out = loadTable(dbName, tbName)
+    delete from loadTable(dbName, tbName) where trade_date between start_date and end_date
+    // start_date =  2026.08.26
+    // end_date =  2026.08.28
+    for(oneDate in getMarketCalendar("SSE", start_date, end_date)){ // oneDate = 2026.07.17
+        dateText = temporalFormat(oneDate, "yyyyMMdd")
+        p = {"trade_date":dateText}
+        res = getApiData(token, api, p, cols)
+        if(!res.isVoid() and res.count() != 0){
+            replaceColumn!(res, "trade_date", temporalParse(string(res[`trade_date]), "yyyyMMdd"))
+            replaceColumn!(res, "ts_code", symbol(string(res[`ts_code])))
+            replaceColumn!(res, "name", string(res[`name]))
+            replaceColumn!(res, "price", double(res[`price]))
+            replaceColumn!(res, "vol", double(res[`vol]))
+            replaceColumn!(res, "amount", double(res[`amount]))
+            replaceColumn!(res, "buy_dp", string(res[`buy_dp]))
+            replaceColumn!(res, "sell_dp", string(res[`sell_dp]))
+            res = select *, now() as update_time from res
+            out.append!(res)
+            sleep(200)
+            print("Success append data for Table " + api + " for date: " + dateText)
+        } else {
+            print("no data for Table " + api + " for date: " + dateText)
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+ * @Description: cb_basic data import
+ * @DolphinDB server version:
+ * @Last modification time: 2026-03-18 10:52:57
+ * @dev:
+ * @Author: fangwu
+ */
+def appendCbBasic(token, start_date, end_date){
+    dbName = "dfs://tushare_basic_db"
+    tbName = "cb_basic"
+    api = "cb_basic"
+    cols = ["ts_code", "bond_full_name", "bond_short_name", "cb_code", "stk_code", "stk_short_name", "maturity", "par", "issue_price", "issue_size", "remain_size", "value_date", "maturity_date", "rate_type", "coupon_rate", "add_rate", "pay_per_year", "list_date", "delist_date", "exchange", "conv_start_date", "conv_end_date", "conv_stop_date", "first_conv_price", "conv_price", "rate_clause", "put_clause", "maturity_put_price", "call_clause", "reset_clause", "conv_clause", "guarantor", "guarantee_type", "issue_rating", "newest_rating", "rating_comp"]
+    p = {}
+    res = getApiData(token, api, p, cols)
+    if(!res.isVoid() and res.count() != 0){
+        replaceColumn!(res, "ts_code", symbol(string(res[`ts_code])))
+        replaceColumn!(res, "bond_full_name", string(res[`bond_full_name]))
+        replaceColumn!(res, "bond_short_name", string(res[`bond_short_name]))
+        replaceColumn!(res, "cb_code", symbol(string(res[`cb_code])))
+        replaceColumn!(res, "stk_code", symbol(string(res[`stk_code])))
+        replaceColumn!(res, "stk_short_name", string(res[`stk_short_name]))
+        replaceColumn!(res, "maturity", double(res[`maturity]))
+        replaceColumn!(res, "par", double(res[`par]))
+        replaceColumn!(res, "issue_price", double(res[`issue_price]))
+        replaceColumn!(res, "issue_size", double(res[`issue_size]))
+        replaceColumn!(res, "remain_size", double(res[`remain_size]))
+        replaceColumn!(res, "value_date", temporalParse(string(res[`value_date]), "yyyyMMdd"))
+        replaceColumn!(res, "maturity_date", temporalParse(string(res[`maturity_date]), "yyyyMMdd"))
+        replaceColumn!(res, "rate_type", symbol(string(res[`rate_type])))
+        replaceColumn!(res, "coupon_rate", double(res[`coupon_rate]))
+        replaceColumn!(res, "add_rate", double(res[`add_rate]))
+        replaceColumn!(res, "pay_per_year", int(res[`pay_per_year]))
+        replaceColumn!(res, "list_date", temporalParse(string(res[`list_date]), "yyyyMMdd"))
+        replaceColumn!(res, "delist_date", temporalParse(string(res[`delist_date]), "yyyyMMdd"))
+        replaceColumn!(res, "exchange", symbol(string(res[`exchange])))
+        replaceColumn!(res, "conv_start_date", temporalParse(string(res[`conv_start_date]), "yyyyMMdd"))
+        replaceColumn!(res, "conv_end_date", temporalParse(string(res[`conv_end_date]), "yyyyMMdd"))
+        replaceColumn!(res, "conv_stop_date", temporalParse(string(res[`conv_stop_date]), "yyyyMMdd"))
+        replaceColumn!(res, "first_conv_price", double(res[`first_conv_price]))
+        replaceColumn!(res, "conv_price", double(res[`conv_price]))
+        replaceColumn!(res, "rate_clause", string(res[`rate_clause]))
+        replaceColumn!(res, "put_clause", string(res[`put_clause]))
+        replaceColumn!(res, "maturity_put_price", string(res[`maturity_put_price]))
+        replaceColumn!(res, "call_clause", string(res[`call_clause]))
+        replaceColumn!(res, "reset_clause", string(res[`reset_clause]))
+        replaceColumn!(res, "conv_clause", string(res[`conv_clause]))
+        replaceColumn!(res, "guarantor", string(res[`guarantor]))
+        replaceColumn!(res, "guarantee_type", symbol(string(res[`guarantee_type])))
+        replaceColumn!(res, "issue_rating", symbol(string(res[`issue_rating])))
+        replaceColumn!(res, "newest_rating", symbol(string(res[`newest_rating])))
+        replaceColumn!(res, "rating_comp", string(res[`rating_comp]))
+        res = select *, now() as update_time from res
+
+        // 导入前先删除旧数据
+        truncate(dbName, tbName)
+        loadTable(dbName, tbName).append!(res)
+        print("Success append data for Table " + api )
+    } else {
+        print("no data for Table " + api )
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+ * @Description: cb_call data import
+ * @DolphinDB server version:
+ * @Last modification time: 2026-03-18 10:52:57
+ * @dev:
+ * @Author: fangwu
+ */
+def appendCbCall(token, start_date, end_date){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "cb_call"
+    api = "cb_call"
+    cols = ["ts_code", "call_type", "is_call", "ann_date", "call_date", "call_price", "call_price_tax", "call_vol", "call_amount", "payment_date", "call_reg_date"]
+    out = loadTable(dbName, tbName)
+    delete from loadTable(dbName, tbName) where ann_date between start_date and end_date
+    for(oneDate in start_date..end_date){ // oneDate = 2026.03.18
+        dateText = temporalFormat(oneDate, "yyyyMMdd")
+        p = {"ann_date":dateText}
+        res = getApiData(token, api, p, cols)
+        if(!res.isVoid() and res.count() != 0){
+            replaceColumn!(res, "ts_code", symbol(string(res[`ts_code])))
+            replaceColumn!(res, "call_type", symbol(string(res[`call_type])))
+            replaceColumn!(res, "is_call", symbol(string(res[`is_call])))
+            replaceColumn!(res, "ann_date", temporalParse(string(res[`ann_date]), "yyyyMMdd"))
+            replaceColumn!(res, "call_date", temporalParse(string(res[`call_date]), "yyyyMMdd"))
+            replaceColumn!(res, "call_price", double(res[`call_price]))
+            replaceColumn!(res, "call_price_tax", double(res[`call_price_tax]))
+            replaceColumn!(res, "call_vol", double(res[`call_vol]))
+            replaceColumn!(res, "call_amount", double(res[`call_amount]))
+            replaceColumn!(res, "payment_date", temporalParse(string(res[`payment_date]), "yyyyMMdd"))
+            replaceColumn!(res, "call_reg_date", temporalParse(string(res[`call_reg_date]), "yyyyMMdd"))
+            res = select *, now() as update_time from res
+            out.append!(res)
+            print("Success append data for Table " + api + " for date: " + dateText)
+        } else {
+            print("no data for Table " + api + " for date: " + dateText)
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+ * @Description: cb_daily data import
+ * @DolphinDB server version:
+ * @Last modification time: 2026-03-18 10:52:57
+ * @dev:
+ * @Author: fangwu
+ */
+def appendCbDaily(token, start_date, end_date){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "cb_daily"
+    api = "cb_daily"
+    cols = ["ts_code", "trade_date", "pre_close", "open", "high", "low", "close", "change", "pct_chg", "vol", "amount", "bond_value", "bond_over_rate", "cb_value", "cb_over_rate"]
+    out = loadTable(dbName, tbName)
+    delete from loadTable(dbName, tbName) where trade_date between start_date and end_date
+    for(oneDate in getMarketCalendar("SSE", start_date, end_date)){
+        dateText = temporalFormat(oneDate, "yyyyMMdd")
+        p = {"trade_date":dateText}
+        res = getApiData(token, api, p, cols)
+        if(!res.isVoid() and res.count() != 0){
+            replaceColumn!(res, "ts_code", symbol(string(res[`ts_code])))
+            replaceColumn!(res, "trade_date", temporalParse(string(res[`trade_date]), "yyyyMMdd"))
+            replaceColumn!(res, "pre_close", double(res[`pre_close]))
+            replaceColumn!(res, "open", double(res[`open]))
+            replaceColumn!(res, "high", double(res[`high]))
+            replaceColumn!(res, "low", double(res[`low]))
+            replaceColumn!(res, "close", double(res[`close]))
+            replaceColumn!(res, "change", double(res[`change]))
+            replaceColumn!(res, "pct_chg", double(res[`pct_chg]))
+            replaceColumn!(res, "vol", double(res[`vol]))
+            replaceColumn!(res, "amount", double(res[`amount]))
+            replaceColumn!(res, "bond_value", double(res[`bond_value]))
+            replaceColumn!(res, "bond_over_rate", double(res[`bond_over_rate]))
+            replaceColumn!(res, "cb_value", double(res[`cb_value]))
+            replaceColumn!(res, "cb_over_rate", double(res[`cb_over_rate]))
+            res = select *, now() as update_time from res
+            out.append!(res)
+            print("Success append data for Table " + api + " for date: " + dateText)
+        } else {
+            print("no data for Table " + api + " for date: " + dateText)
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+ * @Description: cb_factor_pro data import
+ * @DolphinDB server version:
+ * @Last modification time: 2026-03-18 10:52:57
+ * @dev:
+ * @Author: fangwu
+ */
+def appendCbFactorPro(token, start_date, end_date){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "cb_factor_pro"
+    api = "cb_factor_pro"
+    cols = ["ts_code", "trade_date", "open", "high", "low", "close", "pre_close", "change", "pct_change", "vol", "amount", "asi_bfq", "asit_bfq", "atr_bfq", "bbi_bfq", "bias1_bfq", "bias2_bfq", "bias3_bfq", "boll_lower_bfq", "boll_mid_bfq", "boll_upper_bfq", "brar_ar_bfq", "brar_br_bfq", "cci_bfq", "cr_bfq", "dfma_dif_bfq", "dfma_difma_bfq", "dmi_adx_bfq", "dmi_adxr_bfq", "dmi_mdi_bfq", "dmi_pdi_bfq", "downdays", "updays", "dpo_bfq", "madpo_bfq", "ema_bfq_10", "ema_bfq_20", "ema_bfq_250", "ema_bfq_30", "ema_bfq_5", "ema_bfq_60", "ema_bfq_90", "emv_bfq", "maemv_bfq", "expma_12_bfq", "expma_50_bfq", "kdj_bfq", "kdj_d_bfq", "kdj_k_bfq", "ktn_down_bfq", "ktn_mid_bfq", "ktn_upper_bfq", "lowdays", "topdays", "ma_bfq_10", "ma_bfq_20", "ma_bfq_250", "ma_bfq_30", "ma_bfq_5", "ma_bfq_60", "ma_bfq_90", "macd_bfq", "macd_dea_bfq", "macd_dif_bfq", "mass_bfq", "ma_mass_bfq", "mfi_bfq", "mtm_bfq", "mtmma_bfq", "obv_bfq", "psy_bfq", "psyma_bfq", "roc_bfq", "maroc_bfq", "rsi_bfq_12", "rsi_bfq_24", "rsi_bfq_6", "taq_down_bfq", "taq_mid_bfq", "taq_up_bfq", "trix_bfq", "trma_bfq", "vr_bfq", "wr_bfq", "wr1_bfq", "xsii_td1_bfq", "xsii_td2_bfq", "xsii_td3_bfq", "xsii_td4_bfq"]
+    out = loadTable(dbName, tbName)
+    delete from loadTable(dbName, tbName) where trade_date between start_date and end_date
+    for(oneDate in getMarketCalendar("SSE", start_date, end_date)){
+        dateText = temporalFormat(oneDate, "yyyyMMdd")
+        p = {"trade_date":dateText}
+        res = getApiData(token, api, p, cols)
+        if(!res.isVoid() and res.count() != 0){
+            replaceColumn!(res, "ts_code", symbol(string(res[`ts_code])))
+            replaceColumn!(res, "trade_date", temporalParse(string(res[`trade_date]), "yyyyMMdd"))
+            replaceColumn!(res, "open", double(res[`open]))
+            replaceColumn!(res, "high", double(res[`high]))
+            replaceColumn!(res, "low", double(res[`low]))
+            replaceColumn!(res, "close", double(res[`close]))
+            replaceColumn!(res, "pre_close", double(res[`pre_close]))
+            replaceColumn!(res, "change", double(res[`change]))
+            replaceColumn!(res, "pct_change", double(res[`pct_change]))
+            replaceColumn!(res, "vol", double(res[`vol]))
+            replaceColumn!(res, "amount", double(res[`amount]))
+            replaceColumn!(res, "asi_bfq", double(res[`asi_bfq]))
+            replaceColumn!(res, "asit_bfq", double(res[`asit_bfq]))
+            replaceColumn!(res, "atr_bfq", double(res[`atr_bfq]))
+            replaceColumn!(res, "bbi_bfq", double(res[`bbi_bfq]))
+            replaceColumn!(res, "bias1_bfq", double(res[`bias1_bfq]))
+            replaceColumn!(res, "bias2_bfq", double(res[`bias2_bfq]))
+            replaceColumn!(res, "bias3_bfq", double(res[`bias3_bfq]))
+            replaceColumn!(res, "boll_lower_bfq", double(res[`boll_lower_bfq]))
+            replaceColumn!(res, "boll_mid_bfq", double(res[`boll_mid_bfq]))
+            replaceColumn!(res, "boll_upper_bfq", double(res[`boll_upper_bfq]))
+            replaceColumn!(res, "brar_ar_bfq", double(res[`brar_ar_bfq]))
+            replaceColumn!(res, "brar_br_bfq", double(res[`brar_br_bfq]))
+            replaceColumn!(res, "cci_bfq", double(res[`cci_bfq]))
+            replaceColumn!(res, "cr_bfq", double(res[`cr_bfq]))
+            replaceColumn!(res, "dfma_dif_bfq", double(res[`dfma_dif_bfq]))
+            replaceColumn!(res, "dfma_difma_bfq", double(res[`dfma_difma_bfq]))
+            replaceColumn!(res, "dmi_adx_bfq", double(res[`dmi_adx_bfq]))
+            replaceColumn!(res, "dmi_adxr_bfq", double(res[`dmi_adxr_bfq]))
+            replaceColumn!(res, "dmi_mdi_bfq", double(res[`dmi_mdi_bfq]))
+            replaceColumn!(res, "dmi_pdi_bfq", double(res[`dmi_pdi_bfq]))
+            replaceColumn!(res, "downdays", double(res[`downdays]))
+            replaceColumn!(res, "updays", double(res[`updays]))
+            replaceColumn!(res, "dpo_bfq", double(res[`dpo_bfq]))
+            replaceColumn!(res, "madpo_bfq", double(res[`madpo_bfq]))
+            replaceColumn!(res, "ema_bfq_10", double(res[`ema_bfq_10]))
+            replaceColumn!(res, "ema_bfq_20", double(res[`ema_bfq_20]))
+            replaceColumn!(res, "ema_bfq_250", double(res[`ema_bfq_250]))
+            replaceColumn!(res, "ema_bfq_30", double(res[`ema_bfq_30]))
+            replaceColumn!(res, "ema_bfq_5", double(res[`ema_bfq_5]))
+            replaceColumn!(res, "ema_bfq_60", double(res[`ema_bfq_60]))
+            replaceColumn!(res, "ema_bfq_90", double(res[`ema_bfq_90]))
+            replaceColumn!(res, "emv_bfq", double(res[`emv_bfq]))
+            replaceColumn!(res, "maemv_bfq", double(res[`maemv_bfq]))
+            replaceColumn!(res, "expma_12_bfq", double(res[`expma_12_bfq]))
+            replaceColumn!(res, "expma_50_bfq", double(res[`expma_50_bfq]))
+            replaceColumn!(res, "kdj_bfq", double(res[`kdj_bfq]))
+            replaceColumn!(res, "kdj_d_bfq", double(res[`kdj_d_bfq]))
+            replaceColumn!(res, "kdj_k_bfq", double(res[`kdj_k_bfq]))
+            replaceColumn!(res, "ktn_down_bfq", double(res[`ktn_down_bfq]))
+            replaceColumn!(res, "ktn_mid_bfq", double(res[`ktn_mid_bfq]))
+            replaceColumn!(res, "ktn_upper_bfq", double(res[`ktn_upper_bfq]))
+            replaceColumn!(res, "lowdays", double(res[`lowdays]))
+            replaceColumn!(res, "topdays", double(res[`topdays]))
+            replaceColumn!(res, "ma_bfq_10", double(res[`ma_bfq_10]))
+            replaceColumn!(res, "ma_bfq_20", double(res[`ma_bfq_20]))
+            replaceColumn!(res, "ma_bfq_250", double(res[`ma_bfq_250]))
+            replaceColumn!(res, "ma_bfq_30", double(res[`ma_bfq_30]))
+            replaceColumn!(res, "ma_bfq_5", double(res[`ma_bfq_5]))
+            replaceColumn!(res, "ma_bfq_60", double(res[`ma_bfq_60]))
+            replaceColumn!(res, "ma_bfq_90", double(res[`ma_bfq_90]))
+            replaceColumn!(res, "macd_bfq", double(res[`macd_bfq]))
+            replaceColumn!(res, "macd_dea_bfq", double(res[`macd_dea_bfq]))
+            replaceColumn!(res, "macd_dif_bfq", double(res[`macd_dif_bfq]))
+            replaceColumn!(res, "mass_bfq", double(res[`mass_bfq]))
+            replaceColumn!(res, "ma_mass_bfq", double(res[`ma_mass_bfq]))
+            replaceColumn!(res, "mfi_bfq", double(res[`mfi_bfq]))
+            replaceColumn!(res, "mtm_bfq", double(res[`mtm_bfq]))
+            replaceColumn!(res, "mtmma_bfq", double(res[`mtmma_bfq]))
+            replaceColumn!(res, "obv_bfq", double(res[`obv_bfq]))
+            replaceColumn!(res, "psy_bfq", double(res[`psy_bfq]))
+            replaceColumn!(res, "psyma_bfq", double(res[`psyma_bfq]))
+            replaceColumn!(res, "roc_bfq", double(res[`roc_bfq]))
+            replaceColumn!(res, "maroc_bfq", double(res[`maroc_bfq]))
+            replaceColumn!(res, "rsi_bfq_12", double(res[`rsi_bfq_12]))
+            replaceColumn!(res, "rsi_bfq_24", double(res[`rsi_bfq_24]))
+            replaceColumn!(res, "rsi_bfq_6", double(res[`rsi_bfq_6]))
+            replaceColumn!(res, "taq_down_bfq", double(res[`taq_down_bfq]))
+            replaceColumn!(res, "taq_mid_bfq", double(res[`taq_mid_bfq]))
+            replaceColumn!(res, "taq_up_bfq", double(res[`taq_up_bfq]))
+            replaceColumn!(res, "trix_bfq", double(res[`trix_bfq]))
+            replaceColumn!(res, "trma_bfq", double(res[`trma_bfq]))
+            replaceColumn!(res, "vr_bfq", double(res[`vr_bfq]))
+            replaceColumn!(res, "wr_bfq", double(res[`wr_bfq]))
+            replaceColumn!(res, "wr1_bfq", double(res[`wr1_bfq]))
+            replaceColumn!(res, "xsii_td1_bfq", double(res[`xsii_td1_bfq]))
+            replaceColumn!(res, "xsii_td2_bfq", double(res[`xsii_td2_bfq]))
+            replaceColumn!(res, "xsii_td3_bfq", double(res[`xsii_td3_bfq]))
+            replaceColumn!(res, "xsii_td4_bfq", double(res[`xsii_td4_bfq]))
+            res = select *, now() as update_time from res
+            out.append!(res)
+            print("Success append data for Table " + api + " for date: " + dateText)
+        } else {
+            print("no data for Table " + api + " for date: " + dateText)
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+ * @Description: cb_issue data import
+ * @DolphinDB server version:
+ * @Last modification time: 2026-03-18 10:52:57
+ * @dev:
+ * @Author: fangwu
+ */
+def appendCbIssue(token, start_date, end_date){
+    dbName = "dfs://tushare_basic_db"
+    tbName = "cb_issue"
+    api = "cb_issue"
+    cols = ["ts_code", "ann_date", "res_ann_date", "plan_issue_size", "issue_size", "issue_price", "issue_type", "issue_cost", "onl_code", "onl_name", "onl_date", "onl_size", "onl_pch_vol", "onl_pch_num", "onl_pch_excess", "onl_winning_rate", "shd_ration_code", "shd_ration_name", "shd_ration_date", "shd_ration_record_date", "shd_ration_pay_date", "shd_ration_price", "shd_ration_ratio", "shd_ration_size", "shd_ration_vol", "shd_ration_num", "shd_ration_excess", "offl_size", "offl_deposit", "offl_pch_vol", "offl_pch_num", "offl_pch_excess", "offl_winning_rate", "lead_underwriter", "lead_underwriter_vol"]
+    out = loadTable(dbName, tbName)
+    p = {}
+    res = getApiData(token, api, {}, cols)
+    if(!res.isVoid() and res.count() != 0){
+        replaceColumn!(res, "ts_code", symbol(string(res[`ts_code])))
+        replaceColumn!(res, "ann_date", temporalParse(string(res[`ann_date]), "yyyyMMdd"))
+        replaceColumn!(res, "res_ann_date", temporalParse(string(res[`res_ann_date]), "yyyyMMdd"))
+        replaceColumn!(res, "plan_issue_size", double(res[`plan_issue_size]))
+        replaceColumn!(res, "issue_size", double(res[`issue_size]))
+        replaceColumn!(res, "issue_price", double(res[`issue_price]))
+        replaceColumn!(res, "issue_type", symbol(string(res[`issue_type])))
+        replaceColumn!(res, "issue_cost", double(res[`issue_cost]))
+        replaceColumn!(res, "onl_code", symbol(string(res[`onl_code])))
+        replaceColumn!(res, "onl_name", string(res[`onl_name]))
+        replaceColumn!(res, "onl_date", temporalParse(string(res[`onl_date]), "yyyyMMdd"))
+        replaceColumn!(res, "onl_size", double(res[`onl_size]))
+        replaceColumn!(res, "onl_pch_vol", double(res[`onl_pch_vol]))
+        replaceColumn!(res, "onl_pch_num", int(res[`onl_pch_num]))
+        replaceColumn!(res, "onl_pch_excess", double(res[`onl_pch_excess]))
+        replaceColumn!(res, "onl_winning_rate", double(res[`onl_winning_rate]))
+        replaceColumn!(res, "shd_ration_code", symbol(string(res[`shd_ration_code])))
+        replaceColumn!(res, "shd_ration_name", string(res[`shd_ration_name]))
+        replaceColumn!(res, "shd_ration_date", temporalParse(string(res[`shd_ration_date]), "yyyyMMdd"))
+        replaceColumn!(res, "shd_ration_record_date", temporalParse(string(res[`shd_ration_record_date]), "yyyyMMdd"))
+        replaceColumn!(res, "shd_ration_pay_date", temporalParse(string(res[`shd_ration_pay_date]), "yyyyMMdd"))
+        replaceColumn!(res, "shd_ration_price", double(res[`shd_ration_price]))
+        replaceColumn!(res, "shd_ration_ratio", double(res[`shd_ration_ratio]))
+        replaceColumn!(res, "shd_ration_size", double(res[`shd_ration_size]))
+        replaceColumn!(res, "shd_ration_vol", double(res[`shd_ration_vol]))
+        replaceColumn!(res, "shd_ration_num", int(res[`shd_ration_num]))
+        replaceColumn!(res, "shd_ration_excess", double(res[`shd_ration_excess]))
+        replaceColumn!(res, "offl_size", double(res[`offl_size]))
+        replaceColumn!(res, "offl_deposit", double(res[`offl_deposit]))
+        replaceColumn!(res, "offl_pch_vol", double(res[`offl_pch_vol]))
+        replaceColumn!(res, "offl_pch_num", int(res[`offl_pch_num]))
+        replaceColumn!(res, "offl_pch_excess", double(res[`offl_pch_excess]))
+        replaceColumn!(res, "offl_winning_rate", double(res[`offl_winning_rate]))
+        replaceColumn!(res, "lead_underwriter", string(res[`lead_underwriter]))
+        replaceColumn!(res, "lead_underwriter_vol", double(res[`lead_underwriter_vol]))
+        res = select *, now() as update_time from res
+        // basic 数据 先清空再添加
+        truncate(dbName, tbName)
+        out.append!(res)
+        print("Success append data for Table " + api )
+    } else {
+        print("no data for Table " + api)
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+ * @Description: cb_price_chg data import
+ * @DolphinDB server version:
+ * @Last modification time: 2026-03-18 10:52:57
+ * @dev:
+ * @Author: fangwu
+ */
+def appendCbPriceChg(token, start_date, end_date){
+
+    // 先通过可转债的基本信息接口获取可转债的ts_code
+    basic_api = "cb_basic"
+    codes_ = getApiData(token, basic_api, {}, ['ts_code'])
+    codes = codes_.ts_code
+    codesBatchs = cut(codes,10)
+
+    // 导入cb_price_chg数据
+    dbName = "dfs://tushare_basic_db"
+    tbName = "cb_price_chg"
+    // 先truncate表
+    truncate(dbName, tbName)
+    // 导入数据
+    api = "cb_price_chg"
+    cols = ["ts_code", "bond_short_name", "publish_date", "change_date", "convert_price_initial", "convertprice_bef", "convertprice_aft"]
+
+    for (oneBatch in codesBatchs){ // oneBatch = codesBatchs[0]
+        oneBatchStr = oneBatch.concat(',')
+        p = {"ts_code":oneBatchStr}
+        res = getApiData(token, api, p, cols)
+        if(!res.isVoid() and res.count() != 0){
+            replaceColumn!(res, "ts_code", symbol(string(res[`ts_code])))
+            replaceColumn!(res, "bond_short_name", string(res[`bond_short_name]))
+            replaceColumn!(res, "publish_date", temporalParse(string(res[`publish_date]), "yyyyMMdd"))
+            replaceColumn!(res, "change_date", temporalParse(string(res[`change_date]), "yyyyMMdd"))
+            replaceColumn!(res, "convert_price_initial", double(res[`convert_price_initial]))
+            replaceColumn!(res, "convertprice_bef", double(res[`convertprice_bef]))
+            replaceColumn!(res, "convertprice_aft", double(res[`convertprice_aft]))
+            res = select *, now() as update_time from res
+            loadTable(dbName, tbName).append!(res)
+            print("Success append data for Table " + api + " for ts_code: " + oneBatchStr)
+        } else {
+            print("no data for Table " + api + " for ts_code: " + oneBatchStr)
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+ * @Description: cb_rate data import
+ * @DolphinDB server version:
+ * @Last modification time: 2026-03-18 10:52:57
+ * @dev:
+ * @Author: fangwu
+ */
+def appendCbRate(token, start_date, end_date){
+
+    // 先通过可转债的基本信息接口获取可转债的ts_code
+    basic_api = "cb_basic"
+    codes_ = getApiData(token, basic_api, {}, ['ts_code'])
+    codes = codes_.ts_code
+
+    // 遍历每个可转债的ts_code，获取其coupon_rate数据
+    codesBatchs = cut(codes,10)
+
+    dbName = "dfs://tushare_basic_db"
+    tbName = "cb_rate"
+    // 先清空数据
+    truncate(dbName, tbName)
+    api = "cb_rate"
+    cols = ["ts_code", "rate_freq", "rate_start_date", "rate_end_date", "coupon_rate"]
+    for (oneBatch in codesBatchs){ // oneBatch = codesBatchs[0]
+        oneBatchStr = oneBatch.concat(',')
+        p = {"ts_code":oneBatchStr}
+        res = getApiData(token, api, p, cols)
+        if(!res.isVoid() and res.count() != 0){
+            replaceColumn!(res, "ts_code", symbol(string(res[`ts_code])))
+            replaceColumn!(res, "rate_freq", int(res[`rate_freq]))
+            replaceColumn!(res, "rate_start_date", temporalParse(string(res[`rate_start_date]), "yyyyMMdd"))
+            replaceColumn!(res, "rate_end_date", temporalParse(string(res[`rate_end_date]), "yyyyMMdd"))
+            replaceColumn!(res, "coupon_rate", double(res[`coupon_rate]))
+            res = select *, now() as update_time from res
+            loadTable(dbName, tbName).append!(res)
+            print("Success append data for Table " + api + " for ts_code: " + oneBatchStr)
+        } else {
+            print("no data for Table " + api + " for ts_code: " + oneBatchStr)
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+ * @Description: cb_share data import
+ * @DolphinDB server version:
+ * @Last modification time: 2026-03-18 10:52:57
+ * @dev:
+ * @Author: fangwu
+ */
+//  use tushare
+def appendCbShare(token, start_date, end_date){
+    api_basic = "cb_basic"
+    codes_ = getApiData(token, api_basic, {}, ['ts_code'])
+    codes = codes_.ts_code
+    codesBatchs = cut(codes,2)
+
+    dbName = "dfs://tushare_daily_db"
+    tbName = "cb_share"
+    // 先清空表数据
+    truncate(dbName, tbName)
+    
+    api = "cb_share"
+    cols = ["ts_code", "bond_short_name", "publish_date", "end_date", "issue_size", "convert_price_initial", "convert_price", "convert_val", "convert_vol", "convert_ratio", "acc_convert_val", "acc_convert_vol", "acc_convert_ratio", "remain_size", "total_shares"]
+
+    for (oneBatch in codesBatchs){ // oneBatch = codesBatchs[0]
+        oneBatchStr = oneBatch.concat(',')
+        p = {"ts_code":oneBatchStr}
+        res = getApiData(token, api, p, cols)
+        if(!res.isVoid() and res.count() != 0){
+            replaceColumn!(res, "ts_code", symbol(string(res[`ts_code])))
+            replaceColumn!(res, "bond_short_name", string(res[`bond_short_name]))
+            replaceColumn!(res, "publish_date", temporalParse(string(res[`publish_date]), "yyyyMMdd"))
+            replaceColumn!(res, "end_date", temporalParse(string(res[`end_date]), "yyyyMMdd"))
+            replaceColumn!(res, "issue_size", double(res[`issue_size]))
+            replaceColumn!(res, "convert_price_initial", double(res[`convert_price_initial]))
+            replaceColumn!(res, "convert_price", double(res[`convert_price]))
+            replaceColumn!(res, "convert_val", double(res[`convert_val]))
+            replaceColumn!(res, "convert_vol", double(res[`convert_vol]))
+            replaceColumn!(res, "convert_ratio", double(res[`convert_ratio]))
+            replaceColumn!(res, "acc_convert_val", double(res[`acc_convert_val]))
+            replaceColumn!(res, "acc_convert_vol", double(res[`acc_convert_vol]))
+            replaceColumn!(res, "acc_convert_ratio", double(res[`acc_convert_ratio]))
+            replaceColumn!(res, "remain_size", double(res[`remain_size]))
+            replaceColumn!(res, "total_shares", double(res[`total_shares]))
+            res = select *, now() as update_time from res
+            loadTable(dbName, tbName).append!(res)
+            print("Success append data for Table " + api + " for ts_code: " + oneBatchStr)
+        } else {
+            print("no data for Table " + api + " for ts_code: " + oneBatchStr)
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+ * @Description: eco_cal data import
+ * @DolphinDB server version:
+ * @Last modification time: 2026-03-18 10:52:57
+ * @dev:
+ * @Author: fangwu
+ */
+// def appendEcoCal(token, start_date, end_date){
+//     dbName = "dfs://tushare_macro_event"
+//     tbName = "eco_cal"
+//     api = "eco_cal"
+//     cols = ["date", "time", "currency", "country", "event", "value", "pre_value", "fore_value"]
+//     out = loadTable(dbName, tbName)
+//     for(oneDate in getMarketCalendar("SSE", start_date, end_date)){ // oneDate = 2020.04.03
+//         dateText = temporalFormat(oneDate, "yyyyMMdd")
+//         p = {date:dateText}
+//         res = getApiData(token, api, p, cols)
+//         if(!res.isVoid() and res.count() != 0){
+//             replaceColumn!(res, "date", temporalParse(string(res[`date]), "yyyyMMdd"))
+//             replaceColumn!(res, "time", minute(string(res[`time])))
+//             replaceColumn!(res, "currency", symbol(string(res[`currency])))
+//             replaceColumn!(res, "country", symbol(string(res[`country])))
+//             replaceColumn!(res, "event", string(res[`event]))
+//             replaceColumn!(res, "value", string(res[`value]))
+//             replaceColumn!(res, "pre_value", string(res[`pre_value]))
+//             replaceColumn!(res, "fore_value", string(res[`fore_value]))
+//             res = select *, now() as update_time from res
+//             out.append!(res)
+//             print("Success append data for Table " + api + " for date: " + dateText)
+//         } else {
+//             print("no data for Table " + api + " for date: " + dateText)
+//         }
+//     }
+//     print("Success append data for Table " + api)
+// }
+
+/*
+ * @Description: repo_daily data import
+ * @DolphinDB server version:
+ * @Last modification time: 2026-03-18 10:52:57
+ * @dev:
+ * @Author: fangwu
+ */
+def appendRepoDaily(token, start_date, end_date){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "repo_daily"
+    api = "repo_daily"
+    cols = ["ts_code", "trade_date", "repo_maturity", "pre_close", "open", "high", "low", "close", "weight", "weight_r", "amount", "num"]
+    out = loadTable(dbName, tbName)
+    delete from loadTable(dbName, tbName) where trade_date between start_date and end_date
+    for(oneDate in getMarketCalendar("SSE", start_date, end_date)){  // oneDate = 2020.08.04
+        dateText = temporalFormat(oneDate, "yyyyMMdd")
+        p = {"trade_date":dateText}
+        res = getApiData(token, api, p, cols)
+        if(!res.isVoid() and res.count() != 0){
+            replaceColumn!(res, "ts_code", symbol(string(res[`ts_code])))
+            replaceColumn!(res, "trade_date", temporalParse(string(res[`trade_date]), "yyyyMMdd"))
+            replaceColumn!(res, "repo_maturity", symbol(string(res[`repo_maturity])))
+            replaceColumn!(res, "pre_close", double(res[`pre_close]))
+            replaceColumn!(res, "open", double(res[`open]))
+            replaceColumn!(res, "high", double(res[`high]))
+            replaceColumn!(res, "low", double(res[`low]))
+            replaceColumn!(res, "close", double(res[`close]))
+            replaceColumn!(res, "weight", double(res[`weight]))
+            replaceColumn!(res, "weight_r", double(res[`weight_r]))
+            replaceColumn!(res, "amount", double(res[`amount]))
+            replaceColumn!(res, "num", int(res[`num]))
+            res = select *, now() as update_time from res
+            out.append!(res)
+            print("Success append data for Table " + api + " for date: " + dateText)
+        } else {
+            print("no data for Table " + api + " for date: " + dateText)
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+ * @Description: yc_cb data import
+ * @DolphinDB server version:
+ * @Last modification time: 2026-03-18 10:52:57
+ * @dev:
+ * @Author: fangwu
+ */
+// def appendYcCb(token, start_date, end_date){ // start_date = 2026.05.15, end_date = 2026.05.15
+//     dbName = "dfs://tushare_daily_db"
+//     tbName = "yc_cb"
+//     api = "yc_cb"
+//     cols = ["trade_date", "ts_code", "curve_name", "curve_type", "curve_term", "yield"]
+//     out = loadTable(dbName, tbName)
+//     delete from loadTable(dbName, tbName) where trade_date between start_date and end_date
+//     for(oneDate in getMarketCalendar("SSE", start_date, end_date)){ // oneDate =  2026.05.15
+//         dateText = temporalFormat(oneDate, "yyyyMMdd")
+//         for (curve_type_ in ["0","1"]) { // curve_type_ = "0"
+//             p = {trade_date:dateText, curve_type:curve_type_}
+//             res = getApiData(token, api, p, cols)
+//             sleep(3000)
+//             if(!res.isVoid() and res.count() != 0){
+//                 replaceColumn!(res, "trade_date", temporalParse(string(res[`trade_date]), "yyyyMMdd"))
+//                 replaceColumn!(res, "ts_code", symbol(string(res[`ts_code])))
+//                 replaceColumn!(res, "curve_name", string(res[`curve_name]))
+//                 replaceColumn!(res, "curve_type", symbol(string(res[`curve_type])))
+//                 replaceColumn!(res, "curve_term", double(res[`curve_term]))
+//                 replaceColumn!(res, "yield", double(res[`yield]))
+//                 res = select *, now() as update_time from res
+//                 out.append!(res)
+//                 print("Success append data for Table " + api + " for date: " + dateText)
+//             } else {
+//                 print("no data for Table " + api + " for date: " + dateText)
+//             }
+//         }
+//     }
+//     print("Success append data for Table " + api)
+// }

@@ -1,0 +1,133 @@
+module EasyTushare::futures::FuturesInit
+use EasyTushare::TsInit
+
+/* 
+*  @Brief: 期货数据导入函数模块
+*  @Author: DolphinDB
+*  @Last modification time: 2026.03.31
+*  @DolphinDB server version: 3.00.5 2026.02.06 LINUX x86_64
+*/
+
+use EasyTushare::futures::FuturesCreateTable
+
+/*
+*  @FunctionName: module_info
+*  @Brief: 模块信息,一个相同模块dir下的每个dos都需要有module_info函数,且是相同的
+*  @Param: None
+*  @Return: dict
+*  @SampleUsage: module_info()
+*/
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "EasyTushare"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+
+/*
+*  @FunctionName: futuresInitTables
+*  @Brief: 初始化数据库表
+*  @Param: table_names
+*  @Return: None
+*  @SampleUsage: futuresInitTables(["fut_basic"])
+*/
+def futuresInitTables(table_names = []){
+    if (size(table_names) == 0){
+       ts_create_tables = exec name from defs() where name like "EasyTushare::futures::FuturesCreateTable%"
+        for(table in ts_create_tables){
+            // table = 'EasyTushare::futures::FuturesCreateTable::createTopList'
+            funcByName(table)()
+        }
+    } else {
+        for (table_name in table_names){ 
+            funcByName("EasyTushare::futures::FuturesCreateTable::createTable" + snakeToUpperCamel(table_name))()
+        }   
+    }
+}
+
+use EasyTushare::futures::FuturesLoadData
+
+/*
+*  @FunctionName: futuresGetAllTableNames
+*  @Brief: 获取所有期货数据表名
+*  @Param: None
+*  @Return: list
+*  @SampleUsage: futuresGetAllTableNames()
+*/
+def futuresGetAllTableNames(){
+    ts_create_tables = exec name from defs() where name like "EasyTushare::futures::FuturesLoadData::append%"
+    return each(upperCamelToSnake, ts_create_tables.split("::")[3].substr(6))
+}
+
+/**
+*  @FunctionName: appendFuturesMink
+*  @Brief: 期货分钟数据导入函数
+*  @Param: token, start_date, end_date
+*  @Return: None
+*  @SampleUsage: appendFuturesMink(token,start_date,end_date)
+ */
+def appendFuturesMink(token,start_date,end_date,table_names = []) {
+    if (size(table_names) == 0){
+        appendFt1minK(token, start_date, end_date)
+        appendFt5minK(token, start_date, end_date)
+        appendFt15minK(token, start_date, end_date)
+        appendFt30minK(token, start_date, end_date)
+        appendFt60minK(token, start_date, end_date)
+    } else {
+        for (table_name in table_names){
+            if (table_name == "ft_1min_k"){
+                appendFt1minK(token, start_date, end_date)
+            } else if (table_name == "ft_5min_k"){
+                appendFt5minK(token, start_date, end_date)
+            } else if (table_name == "ft_15min_k"){
+                appendFt15minK(token, start_date, end_date)
+            } else if (table_name == "ft_30min_k"){
+                appendFt30minK(token, start_date, end_date)
+            } else if (table_name == "ft_60min_k"){
+                appendFt60minK(token, start_date, end_date)  
+            }
+        }
+    }
+}
+
+/*
+*  @FunctionName: futuresHistoryDataLoad
+*  @Brief: 期货数据导入函数
+*  @Param: token, start_date, end_date
+*  @Return: None
+*  @SampleUsage: futuresHistoryDataLoad(token,start_date,end_date)
+*/
+def futuresHistoryDataLoad(token,start_date,end_date,table_names = []) {
+    earliest_date = dict(STRING,DATE)
+    earliest_date["fut_settle"] = 2011.12.31
+    earliest_date["fut_weekly_detail"] = 2010.03.01
+    earliest_date["ft_limit"] = 2005.01.01
+
+    mink_tb_names = []
+    // 本次需要导入的所有表名
+    all_table_names = []
+    if (size(table_names) == 0){
+        all_table_names = futuresGetAllTableNames()        
+    } else {
+        all_table_names = table_names
+    }
+    for (table_name in all_table_names){ // table_name = "index_basic"
+            
+        if (table_name in ["ft_1min_k","ft_5min_k","ft_15min_k","ft_30min_k","ft_60min_k"]){
+            mink_tb_names.append!(table_name)
+        }  else {
+            final_start_date = earliest_date[table_name]
+            if (final_start_date == NULL){
+                final_start_date = start_date
+            }
+            submitJob("append_" + table_name, "append_" + table_name, funcByName("EasyTushare::futures::FuturesLoadData::append" + snakeToUpperCamel(table_name)), token, max(final_start_date, start_date), end_date)
+        }
+    }
+    // 分钟K数据
+    if (mink_tb_names.size() > 0){
+        mink_start_date = max(2009.01.01,start_date)
+        submitJob("appendFuturesMink", "appendFuturesMink", appendFuturesMink, token, mink_start_date, end_date, mink_tb_names)
+    }
+}
+

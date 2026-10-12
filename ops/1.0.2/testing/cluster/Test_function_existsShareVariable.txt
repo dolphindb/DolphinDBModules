@@ -1,0 +1,60 @@
+
+use ops
+login("admin", "123456")
+
+@testing:case="prepare_data_1"
+variable1 = 1
+variable2 = "a"
+variable3 = ["aaa", "bbb"]
+variable4 = table(1..3 as x, 4..6 as y)
+variable5=streamTable(100:0, `timestamp`sym`val, [TIMESTAMP, SYMBOL, INT])
+sleep(1000)
+
+@testing:case="test_function_ops::existsShareVariable_NOT_sharedVariable_STRING"
+re = ops::existsShareVariable("variable1")
+assert 1, re==false
+re = ops::existsShareVariable("variable2")
+assert 2, re==false
+re = ops::existsShareVariable("variable3")
+assert 3, re==false
+re = ops::existsShareVariable("variable4")
+assert 4, re==false
+re = ops::existsShareVariable("variable5")
+assert 5, re==false
+
+@testing:case="prepare_data_2"
+share table(1..3 as x, 4..6 as y) as variable6
+share streamTable(10000:0, `timestamp`sym`val, [TIMESTAMP, SYMBOL, INT]) as variable7
+variable8=streamTable(100:0, `timestamp`sym`val, [TIMESTAMP, SYMBOL, INT])
+enableTableShareAndPersistence(table = variable8, tableName=`variable9, cacheSize = 100)
+sleep(1000)
+
+@testing:case="test_function_ops::existsShareVariable_sharedVariable_STRING"
+re = ops::existsShareVariable("variable6")
+assert 6, re==true
+re = ops::existsShareVariable("variable7")
+assert 7, re==true
+re = ops::existsShareVariable("variable8")
+assert 8, re==false
+re = ops::existsShareVariable("variable9")
+assert 9, re==true
+
+@testing:case="prepare_data_3"
+variable10 = 10
+share table(1..3 as x, 4..6 as y) as variable11
+sleep(1000)
+
+@testing:case="test_function_ops::existsShareVariable_STRING_VECTOR"
+re = ops::existsShareVariable(["variable10","variable11"])
+assert 11, re==[false, true]
+
+@testing:case="test_function_ops::existsShareVariable_NOT_DEFINED"
+re = ops::existsShareVariable("string1")
+assert 12, re==false
+
+@testing:case="prepare_data_4"
+typestr(["aaa", "bbb"])
+sleep(1000)
+
+@testing:case="test_function_ops::existsShareVariable_NOT_SRTRING_NOR_STRING_VECTOR", exception=1
+ops::existsShareVariable(1)

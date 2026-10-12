@@ -1,0 +1,106 @@
+module EasyTushare::foreignExchangre::FxLoadData
+/*
+ *  @Brief: 外汇数据导入函数模块
+ *  @Author: DolphinDB
+ *  @Last modification time: 2026.03.31
+ *  @DolphinDB server version: 3.00.5 2026.02.06 LINUX x86_64
+ */
+
+use EasyTushare::TsInit
+
+/*
+*  @FunctionName: module_info
+*  @Brief: 模块信息,一个相同模块dir下的每个dos都需要有module_info函数,且是相同的
+*  @Param: None
+*  @Return: dict
+*  @SampleUsage: module_info()
+*/
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "EasyTushare"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+
+/**
+ *  @FunctionName: appendFxDaily
+ *  @Brief: 外汇日线行情导入
+ *  @Param: token, start_date, end_date
+ *  @Return: None
+ *  @SampleUsage: appendFxDaily(token, start_date, end_date)
+ */
+def appendFxDaily(token, start_date, end_date){
+    api = "fx_daily" 
+    cols=[
+        "ts_code",
+        "trade_date",
+        "bid_open",
+        "bid_close",
+        "bid_high",
+        "bid_low",
+        "ask_open",
+        "ask_close",
+        "ask_high",
+        "ask_low",
+        "tick_qty",
+        "exchange"
+    ]
+    // 先删除掉这段日期的数据
+    delete from loadTable("dfs://tushare_daily_db","fx_daily") where trade_date between start_date and end_date
+    // 获取数据
+    for (oneDate in start_date..end_date) { // oneDate = 2026.09.01
+        dayStr = temporalFormat(oneDate,"yyyyMMdd")
+        p = { "start_date":dayStr, "end_date":dayStr}
+        res = getApiData(token, api, p, cols)
+        if(!res.isVoid() and count(res)!= 0){
+            rename!(res,"ts_code",`code)
+            replaceColumn!(res,"trade_date",temporalParse(res.trade_date,"yyyyMMdd"))   
+            update res set update_time = now()   
+            replaceColumn!(res,"exchange",string(res.exchange))   
+            loadTable("dfs://tushare_daily_db","fx_daily").append!(res)
+            print("table fx_daily for day "+dayStr+" appended successfully,count="+count(res)+"!")
+        } else {
+            print("table fx_daily for day "+dayStr+" is empty!")
+        }
+    }
+}
+    
+
+/**
+ *  @FunctionName: appendFxObasic
+ *  @Brief: 外汇基础数据导入
+ *  @Param: token, start_date, end_date
+ *  @Return: None
+ *  @SampleUsage: appendFxObasic(token, start_date, end_date)
+ */
+def appendFxObasic(token, start_date, end_date){
+    api = "fx_obasic" 
+    cols = [
+        "ts_code",
+        "name",
+        "classify",
+        "exchange",
+        "min_unit",
+        "max_unit",
+        "pip",
+        "pip_cost",
+        "traget_spread",
+        "min_stop_distance",
+        "trading_hours",
+        "break_time"
+    ]
+    // 获取数据
+    res = getApiData(token, api, {}, cols)
+
+    if (!res.isVoid() and count(res)!= 0) {
+        rename!(res,"ts_code",`code)
+    
+        update res set update_time = now()
+        
+        // 先清空数据
+        truncate("dfs://tushare_basic_db","fx_obasic")
+        loadTable("dfs://tushare_basic_db","fx_obasic").append!(res)
+        print("table fx_obasic appended successfully!")
+    }  
+}

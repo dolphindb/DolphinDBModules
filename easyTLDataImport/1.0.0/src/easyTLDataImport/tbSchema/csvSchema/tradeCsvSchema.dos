@@ -1,0 +1,42 @@
+module easyTLDataImport::tbSchema::csvSchema::tradeCsvSchema
+
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "easyTLDataImport"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+/*
+ * @FunctionName: tradeCsvSchemaSZ
+ * @Brief: Defines the schema for the trade CSV data for the Shenzhen market based on the trading day.
+ * @Param: day: The specific trading day for which the schema is being defined.
+ * @Return: A table schema defining the structure of the trade CSV data.
+ */
+def tradeCsvSchemaSZ(day){
+	if(day < 2016.05.07){
+		name = `RecNo`BuyOrderRecNo`SellOrderRecNo`SecurityID`TradeTime`Price`TradeQty`OrderKind`FunctionCode`SetNo`LocalTime`SeqNo
+		typeString = `INT`INT`INT`SYMBOL`TIME`DOUBLE`LONG`SYMBOL`SYMBOL`INT`TIME`LONG
+	}else{
+		name = `ChannelNo`ApplSeqNum`MDStreamID`BidApplSeqNum`OfferApplSeqNum`SecurityID`SecurityIDSource`LastPx`LastQty`ExecType`TransactTime`LocalTime`SeqNo
+		typeString = `INT`LONG`SYMBOL`LONG`LONG`SYMBOL`SYMBOL`DOUBLE`LONG`INT`TIME`TIME`LONG	
+	}
+	return table(name, typeString)
+}
+
+/*
+ * @FunctionName: tradeCsvSchemaSH
+ * @Brief: Defines the schema for the trade CSV data for the Shanghai market based on the trading day.
+ * @Param: day: The specific trading day for which the schema is being defined.
+ * @Return: A table schema defining the structure of the trade CSV data.
+ */
+def tradeCsvSchemaSH(day){
+	if(day >= 2021.04.26){	// 2021.04.26 之后新增字段 `BizIndex
+		name = `DataStatus`TradeIndex`TradeChan`SecurityID`TradTime`TradPrice`TradVolume`TradeMoney`TradeBuyNo`TradeSellNo`TradeBSFlag`BizIndex`LocalTime`SeqNo
+		typeString = `INT`INT`INT`SYMBOL`TIME`DOUBLE`LONG`DOUBLE`LONG`LONG`SYMBOL`LONG`TIME`LONG
+	}else{
+		name = `DataStatus`TradeIndex`TradeChan`SecurityID`TradTime`TradPrice`TradVolume`TradeMoney`TradeBuyNo`TradeSellNo`TradeBSFlag`LocalTime`SeqNo
+		typeString = `INT`INT`INT`SYMBOL`TIME`DOUBLE`LONG`DOUBLE`LONG`LONG`SYMBOL`TIME`LONG
+	}
+	return table(name, typeString)	
+}

@@ -1,0 +1,128 @@
+module DolphinDBModules::easyTLDataImport::loadData::loadOneDayData
+
+use DolphinDBModules::easyTLDataImport::loadData::loadOneDayData::loadOneDayEntrust
+use DolphinDBModules::easyTLDataImport::loadData::loadOneDayData::loadOneDayTrade
+use DolphinDBModules::easyTLDataImport::loadData::loadOneDayData::loadOneDayTradeEntrust
+use DolphinDBModules::easyTLDataImport::loadData::loadOneDayData::loadOneDaySnapshot
+
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "DolphinDBModules"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+/*
+ * @FunctionName: loadOneDayDataSH
+ * @Brief: Loads one day's worth of trading data for the Shanghai market from specified CSV files.
+ * @Param: csvFilesSH: A vector of CSV file paths containing Shanghai market data.
+ * @Param: day: The specific day for which data is being loaded, formatted as a date.
+ * @Param: dbNames: A vector of database names where the data will be loaded.
+ * @Param: tbNames: A vector of table names corresponding to the databases.
+ * @Param: merge: A boolean flag indicating whether to merge the data from different exchanges.
+ * @Param: dtypes: A vector of data types for the import process.
+ * @Param: isConcatTime: A boolean flag indicating whether to concatenate the date and time into a single timestamp column.
+ * @Param: isDataDuplicated: A boolean flag indicating whether to handle duplicate data entries.
+ * @Param: isNeedOrderQueue: A boolean flag indicating whether to include order queue data during the import.
+ */
+def loadOneDayDataSH(csvFilesSH, day, dbNames, tbNames, merge, dtypes, isConcatTime, isDataDuplicated, isNeedOrderQueue) {
+    // Get the status monitoring table for data import
+    csvFiles = csvFilesSH
+    statTable = objByName(`TLDataImportStatusTable)
+    // Determine which loading functions and types to use based on the presence of a specific CSV file
+    if("mdl_4_24_0.csv" in each(last, csvFiles.split("/"))){
+        loadFuncs = ["TLSnapshot", "TLTradeEntrust"]
+        loadTypes = ["TLSnapshot", ["TLTrade", "TLEntrust"]]
+    }else{
+        loadFuncs = ["TLSnapshot", "TLEntrust", "TLTrade"]
+        loadTypes = ["TLSnapshot", "TLEntrust", "TLTrade"]
+    }
+
+    // Iterate through each loading function
+    for(i in 0:size(loadFuncs)){       // i = 0
+        // Check if the current data type is in the dtypes vector
+        if(any(loadTypes[i] in dtypes)){
+            dtype = loadTypes[i]
+            loadFunc = loadFuncs[i]
+            // Determine the database and table names based on the loading function type
+            if(loadFunc=="TLTradeEntrust"){
+                dbName = dbNames
+                tbName = tbNames
+            }else{
+                dbName = dbNames[dtypes==dtype][0]
+                tbName = tbNames[dtypes==dtype][0]
+            }
+            // Record the start time for loading
+            start_time = now()
+            // Call the appropriate function to load the data based on the data type
+            if(loadFunc=="TLSnapshot"){
+                errorMessage = loadOneDaySnapshotSH(csvFiles, day, dbName, tbName, merge, isConcatTime, isDataDuplicated, isNeedOrderQueue)
+            }else if(loadFunc=="TLEntrust"){
+                errorMessage = loadOneDayEntrustSH(csvFiles, day, dbName, tbName, merge, isConcatTime, isDataDuplicated)
+            }else if(loadFunc=="TLTrade"){
+                errorMessage = loadOneDayTradeSH(csvFiles, day, dbName, tbName, merge, isConcatTime, isDataDuplicated)
+            }else if(loadFunc=="TLTradeEntrust"){
+                errorMessage = loadOneDayTradeEntrustSH(csvFiles, day, dbNames, tbNames, dtypes, merge, isConcatTime, isDataDuplicated)
+            }
+            // Record the end time for loading
+            end_time = now()
+            try{
+                if(typestr(errorMessage)=="BOOL")   errorMsg = ""
+                else                                errorMsg = toStdJson(errorMessage)
+                // Insert the loading status into the monitoring table
+                insert into statTable values(concat(dtype, ""), "SH", day, start_time, end_time, errorMsg)
+            }catch(ex){print(ex)}
+        }
+    }
+}
+
+/*
+ * @FunctionName: loadOneDayDataSZ
+ * @Brief: Loads one day's worth of trading data for the Shenzhen market from specified CSV files.
+ * @Param: csvFilesSZ: A vector of CSV file paths containing Shenzhen market data.
+ * @Param: day: The specific day for which data is being loaded, formatted as a date.
+ * @Param: dbNames: A vector of database names where the data will be loaded.
+ * @Param: tbNames: A vector of table names corresponding to the databases.
+ * @Param: merge: A boolean flag indicating whether to merge the data from different exchanges.
+ * @Param: dtypes: A vector of data types for the import process.
+ * @Param: isConcatTime: A boolean flag indicating whether to concatenate the date and time into a single timestamp column.
+ * @Param: isDataDuplicated: A boolean flag indicating whether to handle duplicate data entries.
+ * @Param: isNeedOrderQueue: A boolean flag indicating whether to include order queue data during the import.
+ */
+def loadOneDayDataSZ(csvFilesSZ, day, dbNames, tbNames, merge, dtypes, isConcatTime, isDataDuplicated, isNeedOrderQueue) {
+    // Get the status monitoring table for data import
+    csvFiles = csvFilesSZ
+    statTable = objByName(`TLDataImportStatusTable)
+    // Determine which loading functions and types to use based on the presence of a specific CSV file
+    loadFuncs = ["TLSnapshot", "TLEntrust", "TLTrade"]
+    loadTypes = ["TLSnapshot", "TLEntrust", "TLTrade"]
+    // Iterate through each loading function
+    for(i in 0:size(loadFuncs)){       // i = 0
+        // Check if the current data type is in the dtypes vector
+        if(any(loadTypes[i] in dtypes)){
+            dtype = loadTypes[i]
+            loadFunc = loadFuncs[i]
+            // Determine the database and table names based on the loading function type
+            dbName = dbNames[dtypes==dtype][0]
+            tbName = tbNames[dtypes==dtype][0]
+            // Record the start time for loading
+            start_time = now()
+            // Call the appropriate function to load the data based on the data type
+            if(loadFunc=="TLSnapshot"){
+                errorMessage = loadOneDaySnapshotSZ(csvFiles, day, dbName, tbName, merge, isConcatTime, isDataDuplicated, isNeedOrderQueue)
+            }else if(loadFunc=="TLEntrust"){
+                errorMessage = loadOneDayEntrustSZ(csvFiles, day, dbName, tbName, merge, isConcatTime, isDataDuplicated)
+            }else if(loadFunc=="TLTrade"){
+                errorMessage = loadOneDayTradeSZ(csvFiles, day, dbName, tbName, merge, isConcatTime, isDataDuplicated)
+            }
+            // Record the end time for loading
+            end_time = now()
+            try{
+                if(typestr(errorMessage)=="BOOL")   errorMsg = ""
+                else                                errorMsg = toStdJson(errorMessage)
+                // Insert the loading status into the monitoring table
+                insert into statTable values(concat(dtype, ""), "SZ", day, start_time, end_time, errorMsg)
+            }catch(ex){print(ex)}
+        }
+    }
+}

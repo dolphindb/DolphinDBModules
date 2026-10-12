@@ -1,0 +1,371 @@
+module EasyTushare::llm::LlmCreateTable
+/* 
+*  @Brief: 大模型语料数据表创建函数模块
+*  @Author: DolphinDB
+*  @Last modification time: 2026.03.31
+*  @DolphinDB server version: 3.00.5 2026.02.06 LINUX x86_64
+*/
+
+/*
+*  @FunctionName: module_info
+*  @Brief: 模块信息,一个相同模块dir下的每个dos都需要有module_info函数,且是相同的
+*  @Param: None
+*  @Return: dict
+*  @SampleUsage: module_info()
+*/
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "EasyTushare"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+/*
+*  @FunctionName: createTableNpr
+*  @Brief: Create a DFS table for National Policy Repository
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableNpr()
+*/
+def createTableNpr(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "npr"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(TIMESTAMP, 0) as pub_time,        // publish time
+            array(STRING, 0) as title,              // title
+            array(STRING, 0) as url,                // policy URL
+            array(STRING, 0) as content_html,       // content html
+            array(STRING, 0) as pcode,              // policy code
+            array(SYMBOL, 0) as puborg,             // publisher
+            array(SYMBOL, 0) as ptype,              // policy type
+            array(TIMESTAMP, 0) as update_time      // update time
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "pub_time"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["pub_time"] = "发布时间"
+        columnComments["title"] = "标题"
+        columnComments["url"] = "政策文件url"
+        columnComments["content_html"] = "正文内容"
+        columnComments["pcode"] = "发文字号"
+        columnComments["puborg"] = "发文机关"
+        columnComments["ptype"] = "主题分类"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableResearchReport
+*  @Brief: Create a DFS table for Broker Research Reports
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableResearchReport()
+*/
+def createTableResearchReport(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "research_report"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(DATE, 0) as trade_date,           // report date
+            array(STRING, 0) as abstr,              // abstract
+            array(STRING, 0) as title,              // title
+            array(SYMBOL, 0) as report_type,        // report type
+            array(STRING, 0) as author,             // author
+            array(STRING, 0) as name,               // stock name
+            array(SYMBOL, 0) as security_id,            // TS code
+            array(SYMBOL, 0) as inst_csname,        // institution
+            array(SYMBOL, 0) as ind_name,           // industry
+            array(STRING, 0) as url,                // report URL
+            array(TIMESTAMP, 0) as update_time      // update time
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["trade_date"] = "研报发布时间"
+        columnComments["abstr"] = "研报摘要"
+        columnComments["title"] = "研报标题"
+        columnComments["report_type"] = "研报类别"
+        columnComments["author"] = "作者"
+        columnComments["name"] = "股票名称"
+        columnComments["security_id"] = "股票代码"
+        columnComments["inst_csname"] = "机构简称"
+        columnComments["ind_name"] = "行业名称"
+        columnComments["url"] = "下载链接"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableNews
+*  @Brief: Create a DFS table for News Flash
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableNews()
+*/
+def createTableNews(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "news"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(TIMESTAMP, 0) as date_time,    // date time
+            array(STRING, 0) as content,            // content
+            array(STRING, 0) as title,              // title
+            array(STRING, 0) as channels,           // channels
+            array(TIMESTAMP, 0) as update_time      // update time
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "date_time"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["date_time"] = "新闻时间"
+        columnComments["content"] = "内容"
+        columnComments["title"] = "标题"
+        columnComments["channels"] = "渠道"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableMajorNews
+*  @Brief: Create a DFS table for Major News
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableMajorNews()
+*/
+def createTableMajorNews(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "major_news"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(STRING, 0) as title,              // title
+            array(STRING, 0) as content,            // content
+            array(TIMESTAMP, 0) as pub_time,        // publish time
+            array(SYMBOL, 0) as src,                // source
+            array(TIMESTAMP, 0) as update_time      // update time
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "pub_time"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["title"] = "标题"
+        columnComments["content"] = "内容"
+        columnComments["pub_time"] = "发布时间"
+        columnComments["src"] = "分类"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableCctvNews
+*  @Brief: Create a DFS table for CCTV News Broadcast
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableCctvNews()
+*/
+def createTableCctvNews(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "cctv_news"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(DATE, 0) as news_date,            // news date
+            array(STRING, 0) as title,              // title
+            array(STRING, 0) as content,            // content
+            array(TIMESTAMP, 0) as update_time      // update time
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "news_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["news_date"] = "日期"
+        columnComments["title"] = "标题"
+        columnComments["content"] = "内容"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableAnnsD
+*  @Brief: Create a DFS table for Company Announcements
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableAnnsD()
+*/
+def createTableAnnsD(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "anns_d"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(DATE, 0) as ann_date,             // announcement date
+            array(SYMBOL, 0) as security_id,            // TS code
+            array(STRING, 0) as name,               // stock name
+            array(STRING, 0) as title,              // title
+            array(STRING, 0) as url,                // URL
+            array(TIMESTAMP, 0) as rec_time,        // record time
+            array(TIMESTAMP, 0) as update_time      // update time
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "ann_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["ann_date"] = "公告日期"
+        columnComments["security_id"] = "股票代码"
+        columnComments["name"] = "股票名称"
+        columnComments["title"] = "标题"
+        columnComments["url"] = "URL，原文下载链接"
+        columnComments["rec_time"] = "发布时间"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableIrmQaSh
+*  @Brief: Create a DFS table for SSE E-Interaction Q&A
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableIrmQaSh()
+*/
+def createTableIrmQaSh(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "irm_qa_sh"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,               // TS code
+            array(STRING, 0) as name,               // company name
+            array(DATE, 0) as trade_date,           // trade date
+            array(STRING, 0) as q,                  // question
+            array(STRING, 0) as a,                  // answer
+            array(TIMESTAMP, 0) as pub_time,        // publish time
+            array(TIMESTAMP, 0) as update_time      // update time
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "股票代码"
+        columnComments["name"] = "公司名称"
+        columnComments["trade_date"] = "日期"
+        columnComments["q"] = "问题"
+        columnComments["a"] = "回复"
+        columnComments["pub_time"] = "回复时间"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableIrmQaSz
+*  @Brief: Create a DFS table for SZSE Interactive Q&A
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableIrmQaSz()
+*/
+def createTableIrmQaSz(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "irm_qa_sz"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,            // TS code
+            array(STRING, 0) as name,               // company name
+            array(DATE, 0) as trade_date,           // trade date
+            array(STRING, 0) as q,                  // question
+            array(STRING, 0) as a,                  // answer
+            array(TIMESTAMP, 0) as pub_time,        // publish time
+            array(STRING, 0) as industry,           // industry
+            array(TIMESTAMP, 0) as update_time      // update time
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "股票代码"
+        columnComments["name"] = "公司名称"
+        columnComments["trade_date"] = "日期"
+        columnComments["q"] = "问题"
+        columnComments["a"] = "回复"
+        columnComments["pub_time"] = "答复时间"
+        columnComments["industry"] = "涉及行业"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}

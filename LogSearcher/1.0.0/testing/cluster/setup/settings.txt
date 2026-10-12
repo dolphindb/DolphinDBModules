@@ -1,0 +1,14 @@
+if((exec mode from rpc(getControllerAlias(), getClusterPerf) where name = getNodeAlias())[0] == 3){
+	// single
+	DATA_DIR = ""
+	// DATA_DIR = "/home/wtxu/Documents/dataset/logSearcher/single"
+}else{
+	// cluster
+	DATA_DIR = ""
+	// DATA_DIR = "/home/wtxu/Documents/dataset/logSearcher/cluster"
+}
+WORK_DIR = "work_dir/logSearcher"
+dolphindbPath = "/hdd/hdd7/hzy/modules_testing/server1/mocluster1"
+// WORK_DIR = "/home/wtxu/Documents/test/logSearcher"
+
+login("admin","123456")

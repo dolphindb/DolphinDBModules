@@ -1,0 +1,38 @@
+use ops
+
+login("admin", "123456")
+
+@testing:case="test_function_getChunkUsageByVolume_default_nodes"
+dbName = "dfs://test_getChunkUsageByVolume"
+tbName = "data"
+if(!existsDatabase(dbName)){
+    db1 = database(, VALUE, 2020.01.01..2020.01.02)
+    db2 = database(, HASH, [SYMBOL,5])
+    db12 = database(dbName, COMPO, [db1, db2])
+}
+db = database(dbName)
+tbSchema = table(1:0, `SecurityID`Date`Price, [SYMBOL, DATE, DOUBLE])
+if (!existsTable(dbName, tbName)){
+	tb = createPartitionedTable(db, tbSchema, tbName, `Date`SecurityID)
+}
+
+n = 1000000
+code = take(take(`SH+decimalFormat(1..10,"0000"), 100).sort(),n)
+date = take(2023.01.01..2023.01.10, n).sort()
+price = rand(10.0, n)
+t = table(code, date, price)
+tb.append!(t)
+
+re = ops::getChunkUsageByVolume(dbName,tbName)
+nodes = exec node from pnodeRun(getNodeType) where value=0 or value =3
+volumes = exec directory from pnodeRun(getAllStorages,nodes)
+assert 1, re[`path].sort() == volumes.sort()
+
+
+@testing:case="test_function_getChunkUsageByVolume_special_nodes"
+nodes = exec node from pnodeRun(getNodeType) where value=0 or value =3
+re = ops::getChunkUsageByVolume(dbName,tbName,nodes[0])
+volumes = exec directory from pnodeRun(getAllStorages,nodes[0])
+assert 2, re[`path].sort() == volumes.sort()
+
+dropDatabase(dbName)

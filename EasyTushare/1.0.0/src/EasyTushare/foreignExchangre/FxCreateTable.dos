@@ -1,0 +1,118 @@
+module EasyTushare::foreignExchangre::FxCreateTable
+
+
+/*
+*  @FunctionName: module_info
+*  @Brief: 模块信息,一个相同模块dir下的每个dos都需要有module_info函数,且是相同的
+*  @Param: None
+*  @Return: dict
+*  @SampleUsage: module_info()
+*/
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "EasyTushare"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+
+// 建表——外汇基础数据fx_obasic
+def createFxObasic(){
+    dbName = "dfs://tushare_basic_db"
+    tbName = "fx_obasic"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,
+            array(SYMBOL, 0) as name,
+            array(SYMBOL, 0) as classify,
+            array(SYMBOL, 0) as exchange,
+            array(DOUBLE, 0) as min_unit,
+            array(DOUBLE, 0) as max_unit,
+            array(DOUBLE, 0) as pip,
+            array(DOUBLE, 0) as pip_cost,
+            array(DOUBLE, 0) as target_spread,
+            array(DOUBLE, 0) as min_stop_distance,
+            array(SYMBOL, 0) as trading_hours,
+            array(SYMBOL, 0) as break_time,
+            array(TIMESTAMP, 0) as update_time
+        )
+        db.createTable(
+            table = schemaTB,
+            tableName = tbName,
+            keepDuplicates=ALL
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "外汇代码"
+        columnComments["name"] = "名称"
+        columnComments["classify"] = "分类"
+        columnComments["exchange"] = "交易商"
+        columnComments["min_unit"] = "最小交易单位"
+        columnComments["max_unit"] = "最大交易单位"
+        columnComments["pip"] = "点"
+        columnComments["pip_cost"] = "点值"
+        columnComments["target_spread"] = "目标差价"
+        columnComments["min_stop_distance"] = "最小止损距离（点子）"
+        columnComments["trading_hours"] = "交易时间"
+        columnComments["break_time"] = "休市时间"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+def createFxDaily(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "fx_daily"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,
+            array(DATE, 0) as trade_date,
+            array(DOUBLE, 0) as bid_open,
+            array(DOUBLE, 0) as bid_close,
+            array(DOUBLE, 0) as bid_high,
+            array(DOUBLE, 0) as bid_low,
+            array(DOUBLE, 0) as ask_open,
+            array(DOUBLE, 0) as ask_close,
+            array(DOUBLE, 0) as ask_high,
+            array(DOUBLE, 0) as ask_low,
+            array(DOUBLE, 0) as tick_qty,
+            array(SYMBOL, 0) as exchange,
+            array(TIMESTAMP, 0) as update_time
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = `trade_date,
+            keepDuplicates=ALL
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "外汇代码"
+        columnComments["trade_date"] = "交易日期"
+        columnComments["bid_open"] = "买入开盘价"
+        columnComments["bid_close"] = "买入收盘价"
+        columnComments["bid_high"] = "买入最高价"
+        columnComments["bid_low"] = "买入最低价"
+        columnComments["ask_open"] = "卖出开盘价"
+        columnComments["ask_close"] = "卖出收盘价"
+        columnComments["ask_high"] = "卖出最高价"
+        columnComments["ask_low"] = "卖出最低价"
+        columnComments["tick_qty"] = "报价笔数"
+        columnComments["exchange"] = "交易商"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+

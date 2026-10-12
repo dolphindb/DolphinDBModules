@@ -1,0 +1,42 @@
+#include "setup/settings.txt"
+use MockData
+
+@testing:case="test_MockData_function_stockMinuteKLine_syntax"
+re = syntax(stockMinuteKLine)
+ex = "stockMinuteKLine(startDate,endDate,securityNumber)"
+assert 1, eqObj(re, ex)
+
+@testing:case="test_MockData_function_stockMinuteKLine_normal"
+t = stockMinuteKLine(startDate=2020.09.05, endDate=2021.01.07, securityNumber=10)
+assert 1, form(t)==6
+assert 2, t.cols()==9
+assert 3, eqObj(t.schema().colDefs[0].name, "securityid")
+assert 4, eqObj(t.schema().colDefs[0].typeInt, 17)
+assert 5, eqObj(t.schema().colDefs[1].name, "tradetime")
+assert 6, eqObj(t.schema().colDefs[1].typeInt, 12)
+
+@testing:case="test_MockData_function_stockMinuteKLine_one_day"
+tradeDates = getMarketCalendar("XSHG", 2021.01.04, 2021.01.04)
+t = stockMinuteKLine(startDate=2021.01.04, endDate=2021.01.04, securityNumber=1)
+assert 1, t.rows()==242
+assert 2, t.cols()==9
+
+@testing:case="test_MockData_function_stockMinuteKLine_non_trading_day_range"
+t = stockMinuteKLine(startDate=2021.01.01, endDate=2021.01.03, securityNumber=10)
+assert 1, t.rows()==0
+assert 2, t.cols()==9
+
+@testing:case="test_MockData_function_stockMinuteKLine_endDate_before_startDate", exception=1
+stockMinuteKLine(startDate=2021.01.07, endDate=2020.09.05, securityNumber=10)
+
+@testing:case="test_MockData_function_stockMinuteKLine_invalid_startDate_int", exception=1
+stockMinuteKLine(startDate=1, endDate=2021.01.07, securityNumber=10)
+
+@testing:case="test_MockData_function_stockMinuteKLine_invalid_startDate_string", exception=1
+stockMinuteKLine(startDate="2020.09.05", endDate=2021.01.07, securityNumber=10)
+
+@testing:case="test_MockData_function_stockMinuteKLine_invalid_securityNumber_string", exception=1
+stockMinuteKLine(startDate=2020.09.05, endDate=2021.01.07, securityNumber="10")
+
+@testing:case="test_MockData_function_stockMinuteKLine_invalid_securityNumber_double", exception=1
+stockMinuteKLine(startDate=2020.09.05, endDate=2021.01.07, securityNumber=1.1)

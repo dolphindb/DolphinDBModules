@@ -1,0 +1,41 @@
+#include "setup/settings.txt"
+use MockData
+
+@testing:case="test_MockData_function_stockTrade_syntax"
+re = syntax(stockTrade)
+ex = "stockTrade(tradeDate,securityNumber)"
+assert 1, eqObj(re, ex)
+
+@testing:case="test_MockData_function_stockTrade_normal"
+t = stockTrade(tradeDate=2020.01.06, securityNumber=10)
+assert 1, form(t)==6
+assert 2, t.rows()==288020
+assert 3, t.cols()==19
+assert 4, eqObj(t.schema().colDefs[0].name, "ChannelNo")
+assert 5, eqObj(t.schema().colDefs[5].name, "Securityid")
+assert 6, eqObj(t.schema().colDefs[5].typeInt, 17)
+
+@testing:case="test_MockData_function_stockTrade_securityNumber_1"
+t = stockTrade(tradeDate=2020.01.06, securityNumber=1)
+assert 1, t.rows()==28802
+assert 2, t.cols()==19
+
+@testing:case="test_MockData_function_stockTrade_non_trading_day"
+t = stockTrade(tradeDate=2020.01.05, securityNumber=10)
+assert 1, t.rows()==0
+assert 2, t.cols()==19
+
+@testing:case="test_MockData_function_stockTrade_invalid_tradeDate_int", exception=1
+stockTrade(tradeDate=1, securityNumber=10)
+
+@testing:case="test_MockData_function_stockTrade_invalid_tradeDate_string", exception=1
+stockTrade(tradeDate="2020.01.06", securityNumber=10)
+
+@testing:case="test_MockData_function_stockTrade_invalid_securityNumber_string", exception=1
+stockTrade(tradeDate=2020.01.06, securityNumber="10")
+
+@testing:case="test_MockData_function_stockTrade_invalid_securityNumber_double", exception=1
+stockTrade(tradeDate=2020.01.06, securityNumber=1.1)
+
+@testing:case="test_MockData_function_stockTrade_invalid_securityNumber_NULL", exception=1
+stockTrade(tradeDate=2020.01.06, securityNumber=NULL)

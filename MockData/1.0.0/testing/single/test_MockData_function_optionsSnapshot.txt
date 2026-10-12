@@ -1,0 +1,42 @@
+#include "setup/settings.txt"
+use MockData
+
+@testing:case="test_MockData_function_optionsSnapshot_syntax"
+re = syntax(optionsSnapshot)
+ex = "optionsSnapshot(tradeDate,instrumentNumber)"
+assert 1, eqObj(re, ex)
+
+@testing:case="test_MockData_function_optionsSnapshot_normal"
+t = optionsSnapshot(tradeDate=2020.01.06, instrumentNumber=10)
+assert 1, form(t)==6
+assert 2, t.rows()==9000
+assert 3, t.cols()==33
+assert 4, eqObj(t.schema().colDefs[0].name, "TradingDay")
+assert 5, eqObj(t.schema().colDefs[0].typeInt, 6)
+
+@testing:case="test_MockData_function_optionsSnapshot_default_instrumentNumber"
+t = optionsSnapshot(tradeDate=2020.01.06)
+assert 1, form(t)==6
+assert 2, t.cols()==33
+
+@testing:case="test_MockData_function_optionsSnapshot_instrumentNumber_1"
+t = optionsSnapshot(tradeDate=2020.01.06, instrumentNumber=1)
+assert 1, t.rows()==900
+assert 2, t.cols()==33
+
+@testing:case="test_MockData_function_optionsSnapshot_non_trading_day"
+t = optionsSnapshot(tradeDate=2020.01.05, instrumentNumber=10)
+assert 1, t.rows()==0
+assert 2, t.cols()==33
+
+@testing:case="test_MockData_function_optionsSnapshot_invalid_tradeDate_int", exception=1
+optionsSnapshot(tradeDate=1, instrumentNumber=10)
+
+@testing:case="test_MockData_function_optionsSnapshot_invalid_tradeDate_string", exception=1
+optionsSnapshot(tradeDate="2020.01.06", instrumentNumber=10)
+
+@testing:case="test_MockData_function_optionsSnapshot_invalid_instrumentNumber_string", exception=1
+optionsSnapshot(tradeDate=2020.01.06, instrumentNumber="10")
+
+@testing:case="test_MockData_function_optionsSnapshot_invalid_instrumentNumber_double", exception=1
+optionsSnapshot(tradeDate=2020.01.06, instrumentNumber=1.1)

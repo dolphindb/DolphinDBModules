@@ -1,0 +1,372 @@
+module EasyTushare::options::OptionsCreateTable
+/* 
+*  @Brief: 期权数据表创建函数模块
+*  @Author: DolphinDB
+*  @Last modification time: 2026.03.31
+*  @DolphinDB server version: 3.00.5 2026.02.06 LINUX x86_64
+*/
+
+/*
+*  @FunctionName: module_info
+*  @Brief: 模块信息,一个相同模块dir下的每个dos都需要有module_info函数,且是相同的
+*  @Param: None
+*  @Return: dict
+*  @SampleUsage: module_info()
+*/
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "EasyTushare"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+
+// ===== BEGIN: createOptBasic.dos =====
+def createOptBasic(){
+    dbName = "dfs://tushare_basic_db"
+    tbName = "opt_basic"
+    if(existsDatabase(dbName)){
+        if(existsTable(dbName, tbName)){
+            print("Table of " + tbName + " already exists!")
+            return
+        }
+        db = database(dbName)
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,                  // TS代码
+            array(SYMBOL, 0) as exchange,              // 交易市场
+            array(STRING, 0) as name,                  // 合约名称
+            array(STRING, 0) as per_unit,              // 合约单位
+            array(SYMBOL, 0) as opt_code,              // 标的合约代码
+            array(SYMBOL, 0) as opt_type,              // 合约类型
+            array(SYMBOL, 0) as call_put,              // 期权类型
+            array(SYMBOL, 0) as exercise_type,         // 行权方式
+            array(DOUBLE, 0) as exercise_price,        // 行权价格
+            array(MONTH, 0) as s_month,                // 结算月
+            array(DATE, 0) as maturity_date,           // 到期日
+            array(DOUBLE, 0) as list_price,            // 挂牌基准价
+            array(DATE, 0) as list_date,               // 开始交易日期
+            array(DATE, 0) as delist_date,             // 最后交易日期
+            array(DATE, 0) as last_edate,              // 最后行权日期
+            array(DATE, 0) as last_ddate,              // 最后交割日期
+            array(SYMBOL, 0) as quote_unit,            // 报价单位
+            array(STRING, 0) as min_price_chg,         // 最小价格波动
+            array(TIMESTAMP, 0) as update_time         // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "list_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "TS代码"
+        columnComments["exchange"] = "交易市场"
+        columnComments["name"] = "合约名称"
+        columnComments["per_unit"] = "合约单位"
+        columnComments["opt_code"] = "标的合约代码"
+        columnComments["opt_type"] = "合约类型"
+        columnComments["call_put"] = "期权类型"
+        columnComments["exercise_type"] = "行权方式"
+        columnComments["exercise_price"] = "行权价格"
+        columnComments["s_month"] = "结算月"
+        columnComments["maturity_date"] = "到期日"
+        columnComments["list_price"] = "挂牌基准价"
+        columnComments["list_date"] = "开始交易日期"
+        columnComments["delist_date"] = "最后交易日期"
+        columnComments["last_edate"] = "最后行权日期"
+        columnComments["last_ddate"] = "最后交割日期"
+        columnComments["quote_unit"] = "报价单位"
+        columnComments["min_price_chg"] = "最小价格波动"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+// ===== END: createOptBasic.dos =====
+
+// ===== BEGIN: createOptDaily.dos =====
+def createOptDaily(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "opt_daily"
+    if(existsDatabase(dbName)){
+        if(existsTable(dbName, tbName)){
+            print("Table of " + tbName + " already exists!")
+            return
+        }
+        db = database(dbName)
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,                  // TS代码
+            array(DATE, 0) as trade_date,              // 交易日期
+            array(SYMBOL, 0) as exchange,              // 交易市场
+            array(DOUBLE, 0) as pre_settle,            // 昨结算价
+            array(DOUBLE, 0) as pre_close,             // 前收盘价
+            array(DOUBLE, 0) as open,                  // 开盘价
+            array(DOUBLE, 0) as high,                  // 最高价
+            array(DOUBLE, 0) as low,                   // 最低价
+            array(DOUBLE, 0) as close,                 // 收盘价
+            array(DOUBLE, 0) as settle,                // 结算价
+            array(DOUBLE, 0) as vol,                   // 成交量(手)
+            array(DOUBLE, 0) as amount,                // 成交额(万元)
+            array(DOUBLE, 0) as oi,                    // 持仓量(手)
+            array(TIMESTAMP, 0) as update_time         // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "TS代码"
+        columnComments["trade_date"] = "交易日期"
+        columnComments["exchange"] = "交易市场"
+        columnComments["pre_settle"] = "昨结算价"
+        columnComments["pre_close"] = "前收盘价"
+        columnComments["open"] = "开盘价"
+        columnComments["high"] = "最高价"
+        columnComments["low"] = "最低价"
+        columnComments["close"] = "收盘价"
+        columnComments["settle"] = "结算价"
+        columnComments["vol"] = "成交量(手)"
+        columnComments["amount"] = "成交额(万元)"
+        columnComments["oi"] = "持仓量(手)"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+// ===== END: createOptDaily.dos =====
+
+
+def createOpt1minK(){
+    dbName = "dfs://tushare_minute_db"
+    tbName = "opt_1min_k"
+    if(existsDatabase(dbName)){
+        if(existsTable(dbName, tbName)){
+            print("Table of " + tbName + " already exists!")
+            return
+        }
+        db = database(dbName)
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,                  // TS代码
+            array(TIMESTAMP, 0) as trade_time,         // 交易时间
+            array(DOUBLE, 0) as open,                  // 开盘价
+            array(DOUBLE, 0) as close,                 // 收盘价
+            array(DOUBLE, 0) as high,                  // 最高价
+            array(DOUBLE, 0) as low,                   // 最低价
+            array(INT, 0) as vol,                      // 成交量
+            array(DOUBLE, 0) as amount,                // 成交额
+            array(DOUBLE, 0) as oi,                    // 持仓量
+            array(TIMESTAMP, 0) as update_time         // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_time"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "TS代码"
+        columnComments["trade_time"] = "交易时间"
+        columnComments["open"] = "开盘价"
+        columnComments["close"] = "收盘价"
+        columnComments["high"] = "最高价"
+        columnComments["low"] = "最低价"
+        columnComments["vol"] = "成交量"
+        columnComments["amount"] = "成交额"
+        columnComments["oi"] = "持仓量"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+def createOpt5minK(){
+    dbName = "dfs://tushare_minute_db"
+    tbName = "opt_5min_k"
+    if(existsDatabase(dbName)){
+        if(existsTable(dbName, tbName)){
+            print("Table of " + tbName + " already exists!")
+            return
+        }
+        db = database(dbName)
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,                  // TS代码
+            array(TIMESTAMP, 0) as trade_time,         // 交易时间
+            array(DOUBLE, 0) as open,                  // 开盘价
+            array(DOUBLE, 0) as close,                 // 收盘价
+            array(DOUBLE, 0) as high,                  // 最高价
+            array(DOUBLE, 0) as low,                   // 最低价
+            array(INT, 0) as vol,                      // 成交量
+            array(DOUBLE, 0) as amount,                // 成交额
+            array(DOUBLE, 0) as oi,                    // 持仓量
+            array(TIMESTAMP, 0) as update_time         // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_time"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "TS代码"
+        columnComments["trade_time"] = "交易时间"
+        columnComments["open"] = "开盘价"
+        columnComments["close"] = "收盘价"
+        columnComments["high"] = "最高价"
+        columnComments["low"] = "最低价"
+        columnComments["vol"] = "成交量"
+        columnComments["amount"] = "成交额"
+        columnComments["oi"] = "持仓量"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+def createOpt15minK(){
+    dbName = "dfs://tushare_minute_db"
+    tbName = "opt_15min_k"
+    if(existsDatabase(dbName)){
+        if(existsTable(dbName, tbName)){
+            print("Table of " + tbName + " already exists!")
+            return
+        }
+        db = database(dbName)
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,                  // TS代码
+            array(TIMESTAMP, 0) as trade_time,         // 交易时间
+            array(DOUBLE, 0) as open,                  // 开盘价
+            array(DOUBLE, 0) as close,                 // 收盘价
+            array(DOUBLE, 0) as high,                  // 最高价
+            array(DOUBLE, 0) as low,                   // 最低价
+            array(INT, 0) as vol,                      // 成交量
+            array(DOUBLE, 0) as amount,                // 成交额
+            array(DOUBLE, 0) as oi,                    // 持仓量
+            array(TIMESTAMP, 0) as update_time         // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_time"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "TS代码"
+        columnComments["trade_time"] = "交易时间"
+        columnComments["open"] = "开盘价"
+        columnComments["close"] = "收盘价"
+        columnComments["high"] = "最高价"
+        columnComments["low"] = "最低价"
+        columnComments["vol"] = "成交量"
+        columnComments["amount"] = "成交额"
+        columnComments["oi"] = "持仓量"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+def createOpt30minK(){
+    dbName = "dfs://tushare_minute_db"
+    tbName = "opt_30min_k"
+    if(existsDatabase(dbName)){
+        if(existsTable(dbName, tbName)){
+            print("Table of " + tbName + " already exists!")
+            return
+        }
+        db = database(dbName)
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,                  // TS代码
+            array(TIMESTAMP, 0) as trade_time,         // 交易时间
+            array(DOUBLE, 0) as open,                  // 开盘价
+            array(DOUBLE, 0) as close,                 // 收盘价
+            array(DOUBLE, 0) as high,                  // 最高价
+            array(DOUBLE, 0) as low,                   // 最低价
+            array(INT, 0) as vol,                      // 成交量
+            array(DOUBLE, 0) as amount,                // 成交额
+            array(DOUBLE, 0) as oi,                    // 持仓量
+            array(TIMESTAMP, 0) as update_time         // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_time"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "TS代码"
+        columnComments["trade_time"] = "交易时间"
+        columnComments["open"] = "开盘价"
+        columnComments["close"] = "收盘价"
+        columnComments["high"] = "最高价"
+        columnComments["low"] = "最低价"
+        columnComments["vol"] = "成交量"
+        columnComments["amount"] = "成交额"
+        columnComments["oi"] = "持仓量"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+def createOpt60minK(){
+    dbName = "dfs://tushare_minute_db"
+    tbName = "opt_60min_k"
+    if(existsDatabase(dbName)){
+        if(existsTable(dbName, tbName)){
+            print("Table of " + tbName + " already exists!")
+            return
+        }
+        db = database(dbName)
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,                  // TS代码
+            array(TIMESTAMP, 0) as trade_time,         // 交易时间
+            array(DOUBLE, 0) as open,                  // 开盘价
+            array(DOUBLE, 0) as close,                 // 收盘价
+            array(DOUBLE, 0) as high,                  // 最高价
+            array(DOUBLE, 0) as low,                   // 最低价
+            array(INT, 0) as vol,                      // 成交量
+            array(DOUBLE, 0) as amount,                // 成交额
+            array(DOUBLE, 0) as oi,                    // 持仓量
+            array(TIMESTAMP, 0) as update_time         // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_time"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "TS代码"
+        columnComments["trade_time"] = "交易时间"
+        columnComments["open"] = "开盘价"
+        columnComments["close"] = "收盘价"
+        columnComments["high"] = "最高价"
+        columnComments["low"] = "最低价"
+        columnComments["vol"] = "成交量"
+        columnComments["amount"] = "成交额"
+        columnComments["oi"] = "持仓量"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+

@@ -1,0 +1,1187 @@
+/* *
+*  @ brief  
+*  This script provides all necessary functions to prepare panel data for module gtja191Alpha.
+*  @ Author: DolphinDB
+*  @ Last modification time: 2022.12.14
+*  @ DolphinDB server version: 2.00.9
+*  @ FileName: gtja191Prepare.dos
+*/
+
+
+module gtja191Prepare
+
+
+//1. Overall preparation
+def prepareData(rawData, startTime, endTime, securityidName=NULL, tradetimeName=NULL, openName=NULL, closeName=NULL, highName=NULL, lowName=NULL, volumeName=NULL, vwapName=NULL, indexCloseName=NULL, indexOpenName=NULL){
+    officialNames = `securityid`tradetime`open`close`high`low`vol`vwap`index_close`index_open
+    userNames = [securityidName, tradetimeName, openName, closeName, highName, lowName, volumeName, vwapName, indexCloseName, indexOpenName]
+
+    namesMain = dict(STRING,STRING)
+
+    for (i in 0:10){
+        // By default there will be 10 fields in rawData
+        if (userNames[i] != NULL) namesMain[officialNames[i]] = userNames[i]
+    }
+    colsMain = sqlColAlias(sqlCol(namesMain.values()), namesMain.keys())
+    whereCondition = expr(startTime, <=, sqlCol(tradetimeName), <=, endTime)
+    data = sql(select=colsMain, from=rawData, where=whereCondition)
+
+    return data.eval()
+}
+
+
+//2. Preparation for factors.
+def gtjaPrepare(data, startTime, endTime){
+    t = select securityid, tradetime, vol, low, high, close, open, vwap, index_close, index_open from data where tradetime between startTime : endTime
+    return dict(`vol`low`high`close`open`vwap`index_close`index_open, panel(t.tradetime, t.securityid, [t.vol, t.low, t.high, t.close, t.open, t.vwap, t.index_close, t.index_open]))
+}
+
+
+
+//3. Calculation helper functions.
+def gtjaCalAlpha1(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha1(input.open,input.close,input.vol)
+}
+
+
+def gtjaCalAlpha2(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha2(input.close,input.high,input.low)
+}
+
+
+def gtjaCalAlpha3(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha3(input.close,input.high,input.low)
+}
+
+
+def gtjaCalAlpha4(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha4(input.close,input.vol)
+}
+
+
+def gtjaCalAlpha5(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha5(input.high,input.vol)
+}
+
+
+def gtjaCalAlpha6(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha6(input.open,input.high)
+}
+
+
+def gtjaCalAlpha7(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha7(input.close,input.vol,input.vwap)
+}
+
+
+def gtjaCalAlpha8(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha8(input.high,input.low,input.vwap)
+}
+
+
+def gtjaCalAlpha9(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha9(input.high,input.low,input.vol)
+}
+
+
+def gtjaCalAlpha10(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha10(input.close)
+}
+
+
+def gtjaCalAlpha11(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha11(input.close,input.high,input.low,input.vol)
+}
+
+
+def gtjaCalAlpha12(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha12(input.open,input.close,input.vwap)
+}
+
+
+def gtjaCalAlpha13(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha13(input.high,input.low,input.vwap)
+}
+
+
+def gtjaCalAlpha14(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha14(input.close)
+}
+
+
+def gtjaCalAlpha15(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha15(input.open,input.close)
+}
+
+
+def gtjaCalAlpha16(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha16(input.vol,input.vwap)
+}
+
+
+def gtjaCalAlpha17(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha17(input.close,input.vwap)
+}
+
+
+def gtjaCalAlpha18(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha18(input.close)
+}
+
+
+def gtjaCalAlpha19(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha19(input.close)
+}
+
+
+def gtjaCalAlpha20(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha20(input.close)
+}
+
+
+def gtjaCalAlpha21(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha21(input.close)
+}
+
+
+def gtjaCalAlpha22(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha22(input.close)
+}
+
+
+def gtjaCalAlpha23(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha23(input.close)
+}
+
+
+def gtjaCalAlpha24(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha24(input.close)
+}
+
+
+def gtjaCalAlpha25(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha25(input.close,input.vol)
+}
+
+
+def gtjaCalAlpha26(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha26(input.close,input.vwap)
+}
+
+
+def gtjaCalAlpha27(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha27(input.close)
+}
+
+
+def gtjaCalAlpha28(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha28(input.close,input.high,input.low)
+}
+
+
+def gtjaCalAlpha29(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha29(input.close,input.vol)
+}
+
+
+def gtjaCalAlpha30(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha30(input.close,input.index_close,input.MKT,input.SMB,input.HML)
+}
+
+
+def gtjaCalAlpha31(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha31(input.close)
+}
+
+
+def gtjaCalAlpha32(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha32(input.high,input.vol)
+}
+
+
+def gtjaCalAlpha33(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha33(input.close,input.low,input.vol)
+}
+
+
+def gtjaCalAlpha34(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha34(input.close)
+}
+
+
+def gtjaCalAlpha35(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha35(input.open,input.vol)
+}
+
+
+def gtjaCalAlpha36(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha36(input.vol,input.vwap)
+}
+
+
+def gtjaCalAlpha37(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha37(input.open,input.close)
+}
+
+
+def gtjaCalAlpha38(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha38(input.high)
+}
+
+
+def gtjaCalAlpha39(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha39(input.open,input.close,input.vol,input.vwap)
+}
+
+
+def gtjaCalAlpha40(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha40(input.close,input.vol)
+}
+
+
+def gtjaCalAlpha41(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha41(input.vwap)
+}
+
+
+def gtjaCalAlpha42(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha42(input.high,input.vol)
+}
+
+
+def gtjaCalAlpha43(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha43(input.close,input.vol)
+}
+
+
+def gtjaCalAlpha44(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha44(input.low,input.vol,input.vwap)
+}
+
+
+def gtjaCalAlpha45(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha45(input.open,input.close,input.vol,input.vwap)
+}
+
+
+def gtjaCalAlpha46(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha46(input.close)
+}
+
+
+def gtjaCalAlpha47(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha47(input.close,input.high,input.low)
+}
+
+
+def gtjaCalAlpha48(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha48(input.close,input.vol)
+}
+
+
+def gtjaCalAlpha49(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha49(input.high,input.low)
+}
+
+
+def gtjaCalAlpha50(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha50(input.high,input.low)
+}
+
+
+def gtjaCalAlpha51(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha51(input.high,input.low)
+}
+
+
+def gtjaCalAlpha52(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha52(input.close,input.high,input.low)
+}
+
+
+def gtjaCalAlpha53(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha53(input.close)
+}
+
+
+def gtjaCalAlpha54(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha54(input.open,input.close)
+}
+
+
+def gtjaCalAlpha55(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha55(input.open,input.close,input.high,input.low)
+}
+
+
+def gtjaCalAlpha56(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha56(input.open,input.high,input.low,input.vol)
+}
+
+
+def gtjaCalAlpha57(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha57(input.close,input.high,input.low)
+}
+
+
+def gtjaCalAlpha58(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha58(input.close)
+}
+
+
+def gtjaCalAlpha59(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha59(input.close,input.high,input.low)
+}
+
+
+def gtjaCalAlpha60(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha60(input.close,input.high,input.low,input.vol)
+}
+
+
+def gtjaCalAlpha61(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha61(input.low,input.vol,input.vwap)
+}
+
+
+def gtjaCalAlpha62(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha62(input.high,input.vol)
+}
+
+
+def gtjaCalAlpha63(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha63(input.close)
+}
+
+
+def gtjaCalAlpha64(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha64(input.close,input.vol,input.vwap)
+}
+
+
+def gtjaCalAlpha65(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha65(input.close)
+}
+
+
+def gtjaCalAlpha66(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha66(input.close)
+}
+
+
+def gtjaCalAlpha67(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha67(input.close)
+}
+
+
+def gtjaCalAlpha68(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha68(input.high,input.low,input.vol)
+}
+
+
+def gtjaCalAlpha69(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha69(input.open,input.high,input.low)
+}
+
+
+def gtjaCalAlpha70(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha70(input.vol,input.vwap)
+}
+
+
+def gtjaCalAlpha71(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha71(input.close)
+}
+
+
+def gtjaCalAlpha72(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha72(input.close,input.high,input.low)
+}
+
+
+def gtjaCalAlpha73(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha73(input.close,input.vol,input.vwap)
+}
+
+
+def gtjaCalAlpha74(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha74(input.low,input.vol,input.vwap)
+}
+
+
+def gtjaCalAlpha75(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha75(input.open,input.close,input.index_opem,input.index_close)
+}
+
+
+def gtjaCalAlpha76(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha76(input.close,input.vol)
+}
+
+
+def gtjaCalAlpha77(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha77(input.high,input.low,input.vol,input.vwap)
+}
+
+
+def gtjaCalAlpha78(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha78(input.close,input.high,input.low)
+}
+
+
+def gtjaCalAlpha79(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha79(input.close)
+}
+
+
+def gtjaCalAlpha80(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha80(input.vol)
+}
+
+
+def gtjaCalAlpha81(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha81(input.vol)
+}
+
+
+def gtjaCalAlpha82(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha82(input.close,input.high,input.low)
+}
+
+
+def gtjaCalAlpha83(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha83(input.high,input.vol)
+}
+
+
+def gtjaCalAlpha84(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha84(input.close,input.vol)
+}
+
+
+def gtjaCalAlpha85(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha85(input.close,input.vol)
+}
+
+
+def gtjaCalAlpha86(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha86(input.close)
+}
+
+
+def gtjaCalAlpha87(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha87(input.open,input.high,input.low,input.vwap)
+}
+
+
+def gtjaCalAlpha88(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha88(input.close)
+}
+
+
+def gtjaCalAlpha89(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha89(input.close)
+}
+
+
+def gtjaCalAlpha90(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha90(input.vol,input.vwap)
+}
+
+
+def gtjaCalAlpha91(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha91(input.close,input.low,input.vol)
+}
+
+
+def gtjaCalAlpha92(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha92(input.close,input.vol,input.vwap)
+}
+
+
+def gtjaCalAlpha93(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha93(input.open,input.low)
+}
+
+
+def gtjaCalAlpha94(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha94(input.close,input.vol)
+}
+
+
+def gtjaCalAlpha95(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha95(input.vol,input.vwap)
+}
+
+
+def gtjaCalAlpha96(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha96(input.close,input.high,input.low)
+}
+
+
+def gtjaCalAlpha97(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha97(input.vol)
+}
+
+
+def gtjaCalAlpha98(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha98(input.close)
+}
+
+
+def gtjaCalAlpha99(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha99(input.close,input.vol)
+}
+
+
+def gtjaCalAlpha100(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha100(input.vol)
+}
+
+
+def gtjaCalAlpha101(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha101(input.close,input.high,input.vol,input.vwap)
+}
+
+
+def gtjaCalAlpha102(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha102(input.vol)
+}
+
+
+def gtjaCalAlpha103(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha103(input.low)
+}
+
+
+def gtjaCalAlpha104(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha104(input.close,input.high,input.vol)
+}
+
+
+def gtjaCalAlpha105(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha105(input.open,input.vol)
+}
+
+
+def gtjaCalAlpha106(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha106(input.close)
+}
+
+
+def gtjaCalAlpha107(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha107(input.open,input.close,input.high,input.low)
+}
+
+
+def gtjaCalAlpha108(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha108(input.high,input.vol,input.vwap)
+}
+
+
+def gtjaCalAlpha109(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha109(input.high,input.low)
+}
+
+
+def gtjaCalAlpha110(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha110(input.close,input.high,input.low)
+}
+
+
+def gtjaCalAlpha111(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha111(input.close,input.high,input.low,input.vol)
+}
+
+
+def gtjaCalAlpha112(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha112(input.close)
+}
+
+
+def gtjaCalAlpha113(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha113(input.close,input.vol)
+}
+
+
+def gtjaCalAlpha114(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha114(input.close,input.high,input.low,input.vol,input.vwap)
+}
+
+
+def gtjaCalAlpha115(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha115(input.close,input.high,input.low,input.vol)
+}
+
+
+def gtjaCalAlpha116(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha116(input.close)
+}
+
+
+def gtjaCalAlpha117(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha117(input.close,input.high,input.low,input.vol)
+}
+
+
+def gtjaCalAlpha118(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha118(input.open,input.high,input.low)
+}
+
+
+def gtjaCalAlpha119(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha119(input.open,input.vol,input.vwap)
+}
+
+
+def gtjaCalAlpha120(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha120(input.close,input.vwap)
+}
+
+
+def gtjaCalAlpha121(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha121(input.vol,input.vwap)
+}
+
+
+def gtjaCalAlpha122(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha122(input.close)
+}
+
+
+def gtjaCalAlpha123(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha123(input.high,input.low,input.vol)
+}
+
+
+def gtjaCalAlpha124(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha124(input.close,input.vwap)
+}
+
+
+def gtjaCalAlpha125(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha125(input.close,input.vol,input.vwap)
+}
+
+
+def gtjaCalAlpha126(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha126(input.close,input.high,input.low)
+}
+
+
+def gtjaCalAlpha127(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha127(input.close)
+}
+
+
+def gtjaCalAlpha128(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha128(input.close,input.high,input.low,input.vol)
+}
+
+
+def gtjaCalAlpha129(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha129(input.close)
+}
+
+
+def gtjaCalAlpha130(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha130(input.high,input.low,input.vol,input.vwap)
+}
+
+
+def gtjaCalAlpha131(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha131(input.close,input.vol,input.vwap)
+}
+
+
+def gtjaCalAlpha132(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha132(input.vol,input.vwap)
+}
+
+
+def gtjaCalAlpha133(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha133(input.high,input.low)
+}
+
+
+def gtjaCalAlpha134(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha134(input.close,input.vol)
+}
+
+
+def gtjaCalAlpha135(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha135(input.close)
+}
+
+
+def gtjaCalAlpha136(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha136(input.open,input.close,input.vol)
+}
+
+
+def gtjaCalAlpha137(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha137(input.open,input.close,input.high,input.low)
+}
+
+
+def gtjaCalAlpha138(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha138(input.low,input.vol,input.vwap)
+}
+
+
+def gtjaCalAlpha139(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha139(input.open,input.vol)
+}
+
+
+def gtjaCalAlpha140(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha140(input.open,input.close,input.high,input.low,input.vol)
+}
+
+
+def gtjaCalAlpha141(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha141(input.high,input.vol)
+}
+
+
+def gtjaCalAlpha142(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime)
+    return gtja191Alpha::gtjaAlpha142(input.close,input.vol)
+}
+
+
+def gtjaCalAlpha143(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha143(input.close)
+} 
+
+
+def gtjaCalAlpha144(data, startTime, endTime){
+    input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha144(input.close, input.vol, input.vwap)
+} 
+
+
+def gtjaCalAlpha145(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha145(input.vol)
+} 
+
+
+def gtjaCalAlpha146(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha146(input.close)
+} 
+
+
+def gtjaCalAlpha147(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha147(input.close)
+} 
+
+
+def gtjaCalAlpha148(data, startTime, endTime){
+	  input = gtjaPrepare(data, startTime, endTime) 
+	  return gtja191Alpha::gtjaAlpha148(input.open, input.vol)
+} 
+
+
+def gtjaCalAlpha149(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha149(input.close, input.index_close)
+} 
+
+
+def gtjaCalAlpha150(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha150(input.close, input.high, input.low, input.vol)
+} 
+
+
+def gtjaCalAlpha151(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha151(input.close)
+} 
+
+
+def gtjaCalAlpha152(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha152(input.close)
+} 
+
+
+def gtjaCalAlpha153(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha153(input.close)
+} 
+
+
+def gtjaCalAlpha154(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha154(input.vol, input.vwap)
+} 
+
+
+def gtjaCalAlpha155(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha155(input.vol)
+} 
+
+
+def gtjaCalAlpha156(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha156(input.open, input.low, input.vwap)
+} 
+
+
+def gtjaCalAlpha157(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha157(input.close)
+} 
+
+
+def gtjaCalAlpha158(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha158(input.close, input.high, input.low)
+} 
+
+
+def gtjaCalAlpha159(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha159(input.close, input.high, input.low)
+} 
+
+
+
+def gtjaCalAlpha160(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha160(input.close)
+} 
+
+
+def gtjaCalAlpha161(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha161(input.close, input.high, input.low)
+} 
+
+
+def gtjaCalAlpha162(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha162(input.close)
+} 
+
+
+def gtjaCalAlpha163(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha163(input.close, input.high, input.vol, input.vwap)
+} 
+
+
+def gtjaCalAlpha164(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha164(input.close, input.high, input.low)
+} 
+
+
+def gtjaCalAlpha165(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha165(input.close)
+} 
+
+
+def gtjaCalAlpha166(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha166(input.close)
+} 
+
+
+def gtjaCalAlpha167(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha167(input.close)
+} 
+
+
+def gtjaCalAlpha168(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha168(input.vol)
+} 
+
+
+
+def gtjaCalAlpha169(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha169(input.close)
+} 
+
+
+def gtjaCalAlpha170(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha170(input.close, input.high, input.vol, input.vwap)
+} 
+
+
+def gtjaCalAlpha171(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha171(input.open, input.close, input.high, input.low)
+} 
+
+
+def gtjaCalAlpha172(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha172(input.close, input.high, input.low)
+}  
+
+
+def gtjaCalAlpha173(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha173(input.close)
+} 
+
+
+def gtjaCalAlpha174(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha174(input.close)
+} 
+
+
+def gtjaCalAlpha175(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha175(input.close, input.high, input.low)
+} 
+
+
+def gtjaCalAlpha176(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha176(input.close, input.high, input.low, input.vol)
+} 
+
+
+def gtjaCalAlpha177(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha177(input.high)
+}  
+
+
+def gtjaCalAlpha178(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha178(input.close, input.vol)
+} 
+
+
+def gtjaCalAlpha179(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha179(input.low, input.vol, input.vwap)
+} 
+
+
+def gtjaCalAlpha180(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha180(input.close, input.vol)
+} 
+
+
+def gtjaCalAlpha181(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha181(input.close, input.index_close)
+} 
+
+
+def gtjaCalAlpha182(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha182(input.open, input.close, input.index_open, input.index_close)
+} 
+
+
+def gtjaCalAlpha183(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha183(input.close)
+} 
+
+
+def gtjaCalAlpha184(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha184(input.open, input.close)
+} 
+
+
+def gtjaCalAlpha185(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha185(input.open, input.close)
+} 
+
+
+def gtjaCalAlpha186(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha186(input.close, input.high, input.low)
+} 
+
+
+def gtjaCalAlpha187(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha187(input.open, input.high)
+} 
+
+
+def gtjaCalAlpha188(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha188(input.high, input.low)
+} 
+
+
+def gtjaCalAlpha189(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha189(input.close)
+} 
+
+
+def gtjaCalAlpha190(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha190(input.close)
+} 
+
+
+def gtjaCalAlpha191(data, startTime, endTime){
+	input = gtjaPrepare(data, startTime, endTime) 
+	return gtja191Alpha::gtjaAlpha191(input.close, input.high, input.low, input.vol)
+}

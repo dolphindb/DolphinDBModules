@@ -1,0 +1,1440 @@
+def supportVersion(){
+    ver = split(split(version()," ")[0],".")
+    verL = int(ver[0])
+    verM = int(ver[2])
+    if(verL==2 and verM<11){
+        return false
+    }else{
+        return true
+    }
+}
+tradeDateVesion= supportVersion()
+
+@testing:case = "test_market_holiday_AIXK_has_2024"
+trade_days = getMarketCalendar("AIXK",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 14
+
+@testing:case = "test_market_holiday_ASEX_has_2024"
+trade_days = getMarketCalendar("ASEX",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 14
+
+@testing:case = "test_market_holiday_BVMF_has_2024"
+trade_days = getMarketCalendar("BVMF",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 10
+
+@testing:case = "test_market_holiday_CFET_has_2024"
+if(!tradeDateVesion){
+    print("skip test_market_holiday_CFET_has_2024 because trade date version is lower than 2.00.11")
+    assert 1, true
+}
+else{
+    trade_days = getMarketCalendar("CFET",2024.01.01,2025.01.01)
+    business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+    business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+    holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+    assert 1,holidays.size() == 19
+}
+
+
+@testing:case = "test_market_holiday_CCFX_has_2024"
+trade_days = getMarketCalendar("CCFX",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 20
+
+@testing:case = "test_market_holiday_CFFEX_has_2024"
+trade_days = getMarketCalendar("CFFEX",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 20
+
+@testing:case = "test_market_holiday_CMES_has_2024"
+trade_days = getMarketCalendar("CMES",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 10
+
+@testing:case = "test_market_holiday_CZCE_has_2024"
+trade_days = getMarketCalendar("CZCE",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 20
+
+@testing:case = "test_market_holiday_DCE_has_2024"
+trade_days = getMarketCalendar("DCE",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 20
+
+@testing:case = "test_market_holiday_IEPA_has_2024"
+trade_days = getMarketCalendar("IEPA",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 12
+
+@testing:case = "test_market_holiday_INE_has_2024"
+trade_days = getMarketCalendar("INE",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 20
+
+@testing:case = "test_market_holiday_SHFE_has_2024"
+trade_days = getMarketCalendar("SHFE",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 20
+
+@testing:case = "test_market_holiday_SSE_has_2024"
+trade_days = getMarketCalendar("SSE",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 20
+
+@testing:case = "test_market_holiday_SZSE_has_2024"
+trade_days = getMarketCalendar("SZSE",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 20
+
+@testing:case = "test_market_holiday_XAMS_has_2024"
+trade_days = getMarketCalendar("XAMS",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 6
+
+@testing:case = "test_market_holiday_XASX_has_2024"
+trade_days = getMarketCalendar("XASX",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 5
+
+@testing:case = "test_market_holiday_XBKK_has_2024"
+trade_days = getMarketCalendar("XBKK",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 17
+
+@testing:case = "test_market_holiday_XBOG_has_2024"
+trade_days = getMarketCalendar("XBOG",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 16
+
+@testing:case = "test_market_holiday_XBOM_has_2024"
+trade_days = getMarketCalendar("XBOM",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 15
+
+@testing:case = "test_market_holiday_XBRU_has_2024"
+trade_days = getMarketCalendar("XBRU",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 6
+
+@testing:case = "test_market_holiday_XBSE_has_2024"
+trade_days = getMarketCalendar("XBSE",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 10
+
+@testing:case = "test_market_holiday_XBUD_has_2024"
+trade_days = getMarketCalendar("XBUD",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 15
+
+@testing:case = "test_market_holiday_XBUE_has_2024"
+trade_days = getMarketCalendar("XBUE",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 14
+
+@testing:case = "test_market_holiday_XCBF_has_2024"
+trade_days = getMarketCalendar("XCBF",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 10
+
+@testing:case = "test_market_holiday_XCSE_has_2024"
+trade_days = getMarketCalendar("XCSE",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 12
+
+@testing:case = "test_market_holiday_XDCE_has_2024"
+trade_days = getMarketCalendar("XDCE",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 20
+
+@testing:case = "test_market_holiday_XDUB_has_2024"
+trade_days = getMarketCalendar("XDUB",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 7
+
+@testing:case = "test_market_holiday_XETR_has_2024"
+trade_days = getMarketCalendar("XETR",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 8
+
+@testing:case = "test_market_holiday_XFRA_has_2024"
+trade_days = getMarketCalendar("XFRA",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 8
+
+@testing:case = "test_market_holiday_XHEL_has_2024"
+trade_days = getMarketCalendar("XHEL",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 11
+
+@testing:case = "test_market_holiday_XHKG_has_2024"
+trade_days = getMarketCalendar("XHKG",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 15
+
+@testing:case = "test_market_holiday_XICE_has_2024"
+trade_days = getMarketCalendar("XICE",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 14
+
+@testing:case = "test_market_holiday_XIDX_has_2024"
+trade_days = getMarketCalendar("XIDX",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 23
+
+@testing:case = "test_market_holiday_XINE_has_2024"
+trade_days = getMarketCalendar("XINE",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 20
+
+@testing:case = "test_market_holiday_XIST_has_2024"
+trade_days = getMarketCalendar("XIST",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 12
+
+@testing:case = "test_market_holiday_XJSE_has_2024"
+trade_days = getMarketCalendar("XJSE",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 11
+
+@testing:case = "test_market_holiday_XKAR_has_2024"
+trade_days = getMarketCalendar("XKAR",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 5
+
+@testing:case = "test_market_holiday_XKLS_has_2024"
+trade_days = getMarketCalendar("XKLS",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 16
+
+@testing:case = "test_market_holiday_XKRX_has_2024"
+trade_days = getMarketCalendar("XKRX",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 16
+
+@testing:case = "test_market_holiday_XLIM_has_2024"
+trade_days = getMarketCalendar("XLIM",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 9
+
+@testing:case = "test_market_holiday_XLIS_has_2024"
+trade_days = getMarketCalendar("XLIS",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 6
+
+@testing:case = "test_market_holiday_XLON_has_2024"
+trade_days = getMarketCalendar("XLON",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 8
+
+@testing:case = "test_market_holiday_XMAD_has_2024"
+trade_days = getMarketCalendar("XMAD",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 6
+
+@testing:case = "test_market_holiday_XMEX_has_2024"
+trade_days = getMarketCalendar("XMEX",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 7
+
+@testing:case = "test_market_holiday_XMIL_has_2024"
+trade_days = getMarketCalendar("XMIL",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 9
+
+@testing:case = "test_market_holiday_XMOS_has_2024"
+trade_days = getMarketCalendar("XMOS",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 8
+
+@testing:case = "test_market_holiday_XNYS_has_2024"
+trade_days = getMarketCalendar("XNYS",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 10
+
+@testing:case = "test_market_holiday_XNZE_has_2024"
+trade_days = getMarketCalendar("XNZE",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 11
+
+@testing:case = "test_market_holiday_XOSL_has_2024"
+trade_days = getMarketCalendar("XOSL",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 12
+
+@testing:case = "test_market_holiday_XPAR_has_2024"
+trade_days = getMarketCalendar("XPAR",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 6
+
+@testing:case = "test_market_holiday_XPHS_has_2024"
+trade_days = getMarketCalendar("XPHS",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 13
+
+@testing:case = "test_market_holiday_XPRA_has_2024"
+trade_days = getMarketCalendar("XPRA",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 9
+
+@testing:case = "test_market_holiday_XSAU_has_2024"
+trade_days = getMarketCalendar("XSAU",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 8
+
+@testing:case = "test_market_holiday_XSES_has_2024"
+trade_days = getMarketCalendar("XSES",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 10
+
+@testing:case = "test_market_holiday_XSGE_has_2024"
+trade_days = getMarketCalendar("XSGE",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 20
+
+@testing:case = "test_market_holiday_XSGO_has_2024"
+trade_days = getMarketCalendar("XSGO",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 12
+
+@testing:case = "test_market_holiday_XSHE_has_2024"
+trade_days = getMarketCalendar("XSHE",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 20
+
+@testing:case = "test_market_holiday_XSHG_has_2024"
+trade_days = getMarketCalendar("XSHG",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 20
+
+@testing:case = "test_market_holiday_XSTO_has_2024"
+trade_days = getMarketCalendar("XSTO",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 11
+
+@testing:case = "test_market_holiday_XSWX_has_2024"
+trade_days = getMarketCalendar("XSWX",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 12
+
+@testing:case = "test_market_holiday_XTAE_has_2024"
+trade_days = getMarketCalendar("XTAE",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 67
+
+@testing:case = "test_market_holiday_XTAI_has_2024"
+trade_days = getMarketCalendar("XTAI",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 15
+
+@testing:case = "test_market_holiday_XTKS_has_2024"
+trade_days = getMarketCalendar("XTKS",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 17
+
+@testing:case = "test_market_holiday_XTSE_has_2024"
+trade_days = getMarketCalendar("XTSE",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 10
+
+@testing:case = "test_market_holiday_XWAR_has_2024"
+trade_days = getMarketCalendar("XWAR",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 13
+
+@testing:case = "test_market_holiday_XWBO_has_2024"
+trade_days = getMarketCalendar("XWBO",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 8
+
+@testing:case = "test_market_holiday_XZCE_has_2024"
+trade_days = getMarketCalendar("XZCE",2024.01.01,2025.01.01)
+business_days_in_2024 = (2024.01.01..2024.12.31).businessDay()
+business_days_in_2024 = business_days_in_2024[!isDuplicated[business_days_in_2024]]
+holidays = business_days_in_2024[!(business_days_in_2024 in trade_days)]
+assert 1,holidays.size() == 20
+
+// ========== 2025 testcase ===============
+
+@testing:case = "test_market_holiday_AIXK_has_2025"
+trade_days = getMarketCalendar("AIXK",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 15
+
+@testing:case = "test_market_holiday_ASEX_has_2025"
+trade_days = getMarketCalendar("ASEX",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 13
+
+@testing:case = "test_market_holiday_BVMF_has_2025"
+trade_days = getMarketCalendar("BVMF",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 11
+
+@testing:case = "test_market_holiday_CFET_has_2025"
+if(!tradeDateVesion){
+    print("skip test_market_holiday_CFET_has_2025 because trade date version is lower than 2.00.11")
+    assert 1, true
+}
+else{
+    trade_days = getMarketCalendar("CFET",2025.01.01,2026.01.01)
+    business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+    business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+    holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+    assert 1,holidays.size() == 18
+}
+
+@testing:case = "test_market_holiday_CCFX_has_2025"
+trade_days = getMarketCalendar("CCFX",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 18
+
+@testing:case = "test_market_holiday_CFFEX_has_2025"
+trade_days = getMarketCalendar("CFFEX",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 18
+
+@testing:case = "test_market_holiday_CMES_has_2025"
+trade_days = getMarketCalendar("CMES",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 10
+
+@testing:case = "test_market_holiday_CZCE_has_2025"
+trade_days = getMarketCalendar("CZCE",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 18
+
+@testing:case = "test_market_holiday_DCE_has_2025"
+trade_days = getMarketCalendar("DCE",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 18
+
+@testing:case = "test_market_holiday_IEPA_has_2025"
+trade_days = getMarketCalendar("IEPA",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 12
+
+@testing:case = "test_market_holiday_INE_has_2025"
+trade_days = getMarketCalendar("INE",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 18
+
+@testing:case = "test_market_holiday_SHFE_has_2025"
+trade_days = getMarketCalendar("SHFE",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 18
+
+@testing:case = "test_market_holiday_SSE_has_2025"
+trade_days = getMarketCalendar("SSE",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 18
+
+@testing:case = "test_market_holiday_SZSE_has_2025"
+trade_days = getMarketCalendar("SZSE",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 18
+
+@testing:case = "test_market_holiday_XAMS_has_2025"
+trade_days = getMarketCalendar("XAMS",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 6
+
+@testing:case = "test_market_holiday_XASX_has_2025"
+trade_days = getMarketCalendar("XASX",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 8
+
+@testing:case = "test_market_holiday_XBKK_has_2025"
+trade_days = getMarketCalendar("XBKK",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 17
+
+@testing:case = "test_market_holiday_XBOG_has_2025"
+trade_days = getMarketCalendar("XBOG",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 16
+
+@testing:case = "test_market_holiday_XBOM_has_2025"
+trade_days = getMarketCalendar("XBOM",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 12
+
+@testing:case = "test_market_holiday_XBRU_has_2025"
+trade_days = getMarketCalendar("XBRU",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 6
+
+@testing:case = "test_market_holiday_XBSE_has_2025"
+trade_days = getMarketCalendar("XBSE",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 12
+
+@testing:case = "test_market_holiday_XBUD_has_2025"
+trade_days = getMarketCalendar("XBUD",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 12
+
+@testing:case = "test_market_holiday_XBUE_has_2025"
+trade_days = getMarketCalendar("XBUE",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 0
+
+@testing:case = "test_market_holiday_XCBF_has_2025"
+trade_days = getMarketCalendar("XCBF",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 12
+
+@testing:case = "test_market_holiday_XCSE_has_2025"
+trade_days = getMarketCalendar("XCSE",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 12
+
+@testing:case = "test_market_holiday_XDCE_has_2025"
+trade_days = getMarketCalendar("XDCE",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 18
+
+@testing:case = "test_market_holiday_XDUB_has_2025"
+trade_days = getMarketCalendar("XDUB",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 7
+
+@testing:case = "test_market_holiday_XETR_has_2025"
+trade_days = getMarketCalendar("XETR",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 8
+
+@testing:case = "test_market_holiday_XFRA_has_2025"
+trade_days = getMarketCalendar("XFRA",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 8
+
+@testing:case = "test_market_holiday_XHEL_has_2025"
+trade_days = getMarketCalendar("XHEL",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 11
+
+@testing:case = "test_market_holiday_XHKG_has_2025"
+trade_days = getMarketCalendar("XHKG",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 15
+
+@testing:case = "test_market_holiday_XICE_has_2025"
+trade_days = getMarketCalendar("XICE",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 14
+
+@testing:case = "test_market_holiday_XIDX_has_2025"
+trade_days = getMarketCalendar("XIDX",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 24
+
+@testing:case = "test_market_holiday_XINE_has_2025"
+trade_days = getMarketCalendar("XINE",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 18
+
+@testing:case = "test_market_holiday_XIST_has_2025"
+trade_days = getMarketCalendar("XIST",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 10
+
+@testing:case = "test_market_holiday_XJSE_has_2025"
+trade_days = getMarketCalendar("XJSE",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 11
+
+@testing:case = "test_market_holiday_XKLS_has_2025"
+trade_days = getMarketCalendar("XKLS",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 16
+
+@testing:case = "test_market_holiday_XKRX_has_2025"
+trade_days = getMarketCalendar("XKRX",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 17
+
+@testing:case = "test_market_holiday_XLIM_has_2025"
+trade_days = getMarketCalendar("XLIM",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 12
+
+@testing:case = "test_market_holiday_XLIS_has_2025"
+trade_days = getMarketCalendar("XLIS",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 6
+
+@testing:case = "test_market_holiday_XLON_has_2025"
+trade_days = getMarketCalendar("XLON",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 10
+
+@testing:case = "test_market_holiday_XMAD_has_2025"
+trade_days = getMarketCalendar("XMAD",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 9
+
+@testing:case = "test_market_holiday_XMEX_has_2025"
+trade_days = getMarketCalendar("XMEX",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 7
+
+@testing:case = "test_market_holiday_XMIL_has_2025"
+trade_days = getMarketCalendar("XMIL",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 9
+
+@testing:case = "test_market_holiday_XMOS_has_2025"
+trade_days = getMarketCalendar("XMOS",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 8
+
+@testing:case = "test_market_holiday_XNYS_has_2025"
+trade_days = getMarketCalendar("XNYS",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 10
+
+@testing:case = "test_market_holiday_XNZE_has_2025"
+trade_days = getMarketCalendar("XNZE",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 11
+
+@testing:case = "test_market_holiday_XOSL_has_2025"
+trade_days = getMarketCalendar("XOSL",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 11
+
+@testing:case = "test_market_holiday_XPAR_has_2025"
+trade_days = getMarketCalendar("XPAR",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 6
+
+@testing:case = "test_market_holiday_XPHS_has_2025"
+trade_days = getMarketCalendar("XPHS",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 15
+
+@testing:case = "test_market_holiday_XPRA_has_2025"
+trade_days = getMarketCalendar("XPRA",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 11
+
+@testing:case = "test_market_holiday_XSAU_has_2025"
+trade_days = getMarketCalendar("XSAU",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 8
+
+@testing:case = "test_market_holiday_XSES_has_2025"
+trade_days = getMarketCalendar("XSES",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 9
+
+@testing:case = "test_market_holiday_XSGE_has_2025"
+trade_days = getMarketCalendar("XSGE",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 18
+
+@testing:case = "test_market_holiday_XSGO_has_2025"
+trade_days = getMarketCalendar("XSGO",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 12
+
+@testing:case = "test_market_holiday_XSHE_has_2025"
+trade_days = getMarketCalendar("XSHE",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 18
+
+@testing:case = "test_market_holiday_XSHG_has_2025"
+trade_days = getMarketCalendar("XSHG",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 18
+
+@testing:case = "test_market_holiday_XSTO_has_2025"
+trade_days = getMarketCalendar("XSTO",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 12
+
+@testing:case = "test_market_holiday_XSWX_has_2025"
+trade_days = getMarketCalendar("XSWX",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 12
+
+@testing:case = "test_market_holiday_XTAE_has_2025"
+trade_days = getMarketCalendar("XTAE",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 60
+
+@testing:case = "test_market_holiday_XTAI_has_2025"
+trade_days = getMarketCalendar("XTAI",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 13
+
+@testing:case = "test_market_holiday_XTKS_has_2025"
+trade_days = getMarketCalendar("XTKS",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 18
+
+@testing:case = "test_market_holiday_XTSE_has_2025"
+trade_days = getMarketCalendar("XTSE",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 11
+
+@testing:case = "test_market_holiday_XWAR_has_2025"
+trade_days = getMarketCalendar("XWAR",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 12
+
+@testing:case = "test_market_holiday_XWBO_has_2025"
+trade_days = getMarketCalendar("XWBO",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 8
+
+@testing:case = "test_market_holiday_XZCE_has_2025"
+trade_days = getMarketCalendar("XZCE",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 18
+
+@testing:case = "test_market_holiday_XKAR_has_2025"
+trade_days = getMarketCalendar("XKAR",2025.01.01,2026.01.01)
+business_days_in_2025 = (2025.01.01..2025.12.31).businessDay()
+business_days_in_2025 = business_days_in_2025[!isDuplicated[business_days_in_2025]]
+holidays = business_days_in_2025[!(business_days_in_2025 in trade_days)]
+assert 1,holidays.size() == 10
+
+// ========== 2026 testcase ===============
+@testing:case = "test_market_holiday_AIXK_has_2026"
+trade_days = getMarketCalendar("AIXK",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 15
+
+@testing:case = "test_market_holiday_ASEX_has_2026"
+trade_days = getMarketCalendar("ASEX",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 13
+
+@testing:case = "test_market_holiday_BVMF_has_2026"
+trade_days = getMarketCalendar("BVMF",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 12
+
+@testing:case = "test_market_holiday_CFET_has_2026"
+if(!tradeDateVesion){
+    print("skip test_market_holiday_CFET_has_2026 because trade date version is lower than 2.00.11")
+    assert 1, true
+}
+else{
+    trade_days = getMarketCalendar("CFET",2026.01.01,2027.01.01)
+    business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+    business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+    holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+    assert 1,holidays.size() == 19
+}
+
+@testing:case = "test_market_holiday_CCFX_has_2026"
+trade_days = getMarketCalendar("CCFX",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 19
+
+@testing:case = "test_market_holiday_CFFEX_has_2026"
+trade_days = getMarketCalendar("CFFEX",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 19
+
+@testing:case = "test_market_holiday_CMES_has_2026"
+trade_days = getMarketCalendar("CMES",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 11
+
+@testing:case = "test_market_holiday_CZCE_has_2026"
+trade_days = getMarketCalendar("CZCE",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 19
+
+@testing:case = "test_market_holiday_DCE_has_2026"
+trade_days = getMarketCalendar("DCE",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 19
+
+@testing:case = "test_market_holiday_IEPA_has_2026"
+trade_days = getMarketCalendar("IEPA",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 12
+
+@testing:case = "test_market_holiday_INE_has_2026"
+trade_days = getMarketCalendar("INE",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 19
+
+@testing:case = "test_market_holiday_SHFE_has_2026"
+trade_days = getMarketCalendar("SHFE",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 19
+
+@testing:case = "test_market_holiday_SSE_has_2026"
+trade_days = getMarketCalendar("SSE",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 19
+
+@testing:case = "test_market_holiday_SZSE_has_2026"
+trade_days = getMarketCalendar("SZSE",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 19
+
+@testing:case = "test_market_holiday_XAMS_has_2026"
+trade_days = getMarketCalendar("XAMS",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 5
+
+@testing:case = "test_market_holiday_XASX_has_2026"
+trade_days = getMarketCalendar("XASX",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 7
+
+@testing:case = "test_market_holiday_XBKK_has_2026"
+trade_days = getMarketCalendar("XBKK",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 19
+
+@testing:case = "test_market_holiday_XBOG_has_2026"
+trade_days = getMarketCalendar("XBOG",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 18
+
+@testing:case = "test_market_holiday_XBOM_has_2026"
+trade_days = getMarketCalendar("XBOM",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 11
+
+@testing:case = "test_market_holiday_XBRU_has_2026"
+trade_days = getMarketCalendar("XBRU",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 5
+
+@testing:case = "test_market_holiday_XBSE_has_2026"
+trade_days = getMarketCalendar("XBSE",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 11
+
+@testing:case = "test_market_holiday_XBUD_has_2026"
+trade_days = getMarketCalendar("XBUD",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 12
+
+@testing:case = "test_market_holiday_XBUE_has_2026"
+trade_days = getMarketCalendar("XBUE",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 14
+
+@testing:case = "test_market_holiday_XCBF_has_2026"
+trade_days = getMarketCalendar("XCBF",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 12
+
+@testing:case = "test_market_holiday_XCSE_has_2026"
+trade_days = getMarketCalendar("XCSE",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 11
+
+@testing:case = "test_market_holiday_XDCE_has_2026"
+trade_days = getMarketCalendar("XDCE",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 19
+
+@testing:case = "test_market_holiday_XDUB_has_2026"
+trade_days = getMarketCalendar("XDUB",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 7
+
+@testing:case = "test_market_holiday_XETR_has_2026"
+trade_days = getMarketCalendar("XETR",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 7
+
+@testing:case = "test_market_holiday_XFRA_has_2026"
+trade_days = getMarketCalendar("XFRA",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 7
+
+@testing:case = "test_market_holiday_XHEL_has_2026"
+trade_days = getMarketCalendar("XHEL",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 10
+
+@testing:case = "test_market_holiday_XHKG_has_2026"
+trade_days = getMarketCalendar("XHKG",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 14
+
+@testing:case = "test_market_holiday_XICE_has_2026"
+trade_days = getMarketCalendar("XICE",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 13
+
+@testing:case = "test_market_holiday_XIDX_has_2026"
+trade_days = getMarketCalendar("XIDX",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 22
+
+@testing:case = "test_market_holiday_XINE_has_2026"
+trade_days = getMarketCalendar("XINE",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 19
+
+@testing:case = "test_market_holiday_XIST_has_2026"
+trade_days = getMarketCalendar("XIST",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 10
+
+@testing:case = "test_market_holiday_XJSE_has_2026"
+trade_days = getMarketCalendar("XJSE",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 11
+
+@testing:case = "test_market_holiday_XKLS_has_2026"
+trade_days = getMarketCalendar("XKLS",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 11
+
+@testing:case = "test_market_holiday_XKRX_has_2026"
+trade_days = getMarketCalendar("XKRX",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 12
+
+@testing:case = "test_market_holiday_XLIM_has_2026"
+trade_days = getMarketCalendar("XLIM",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 10
+
+@testing:case = "test_market_holiday_XLIS_has_2026"
+trade_days = getMarketCalendar("XLIS",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 5
+
+@testing:case = "test_market_holiday_XLON_has_2026"
+trade_days = getMarketCalendar("XLON",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 8
+
+@testing:case = "test_market_holiday_XMAD_has_2026"
+trade_days = getMarketCalendar("XMAD",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 5
+
+@testing:case = "test_market_holiday_XMEX_has_2026"
+trade_days = getMarketCalendar("XMEX",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 7
+
+@testing:case = "test_market_holiday_XMIL_has_2026"
+trade_days = getMarketCalendar("XMIL",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 7
+
+@testing:case = "test_market_holiday_XMOS_has_2026"
+trade_days = getMarketCalendar("XMOS",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 8
+
+@testing:case = "test_market_holiday_XNYS_has_2026"
+trade_days = getMarketCalendar("XNYS",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 10
+
+@testing:case = "test_market_holiday_XNZE_has_2026"
+trade_days = getMarketCalendar("XNZE",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 9
+
+@testing:case = "test_market_holiday_XOSL_has_2026"
+trade_days = getMarketCalendar("XOSL",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 10
+
+@testing:case = "test_market_holiday_XPAR_has_2026"
+trade_days = getMarketCalendar("XPAR",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 5
+
+@testing:case = "test_market_holiday_XPHS_has_2026"
+trade_days = getMarketCalendar("XPHS",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 11
+
+@testing:case = "test_market_holiday_XPRA_has_2026"
+trade_days = getMarketCalendar("XPRA",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 12
+
+@testing:case = "test_market_holiday_XSAU_has_2026"
+trade_days = getMarketCalendar("XSAU",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 9
+
+@testing:case = "test_market_holiday_XSES_has_2026"
+trade_days = getMarketCalendar("XSES",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 7
+
+@testing:case = "test_market_holiday_XSGE_has_2026"
+trade_days = getMarketCalendar("XSGE",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 19
+
+@testing:case = "test_market_holiday_XSGO_has_2026"
+trade_days = getMarketCalendar("XSGO",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 11
+
+@testing:case = "test_market_holiday_XSHE_has_2026"
+trade_days = getMarketCalendar("XSHE",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 19
+
+@testing:case = "test_market_holiday_XSHG_has_2026"
+trade_days = getMarketCalendar("XSHG",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 19
+
+@testing:case = "test_market_holiday_XSTO_has_2026"
+trade_days = getMarketCalendar("XSTO",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 10
+
+@testing:case = "test_market_holiday_XSWX_has_2026"
+trade_days = getMarketCalendar("XSWX",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 10
+
+@testing:case = "test_market_holiday_XTAE_has_2026"
+trade_days = getMarketCalendar("XTAE",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 62
+
+@testing:case = "test_market_holiday_XTAI_has_2026"
+trade_days = getMarketCalendar("XTAI",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 15
+
+@testing:case = "test_market_holiday_XTKS_has_2026"
+trade_days = getMarketCalendar("XTKS",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 20
+
+@testing:case = "test_market_holiday_XTSE_has_2026"
+trade_days = getMarketCalendar("XTSE",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 11
+
+@testing:case = "test_market_holiday_XWAR_has_2026"
+trade_days = getMarketCalendar("XWAR",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 10
+
+@testing:case = "test_market_holiday_XWBO_has_2026"
+trade_days = getMarketCalendar("XWBO",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 13
+
+@testing:case = "test_market_holiday_XZCE_has_2026"
+trade_days = getMarketCalendar("XZCE",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 19
+
+@testing:case = "test_market_holiday_XKAR_has_2026"
+trade_days = getMarketCalendar("XKAR",2026.01.01,2027.01.01)
+business_days_in_2026 = (2026.01.01..2026.12.31).businessDay()
+business_days_in_2026 = business_days_in_2026[!isDuplicated[business_days_in_2026]]
+holidays = business_days_in_2026[!(business_days_in_2026 in trade_days)]
+assert 1,holidays.size() == 13

@@ -1,0 +1,12 @@
+// 如果测试离线更新：
+// 1. 替换 server 下的 marketHoliday 文件夹内的交易日历 CSV 文件。
+// 2. 重启 DolphinDB 服务器。
+// 3. 单独运行 test_calendar_update.txt 测试文件。
+
+// 如果测试在线更新：
+// 1. 将本模块的 marketHoliday 文件夹复制到一个目录 DATA_DIR 下。
+// 2. 在下面配置 DATA_DIR 的路径。
+// 3. 先运行 test_online_update_calendar 测试文件。
+// 4. 再运行 test_calendar_update.txt 测试文件。
+
+DATA_DIR = ""

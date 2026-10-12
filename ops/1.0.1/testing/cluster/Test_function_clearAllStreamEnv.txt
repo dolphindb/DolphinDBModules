@@ -1,0 +1,119 @@
+
+use ops
+login("admin", "123456")
+
+try{ops::clearAllStreamEnv()}catch(ex){print ex}
+
+@testing:case="prepare_data_1"
+share streamTable(1000:0, `time`sym`volume, [TIMESTAMP, SYMBOL, INT]) as dummyTable1
+outputTable1 = table(10000:0, `time`sym`sumVolume, [TIMESTAMP, SYMBOL, INT])
+sessionWindowEngine = createSessionWindowEngine(name = "sessionWindowEngine", sessionGap = 5, metrics = <sum(volume)>, dummyTable = dummyTable1, outputTable = outputTable1, timeColumn = `time, keyColumn=`sym)
+subscribeTable(tableName="dummyTable1", actionName="sessionWindowEngine", offset=0, handler=append!{sessionWindowEngine}, msgAsTable=true)
+sleep(1000)
+
+def sum_diff(x, y){
+return (x-y)/(x+y)
+}
+factor1 = <ema(1000 * sum_diff(ema(price, 20), ema(price, 40)),10) -  ema(1000 * sum_diff(ema(price, 20), ema(price, 40)), 20)>
+share streamTable(1:0, `sym`time`price, [STRING,DATETIME,DOUBLE]) as dummyTable2
+outputTable2 = table(1000:0, `sym`time`factor1, [STRING,DATETIME,DOUBLE])
+reactiveStateEngine = createReactiveStateEngine(name="reactiveStateEngine", metrics =[<time>, factor1], dummyTable=dummyTable2, outputTable=outputTable2, keyColumn="sym", filter=<sym in ["000001.SH", "000002.SH"]>)
+subscribeTable(tableName=`dummyTable2, actionName="reactiveStateEngine", handler=tableInsert{reactiveStateEngine})
+sleep(1000)
+
+share streamTable(10:0,`time`sym`price`volume,[TIMESTAMP,SYMBOL,DOUBLE,INT]) as dummyTable3
+outputTable3 = table(1:0, `time`avgPrice`volume`dollarVolume`count, [TIMESTAMP,DOUBLE,INT,DOUBLE,INT])
+crossSectionalEngine=createCrossSectionalEngine(name="crossSectionalEngine", metrics=<[avg(price), sum(volume), sum(price*volume), count(price)]>, dummyTable=dummyTable3, outputTable=outputTable3, keyColumn=`sym, triggeringPattern="perRow", useSystemTime=false, timeColumn=`time)
+subscribeTable(tableName="dummyTable3", actionName="crossSectionalEngine", offset=-1, handler=append!{crossSectionalEngine}, msgAsTable=true)
+sleep(1000)
+
+share streamTable(1000:0, `time`sym`qty, [TIMESTAMP, SYMBOL, INT]) as dummyTable4
+outputTable4 = table(1000:0, `time`sym`type`metric, [TIMESTAMP, SYMBOL, INT, STRING])
+anomalyDetectionEngine = createAnomalyDetectionEngine(name="anomalyDetectionEngine", metrics=<[sum(qty) > 5, avg(qty) > qty, qty < 4]>, dummyTable=dummyTable4, outputTable=outputTable4, timeColumn=`time, keyColumn=`sym, windowSize=3, step=3)
+subscribeTable(tableName="dummyTable4", actionName="anomalyDetectionEngine", offset=0, handler=append!{anomalyDetectionEngine}, msgAsTable=true)
+sleep(1000)
+
+share streamTable(1000:0, `time`sym`volume, [TIMESTAMP, SYMBOL, INT]) as dummyTable5
+outputTable5 = table(10000:0, `time`sym`sumVolume, [TIMESTAMP, SYMBOL, INT])
+timeSeriesEngine = createTimeSeriesEngine(name="timeSeriesEngine", windowSize=60000, step=60000, metrics=<[sum(volume)]>, dummyTable=dummyTable5, outputTable=outputTable5, timeColumn=`time, useSystemTime=false, keyColumn=`sym, garbageSize=50, useWindowStartTime=false)
+subscribeTable(tableName="dummyTable5", actionName="timeSeriesEngine", offset=0, handler=append!{timeSeriesEngine}, msgAsTable=true);
+sleep(1000)
+
+share streamTable(1000:0, `date`second`sym`volume, [DATE, SECOND, SYMBOL, INT]) as dummyTable6
+outputTable6 = keyedTable(`time`sym, 10000:0, `time`sym`sumVolume, [DATETIME, SYMBOL, INT])
+dailyTimeSeriesEngine = createDailyTimeSeriesEngine(name="dailyTimeSeriesEngine", windowSize=60, step=60, metrics=<[sum(volume)]>, dummyTable=dummyTable6, outputTable=outputTable6, timeColumn=`date`second, useSystemTime=false, keyColumn=`sym, garbageSize=50, updateTime=2, useWindowStartTime=false, sessionBegin=09:30:00 13:00:00, sessionEnd=11:30:00 15:00:00,mergeSessionEnd=true)
+subscribeTable(tableName="dummyTable6", actionName="dailyTimeSeriesEngine", offset=0, handler=append!{dailyTimeSeriesEngine}, msgAsTable=true);
+sleep(1000)
+
+share streamTable(1:0, `time`sym`price, [TIMESTAMP, SYMBOL, DOUBLE]) as dummyTableLeft7
+share streamTable(1:0, `time`sym`bid`ask, [TIMESTAMP, SYMBOL, DOUBLE, DOUBLE]) as dummyTableRight7
+outputTable7=table(100:0, `time`sym`price`bid`ask`spread, [TIMESTAMP, SYMBOL, DOUBLE, DOUBLE, DOUBLE, DOUBLE])
+asofJoinEngine=createAsofJoinEngine(name="asofJoinEngine", leftTable=dummyTableLeft7, rightTable=dummyTableRight7, outputTable=outputTable7, metrics=<[price, bid, ask, abs(price-(bid+ask)/2)]>, matchingColumn=`sym, timeColumn=`time, useSystemTime=false)
+subscribeTable(tableName="dummyTableLeft7", actionName="asofJoinEngineLeft", offset=0, handler=appendForJoin{asofJoinEngine, true}, msgAsTable=true)
+subscribeTable(tableName="dummyTableRight7", actionName="asofJoinEngineRight", offset=0, handler=appendForJoin{asofJoinEngine, false}, msgAsTable=true)
+sleep(1000)
+
+share streamTable(1:0, `time`sym`price, [SECOND, SYMBOL, DOUBLE]) as dummyTableLeft8
+share streamTable(1:0, `time`sym`val, [SECOND, SYMBOL, DOUBLE]) as dummyTableRight8
+outputTable8=table(100:0, `time`sym`price`val`total, [SECOND, SYMBOL, DOUBLE, DOUBLE, DOUBLE])
+equiJoinEngine=createEquiJoinEngine("equiJoinEngine", dummyTableLeft8, dummyTableRight8, outputTable8, [<price>, <val>, <price*val>], `sym, `time)
+subscribeTable(tableName="dummyTableLeft8", actionName="equiJoinEngineLeft", offset=0, handler=appendForJoin{equiJoinEngine, true}, msgAsTable=true)
+subscribeTable(tableName="dummyTableRight8", actionName="equiJoinEngineRight", offset=0, handler=appendForJoin{equiJoinEngine, false}, msgAsTable=true)
+sleep(1000)
+
+share streamTable(1:0, `time`sym`price, [TIMESTAMP, SYMBOL, DOUBLE]) as dummyTableLeft9
+share streamTable(1:0, `time`sym`val, [TIMESTAMP, SYMBOL, DOUBLE]) as dummyTableRight9
+outputTable9=table(100:0, `time`sym`factor1`factor2`factor3, [TIMESTAMP, SYMBOL, DOUBLE, DOUBLE, DOUBLE])
+windowJoinEngine=createWindowJoinEngine(name="windowJoinEngine", leftTable=dummyTableLeft9, rightTable=dummyTableRight9, outputTable=outputTable9,  window=-2:2, metrics=<[price,val,sum(val)]>, matchingColumn=`sym, timeColumn=`time, useSystemTime=false)
+subscribeTable(tableName="dummyTableLeft9", actionName="windowJoinEngineLeft", offset=0, handler=appendForJoin{windowJoinEngine, true}, msgAsTable=true)
+subscribeTable(tableName="dummyTableRight9", actionName="windowJoinEngineRight", offset=0, handler=appendForJoin{windowJoinEngine, false}, msgAsTable=true)
+sleep(1000)
+
+share streamTable(1000:0, `timestamps`sym`price, [TIMESTAMP, SYMBOL, DOUBLE]) as dummyTableLeft10
+share streamTable(1000:0, `timestamps`sym`val`id, [TIMESTAMP, SYMBOL, DOUBLE, INT]) as dummyTableRight10
+outputTable10 = table(100:0, `sym`factor1`factor2`factor3, [SYMBOL, DOUBLE, DOUBLE, DOUBLE])
+lookupJoinEngine = createLookupJoinEngine(name="lookupJoinEngine", leftTable=dummyTableLeft10, rightTable=dummyTableRight10, outputTable=outputTable10, metrics=<[price,val,price*val]>, matchingColumn=`sym, rightTimeColumn=`timestamps, checkTimes=1s)
+subscribeTable(tableName="dummyTableLeft10", actionName="lookupJoinEngineLeft", offset=0, handler=appendForJoin{lookupJoinEngine, true}, msgAsTable=true)
+subscribeTable(tableName="dummyTableRight10", actionName="lookupJoinEngineRight", offset=0, handler=appendForJoin{lookupJoinEngine, false}, msgAsTable=true)
+sleep(1000)
+
+share streamTable(1:0, `time`sym`price, [TIMESTAMP, SYMBOL, DOUBLE]) as dummyTableLeft11
+share streamTable(1:0, `time`sym1`vol, [TIMESTAMP, SYMBOL, INT]) as dummyTableRight11
+outputTable11=table(100:0, `time`sym`price`vol`total, [TIMESTAMP, SYMBOL, DOUBLE, INT, DOUBLE])
+leftSemiJoinEngine=createLeftSemiJoinEngine(name="leftSemiJoinEngine", leftTable=dummyTableLeft11, rightTable=dummyTableRight11, outputTable=outputTable11,  metrics=<[price, vol,price*vol]>, matchingColumn=[[`time,`sym], [`time,`sym1]], updateRightTable=true)
+subscribeTable(tableName="dummyTableLeft11", actionName="leftSemiJoinEngineLeft", offset=0, handler=appendForJoin{leftSemiJoinEngine, true}, msgAsTable=true)
+subscribeTable(tableName="dummyTableRight11", actionName="leftSemiJoinEngineRight", offset=0, handler=appendForJoin{leftSemiJoinEngine, false}, msgAsTable=true)
+sleep(1000)
+
+@testing:case="test_function_clearAllStreamEnv_All_Environments"
+sub = getStreamingStat().pubTables
+eng = getStreamEngineStat().rows()
+re =  exec name from objs(true) where form="TABLE", shared=true, type="REALTIME"
+assert 1, sub.size()==16
+assert 2, eng==11
+assert 3, re.size()==16
+
+ops::clearAllStreamEnv()
+
+sub = getStreamingStat().pubTables
+eng = getStreamEngineStat().rows()
+re =  exec name from objs(true) where form="TABLE", shared=true, type="REALTIME"
+assert 4, sub.size()==0
+assert 5, eng==0
+assert 6, re.size()==0
+
+@testing:case="test_function_clearAllStreamEnv_NULL_Environments"
+
+ops::clearAllStreamEnv()
+
+sub = getStreamingStat().pubTables
+eng = getStreamEngineStat().rows()
+re =  exec name from objs(true) where form="TABLE", shared=true, type="REALTIME"
+assert 7, sub.size()==0
+assert 8, eng==0
+assert 9, re.size()==0
+
+@testing:case="test_function_clearAllStreamEnv_NOT_NULL_SYNTAX", syntaxError = 1
+ops::clearAllStreamEnv(1)
+ops::clearAllStreamEnv(["aaa", "bbb"])
+

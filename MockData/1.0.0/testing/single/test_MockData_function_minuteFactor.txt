@@ -1,0 +1,42 @@
+#include "setup/settings.txt"
+use MockData
+
+@testing:case="test_MockData_function_minuteFactor_syntax"
+re = syntax(minuteFactor)
+ex = "minuteFactor(startDate,endDate,securityNumber,factorNumber)"
+assert 1, eqObj(re, ex)
+
+@testing:case="test_MockData_function_minuteFactor_normal"
+t = minuteFactor(startDate=2021.12.30, endDate=2021.12.31, securityNumber=2, factorNumber=2)
+assert 1, form(t)==6
+assert 2, t.cols()==4
+assert 3, eqObj(t.schema().colDefs[0].name, "tradetime")
+assert 4, eqObj(t.schema().colDefs[0].typeInt, 12)
+assert 5, eqObj(t.schema().colDefs[1].name, "securityid")
+assert 6, eqObj(t.schema().colDefs[1].typeInt, 17)
+assert 7, eqObj(t.schema().colDefs[2].name, "value")
+assert 8, eqObj(t.schema().colDefs[2].typeInt, 16)
+assert 9, eqObj(t.schema().colDefs[3].name, "factorname")
+assert 10, eqObj(t.schema().colDefs[3].typeInt, 17)
+
+@testing:case="test_MockData_function_minuteFactor_one_day_one_stock_one_factor"
+t = minuteFactor(startDate=2021.12.31, endDate=2021.12.31, securityNumber=1, factorNumber=1)
+assert 1, t.rows()==240
+assert 2, t.cols()==4
+
+@testing:case="test_MockData_function_minuteFactor_non_trading_day_range"
+t = minuteFactor(startDate=2021.01.01, endDate=2021.01.03, securityNumber=2, factorNumber=2)
+assert 1, t.rows()==0
+assert 2, t.cols()==4
+
+@testing:case="test_MockData_function_minuteFactor_endDate_before_startDate", exception=1
+minuteFactor(startDate=2021.12.31, endDate=2021.12.30, securityNumber=2, factorNumber=2)
+
+@testing:case="test_MockData_function_minuteFactor_invalid_startDate_int", exception=1
+minuteFactor(startDate=1, endDate=2021.12.31, securityNumber=2, factorNumber=2)
+
+@testing:case="test_MockData_function_minuteFactor_invalid_securityNumber_string", exception=1
+minuteFactor(startDate=2021.12.30, endDate=2021.12.31, securityNumber="2", factorNumber=2)
+
+@testing:case="test_MockData_function_minuteFactor_invalid_factorNumber_string", exception=1
+minuteFactor(startDate=2021.12.30, endDate=2021.12.31, securityNumber=2, factorNumber="2")

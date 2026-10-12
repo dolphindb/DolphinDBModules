@@ -1,0 +1,15 @@
+moduleName,version,200support,300support
+alphalens,1.0.0,2.00.13,3.00.0
+DolphinDBModules,1.0.0,2.00.11,3.00.1
+easyNSQ,1.0.0,2.00.11,3.00.1
+easyTLDataImport,1.0.0,2.00.11,3.00.1
+gtja191Alpha,1.0.0,2.00.9,3.00.0
+LogSearcher,1.0.0,2.00.16,3.00.3
+marketHoliday,1.0.0,2.00.9,3.00.0
+mytt,1.0.0,2.00.9,3.00.0
+ops,1.0.0,NotSupport,3.00.1
+ops,1.0.1,2.00.11,NotSupport
+ops,1.0.2,2.00.11,3.00.1
+ops,1.0.3,2.00.11,3.00.1
+ta,1.0.0,2.00.11,3.00.0
+wq101alpha,1.0.0,2.00.9,3.00.0

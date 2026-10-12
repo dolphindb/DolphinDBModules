@@ -1,0 +1,2205 @@
+use ops
+def compare2Dict(dict1,dict2,excludeKeys=NULL){
+	keyInDict1 = dict1.keys()[not dict1.keys() in array(STRING).append!(excludeKeys)]
+	keyInDict2 = dict2.keys()[not dict2.keys() in array(STRING).append!(excludeKeys)]
+	if(count(keyInDict1)!=count(keyInDict2)){
+		return false
+		}
+	for(i in keyInDict1){
+		//标量比较
+		typeName = split((typestr(dict1[i]))," ")
+		if(size(typeName)==1){
+			if(dict1[i]!=dict2[i]){
+				return false
+				}
+			}
+		//向量比较
+		else if(any(typeName==`VECTOR)){
+			if(any(dict1[i]!=dict2[i])){
+				return false
+				}
+			}
+		//表比较
+		else if(any(typeName==`TABLE)){
+			if(!all(each(eqObj, dict1[i].values(), dict2[i].values()))){
+				return false
+				}
+			}
+		}
+	return true
+}
+
+
+login("admin", "123456")
+
+@testing:case="test_function_getDatabaseDDL_syntax"
+assert 1,eqObj(getDatabaseDDL.syntax(),"getDatabaseDDL(dbName)")
+
+@testing:case="test_function_getDatabaseDDL_item_zero",exception=1
+getDatabaseDDL()
+
+@testing:case="test_function_getDatabaseDDL_item_two",syntaxError=1
+getDatabaseDDL("dfs://test_not_exist",1)
+
+@testing:case="test_function_getDatabaseDDL_dbName_error_scalar_void",exception=1
+getDatabaseDDL(NULL)
+
+@testing:case="test_function_getDatabaseDDL_dbName_error_scalar_bool",exception=1
+getDatabaseDDL(bool(1))
+
+@testing:case="test_function_getDatabaseDDL_dbName_error_scalar_char",exception=1
+getDatabaseDDL(char(1))
+
+@testing:case="test_function_getDatabaseDDL_dbName_error_scalar_short",exception=1
+getDatabaseDDL(short(1))
+
+@testing:case="test_function_getDatabaseDDL_dbName_error_scalar_int",exception=1
+getDatabaseDDL(int(1))
+
+@testing:case="test_function_getDatabaseDDL_dbName_error_scalar_long",exception=1
+getDatabaseDDL(long(1))
+
+@testing:case="test_function_getDatabaseDDL_dbName_error_scalar_float",exception=1
+getDatabaseDDL(float(1))
+
+@testing:case="test_function_getDatabaseDDL_dbName_error_scalar_double",exception=1
+getDatabaseDDL(double(1))
+
+@testing:case="test_function_getDatabaseDDL_dbName_error_scalar_date",exception=1
+getDatabaseDDL(date(1))
+
+@testing:case="test_function_getDatabaseDDL_dbName_error_scalar_month",exception=1
+getDatabaseDDL(month(1))
+
+@testing:case="test_function_getDatabaseDDL_dbName_error_scalar_time",exception=1
+getDatabaseDDL(time(1))
+
+@testing:case="test_function_getDatabaseDDL_dbName_error_scalar_minute",exception=1
+getDatabaseDDL(minute(1))
+
+@testing:case="test_function_getDatabaseDDL_dbName_error_scalar_second",exception=1
+getDatabaseDDL(second(1))
+
+@testing:case="test_function_getDatabaseDDL_dbName_error_scalar_datetime",exception=1
+getDatabaseDDL(datetime(1))
+
+@testing:case="test_function_getDatabaseDDL_dbName_error_scalar_timestamp",exception=1
+getDatabaseDDL(timestamp(1))
+
+@testing:case="test_function_getDatabaseDDL_dbName_error_scalar_nanotime",exception=1
+getDatabaseDDL(nanotime(1))
+
+@testing:case="test_function_getDatabaseDDL_dbName_error_scalar_nanotimestamp",exception=1
+getDatabaseDDL(nanotimestamp(1))
+
+@testing:case="test_function_getDatabaseDDL_dbName_error_scalar_datehour",exception=1
+getDatabaseDDL(datehour(1))
+
+@testing:case="test_function_getDatabaseDDL_dbName_error_scalar_decimal32",exception=1
+getDatabaseDDL(decimal32(1,2))
+
+@testing:case="test_function_getDatabaseDDL_dbName_error_scalar_decimal64",exception=1
+getDatabaseDDL(decimal64(1,2))
+
+@testing:case="test_function_getDatabaseDDL_dbName_error_scalar_decimal128",exception=1
+getDatabaseDDL(decimal128(1,2))
+
+@testing:case="test_function_getDatabaseDDL_dbName_error_scalar_uuid",exception=1
+getDatabaseDDL(1$uuid)
+
+@testing:case="test_function_getDatabaseDDL_dbName_error_scalar_ipaddr",exception=1
+getDatabaseDDL(1$ipaddr)
+
+@testing:case="test_function_getDatabaseDDL_dbName_error_scalar_int128",exception=1
+getDatabaseDDL(int128(`e1671797c52e15f763380b45e841ec32))
+
+@testing:case="test_function_getDatabaseDDL_dbName_error_scalar_complex",exception=1
+getDatabaseDDL(1$complex)
+
+@testing:case="test_function_getDatabaseDDL_dbName_error_scalar_point",exception=1
+getDatabaseDDL(1$point)
+
+@testing:case="test_function_getDatabaseDDL_error_array",exception=1
+getDatabaseDDL([1,2,4,6])
+
+@testing:case="test_function_getDatabaseDDL_error_pair",exception=1
+getDatabaseDDL((1:1))
+
+@testing:case="test_function_getDatabaseDDL_error_matrix",exception=1
+getDatabaseDDL(rand(100,4)$2:2)
+
+@testing:case="test_function_getDatabaseDDL_error_set",exception=1
+getDatabaseDDL(set([1,2,3,4]))
+
+@testing:case="test_function_getDatabaseDDL_error_dict",exception=1
+getDatabaseDDL({1:12,`test:99,`1jk:`jjj,90:128})
+
+@testing:case="test_function_getDatabaseDDL_error_table",exception=1
+getDatabaseDDL(table(1..4 as now))
+
+@testing:case="test_function_getDatabaseDDL_dbName_not_exist"
+getDatabaseDDL("dfs://test_not_exist")
+assert 1,eqObj(getDatabaseDDL("dfs://test_not_exist"),"Warning: database does not exist.")
+
+@testing:case="test_function_getDatabaseDDL_OLAP_VALUE_TRANS_TABLE"
+dbName = "dfs://db_OLAP_VALUE_TRANS_TABLE"
+if(!existsDatabase(dbName)){
+	db = database(dbName, VALUE, 2020.01.01..2020.01.02,engine="OLAP", atomic="TRANS", chunkGranularity="TABLE")
+}
+dict1 = schema(database(dbName))
+ddl = getDatabaseDDL(dbName)
+dropDatabase(dbName)
+runScript(ddl)
+dict2 =  schema(database(dbName))
+
+assert 1, compare2Dict(dict1,dict2)
+
+
+
+@testing:case="test_function_getDatabaseDDL_OLAP_VALUE_TRANS_DB"
+dbName = "dfs://db_OLAP_VALUE_TRANS_DB"
+if(!existsDatabase(dbName)){
+	db = database(dbName, VALUE, 2020.01.01..2020.01.02,engine="OLAP", atomic="TRANS", chunkGranularity="DATABASE")
+}
+dict1 = schema(database(dbName))
+ddl = getDatabaseDDL(dbName)
+dropDatabase(dbName)
+runScript(ddl)
+dict2 =  schema(database(dbName))
+
+assert 1, compare2Dict(dict1,dict2)
+
+
+
+@testing:case="test_function_getDatabaseDDL_OLAP_VALUE_CHUNK_TABLE"
+dbName = "dfs://db_OLAP_VALUE_CHUNK_TABLE"
+if(!existsDatabase(dbName)){
+	db = database(dbName, VALUE, 2020.01.01..2020.01.02,engine="OLAP", atomic="CHUNK", chunkGranularity="TABLE")
+}
+dict1 = schema(database(dbName))
+ddl = getDatabaseDDL(dbName)
+dropDatabase(dbName)
+runScript(ddl)
+dict2 =  schema(database(dbName))
+
+assert 1, compare2Dict(dict1,dict2)
+
+
+
+
+@testing:case="test_function_getDatabaseDDL_OLAP_VALUE_CHUNK_DB"
+dbName = "dfs://db_OLAP_VALUE_CHUNK_DB"
+if(!existsDatabase(dbName)){
+	db = database(dbName, VALUE, 2020.01.01..2020.01.02,engine="OLAP", atomic="CHUNK", chunkGranularity="DATABASE")
+}
+dict1 = schema(database(dbName))
+ddl = getDatabaseDDL(dbName)
+dropDatabase(dbName)
+runScript(ddl)
+dict2 =  schema(database(dbName))
+
+assert 1, compare2Dict(dict1,dict2)
+
+
+
+
+@testing:case="test_function_getDatabaseDDL_TSDB_VALUE_TRANS_TABLE"
+dbName = "dfs://db_TSDB_VALUE_TRANS_TABLE"
+if(!existsDatabase(dbName)){
+	db = database(dbName, VALUE, 2020.01.01..2020.01.02,engine="TSDB", atomic="TRANS", chunkGranularity="TABLE")
+}
+dict1 = schema(database(dbName))
+ddl = getDatabaseDDL(dbName)
+dropDatabase(dbName)
+runScript(ddl)
+dict2 =  schema(database(dbName))
+
+assert 1, compare2Dict(dict1,dict2)
+
+
+
+@testing:case="test_function_getDatabaseDDL_TSDB_VALUE_TRANS_DB"
+dbName = "dfs://db_TSDB_VALUE_TRANS_DB"
+if(!existsDatabase(dbName)){
+	db = database(dbName, VALUE, 2020.01.01..2020.01.02,engine="TSDB", atomic="TRANS", chunkGranularity="DATABASE")
+}
+dict1 = schema(database(dbName))
+ddl = getDatabaseDDL(dbName)
+dropDatabase(dbName)
+runScript(ddl)
+dict2 =  schema(database(dbName))
+
+assert 1, compare2Dict(dict1,dict2)
+
+
+
+
+
+@testing:case="test_function_getDatabaseDDL_TSDB_VALUE_CHUNK_TABLE"
+dbName = "dfs://db_TSDB_VALUE_CHUNK_TABLE"
+if(!existsDatabase(dbName)){
+	db = database(dbName, VALUE, 2020.01.01..2020.01.02,engine="TSDB", atomic="CHUNK", chunkGranularity="TABLE")
+}
+dict1 = schema(database(dbName))
+ddl = getDatabaseDDL(dbName)
+dropDatabase(dbName)
+runScript(ddl)
+dict2 =  schema(database(dbName))
+
+assert 1, compare2Dict(dict1,dict2)
+
+
+
+
+
+@testing:case="test_function_getDatabaseDDL_TSDB_VALUE_CHUNK_DB"
+dbName = "dfs://db_TSDB_VALUE_CHUNK_DB"
+if(!existsDatabase(dbName)){
+	db = database(dbName, VALUE, 2020.01.01..2020.01.02,engine="TSDB", atomic="CHUNK", chunkGranularity="DATABASE")
+}
+dict1 = schema(database(dbName))
+ddl = getDatabaseDDL(dbName)
+dropDatabase(dbName)
+runScript(ddl)
+dict2 =  schema(database(dbName))
+
+assert 1, compare2Dict(dict1,dict2)
+
+
+
+@testing:case="test_function_getDatabaseDDL_OLAP_SEQ_TRANS_TABLE"
+types = [CHAR, SHORT, INT]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_SEQ_TRANS_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	db = database(dbName, partitionType=SEQ, partitionScheme=8$type,locations=getNodeHost().string()+":"+getNodePort().string() take 8,engine=`OLAP,atomic=`TRANS,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_SEQ_TRANS_DATABASE"
+types = [CHAR, SHORT, INT]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_SEQ_TRANS_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	db = database(dbName, partitionType=SEQ, partitionScheme=8$type,locations=getNodeHost().string()+":"+getNodePort().string() take 8,engine=`OLAP,atomic=`TRANS,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_SEQ_CHUNK_TABLE"
+types = [CHAR, SHORT, INT]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_SEQ_CHUNK_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	db = database(dbName, partitionType=SEQ, partitionScheme=8$type,locations=getNodeHost().string()+":"+getNodePort().string() take 8,engine=`OLAP,atomic=`CHUNK,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_SEQ_CHUNK_DATABASE"
+types = [CHAR, SHORT, INT]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_SEQ_CHUNK_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	db = database(dbName, partitionType=SEQ, partitionScheme=8$type,locations=getNodeHost().string()+":"+getNodePort().string() take 8,engine=`OLAP,atomic=`CHUNK,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_SEQ_TRANS_TABLE"
+types = [CHAR, SHORT, INT]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_SEQ_TRANS_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	db = database(dbName, partitionType=SEQ, partitionScheme=8$type,locations=getNodeHost().string()+":"+getNodePort().string() take 8,engine=`TSDB,atomic=`TRANS,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_SEQ_TRANS_DATABASE"
+types = [CHAR, SHORT, INT]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_SEQ_TRANS_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	db = database(dbName, partitionType=SEQ, partitionScheme=8$type,locations=getNodeHost().string()+":"+getNodePort().string() take 8,engine=`TSDB,atomic=`TRANS,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_SEQ_CHUNK_TABLE"
+types = [CHAR, SHORT, INT]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_SEQ_CHUNK_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	db = database(dbName, partitionType=SEQ, partitionScheme=8$type,locations=getNodeHost().string()+":"+getNodePort().string() take 8,engine=`TSDB,atomic=`CHUNK,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_SEQ_CHUNK_DATABASE"
+types = [CHAR, SHORT, INT]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_SEQ_CHUNK_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	db = database(dbName, partitionType=SEQ, partitionScheme=8$type,locations=getNodeHost().string()+":"+getNodePort().string() take 8,engine=`TSDB,atomic=`CHUNK,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_RANGE_TRANS_TABLE"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_RANGE_TRANS_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x = [0,5,10]
+	if(type == CHAR){
+		x = (x+'a')$type
+	}else if(type == SYMBOL){
+		x = (string(x)$type).sort()
+	}else if(type == MONTH){
+		x = [2020.01M,2020.06M,2020.11M]
+	}else{
+		x = x$type
+	}
+	db = database(dbName, partitionType=RANGE, partitionScheme=x,locations=getNodeHost().string()+":"+getNodePort().string() take (x.size()-1),engine=`OLAP,atomic=`TRANS,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_RANGE_TRANS_DATABASE"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_RANGE_TRANS_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x = [0,5,10]
+	if(type == CHAR){
+		x = (x+'a')$type
+	}else if(type == SYMBOL){
+		x = (string(x)$type).sort()
+	}else if(type == MONTH){
+		x = [2020.01M,2020.06M,2020.11M]
+	}else{
+		x = x$type
+	}
+	db = database(dbName, partitionType=RANGE, partitionScheme=x,locations=getNodeHost().string()+":"+getNodePort().string() take (x.size()-1),engine=`OLAP,atomic=`TRANS,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_RANGE_CHUNK_TABLE"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_RANGE_CHUNK_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x = [0,5,10]
+	if(type == CHAR){
+		x = (x+'a')$type
+	}else if(type == SYMBOL){
+		x = (string(x)$type).sort()
+	}else if(type == MONTH){
+		x = [2020.01M,2020.06M,2020.11M]
+	}else{
+		x = x$type
+	}
+	db = database(dbName, partitionType=RANGE, partitionScheme=x,locations=getNodeHost().string()+":"+getNodePort().string() take (x.size()-1),engine=`OLAP,atomic=`CHUNK,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_RANGE_CHUNK_DATABASE"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_RANGE_CHUNK_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x = [0,5,10]
+	if(type == CHAR){
+		x = (x+'a')$type
+	}else if(type == SYMBOL){
+		x = (string(x)$type).sort()
+	}else if(type == MONTH){
+		x = [2020.01M,2020.06M,2020.11M]
+	}else{
+		x = x$type
+	}
+	db = database(dbName, partitionType=RANGE, partitionScheme=x,locations=getNodeHost().string()+":"+getNodePort().string() take (x.size()-1),engine=`OLAP,atomic=`CHUNK,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_RANGE_TRANS_TABLE"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_RANGE_TRANS_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x = [0,5,10]
+	if(type == CHAR){
+		x = (x+'a')$type
+	}else if(type == SYMBOL){
+		x = (string(x)$type).sort()
+	}else if(type == MONTH){
+		x = [2020.01M,2020.06M,2020.11M]
+	}else{
+		x = x$type
+	}
+	db = database(dbName, partitionType=RANGE, partitionScheme=x,locations=getNodeHost().string()+":"+getNodePort().string() take (x.size()-1),engine=`TSDB,atomic=`TRANS,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_RANGE_TRANS_DATABASE"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_RANGE_TRANS_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x = [0,5,10]
+	if(type == CHAR){
+		x = (x+'a')$type
+	}else if(type == SYMBOL){
+		x = (string(x)$type).sort()
+	}else if(type == MONTH){
+		x = [2020.01M,2020.06M,2020.11M]
+	}else{
+		x = x$type
+	}
+	db = database(dbName, partitionType=RANGE, partitionScheme=x,locations=getNodeHost().string()+":"+getNodePort().string() take (x.size()-1),engine=`TSDB,atomic=`TRANS,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_RANGE_CHUNK_TABLE"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_RANGE_CHUNK_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x = [0,5,10]
+	if(type == CHAR){
+		x = (x+'a')$type
+	}else if(type == SYMBOL){
+		x = (string(x)$type).sort()
+	}else if(type == MONTH){
+		x = [2020.01M,2020.06M,2020.11M]
+	}else{
+		x = x$type
+	}
+	db = database(dbName, partitionType=RANGE, partitionScheme=x,locations=getNodeHost().string()+":"+getNodePort().string() take (x.size()-1),engine=`TSDB,atomic=`CHUNK,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_RANGE_CHUNK_DATABASE"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_RANGE_CHUNK_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x = [0,5,10]
+	if(type == CHAR){
+		x = (x+'a')$type
+	}else if(type == SYMBOL){
+		x = (string(x)$type).sort()
+	}else if(type == MONTH){
+		x = [2020.01M,2020.06M,2020.11M]
+	}else{
+		x = x$type
+	}
+	db = database(dbName, partitionType=RANGE, partitionScheme=x,locations=getNodeHost().string()+":"+getNodePort().string() take (x.size()-1),engine=`TSDB,atomic=`CHUNK,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_HASH_TRANS_TABLE"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_HASH_TRANS_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	db = database(dbName, partitionType=HASH, partitionScheme=[type,2],locations=getNodeHost().string()+":"+getNodePort().string() take 2,engine=`OLAP,atomic=`TRANS,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_HASH_TRANS_DATABASE"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_HASH_TRANS_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	db = database(dbName, partitionType=HASH, partitionScheme=[type,2],locations=getNodeHost().string()+":"+getNodePort().string() take 2,engine=`OLAP,atomic=`TRANS,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_HASH_CHUNK_TABLE"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_HASH_CHUNK_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	db = database(dbName, partitionType=HASH, partitionScheme=[type,2],locations=getNodeHost().string()+":"+getNodePort().string() take 2,engine=`OLAP,atomic=`CHUNK,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_HASH_CHUNK_DATABASE"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_HASH_CHUNK_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	db = database(dbName, partitionType=HASH, partitionScheme=[type,2],locations=getNodeHost().string()+":"+getNodePort().string() take 2,engine=`OLAP,atomic=`CHUNK,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_HASH_TRANS_TABLE"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_HASH_TRANS_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	db = database(dbName, partitionType=HASH, partitionScheme=[type,2],locations=getNodeHost().string()+":"+getNodePort().string() take 2,engine=`TSDB,atomic=`TRANS,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_HASH_TRANS_DATABASE"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_HASH_TRANS_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	db = database(dbName, partitionType=HASH, partitionScheme=[type,2],locations=getNodeHost().string()+":"+getNodePort().string() take 2,engine=`TSDB,atomic=`TRANS,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_HASH_CHUNK_TABLE"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_HASH_CHUNK_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	db = database(dbName, partitionType=HASH, partitionScheme=[type,2],locations=getNodeHost().string()+":"+getNodePort().string() take 2,engine=`TSDB,atomic=`CHUNK,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_HASH_CHUNK_DATABASE"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_HASH_CHUNK_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	db = database(dbName, partitionType=HASH, partitionScheme=[type,2],locations=getNodeHost().string()+":"+getNodePort().string() take 2,engine=`TSDB,atomic=`CHUNK,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_LIST_TRANS_TABLE"
+types = [INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_LIST_TRANS_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x = [1..10,20..25]
+	if(type == SYMBOL){
+		x = [x[0].string()$type,x[1].string()$type]
+	}else if(type == MONTH){
+		x = [2020.01M,2020.06M,2020.11M,2021.01M,2021.06M,2021.07M,2021.08M,2021.11M]
+	}else{
+		x = [x[0]$type,x[1]$type]
+	}
+	db = database(dbName, partitionType=LIST, partitionScheme=x,locations=getNodeHost().string()+":"+getNodePort().string() take x.size(),engine=`OLAP,atomic=`TRANS,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_LIST_TRANS_DATABASE"
+types = [INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_LIST_TRANS_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x = [1..10,20..25]
+	if(type == SYMBOL){
+		x = [x[0].string()$type,x[1].string()$type]
+	}else if(type == MONTH){
+		x = [2020.01M,2020.06M,2020.11M,2021.01M,2021.06M,2021.07M,2021.08M,2021.11M]
+	}else{
+		x = [x[0]$type,x[1]$type]
+	}
+	db = database(dbName, partitionType=LIST, partitionScheme=x,locations=getNodeHost().string()+":"+getNodePort().string() take x.size(),engine=`OLAP,atomic=`TRANS,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_LIST_CHUNK_TABLE"
+types = [INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_LIST_CHUNK_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x = [1..10,20..25]
+	if(type == SYMBOL){
+		x = [x[0].string()$type,x[1].string()$type]
+	}else if(type == MONTH){
+		x = [2020.01M,2020.06M,2020.11M,2021.01M,2021.06M,2021.07M,2021.08M,2021.11M]
+	}else{
+		x = [x[0]$type,x[1]$type]
+	}
+	db = database(dbName, partitionType=LIST, partitionScheme=x,locations=getNodeHost().string()+":"+getNodePort().string() take x.size(),engine=`OLAP,atomic=`CHUNK,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_LIST_CHUNK_DATABASE"
+types = [INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_LIST_CHUNK_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x = [1..10,20..25]
+	if(type == SYMBOL){
+		x = [x[0].string()$type,x[1].string()$type]
+	}else if(type == MONTH){
+		x = [2020.01M,2020.06M,2020.11M,2021.01M,2021.06M,2021.07M,2021.08M,2021.11M]
+	}else{
+		x = [x[0]$type,x[1]$type]
+	}
+	db = database(dbName, partitionType=LIST, partitionScheme=x,locations=getNodeHost().string()+":"+getNodePort().string() take x.size(),engine=`OLAP,atomic=`CHUNK,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_LIST_TRANS_TABLE"
+types = [INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_LIST_TRANS_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x = [1..10,20..25]
+	if(type == SYMBOL){
+		x = [x[0].string()$type,x[1].string()$type]
+	}else if(type == MONTH){
+		x = [2020.01M,2020.06M,2020.11M,2021.01M,2021.06M,2021.07M,2021.08M,2021.11M]
+	}else{
+		x = [x[0]$type,x[1]$type]
+	}
+	db = database(dbName, partitionType=LIST, partitionScheme=x,locations=getNodeHost().string()+":"+getNodePort().string() take x.size(),engine=`TSDB,atomic=`TRANS,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_LIST_TRANS_DATABASE"
+types = [INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_LIST_TRANS_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x = [1..10,20..25]
+	if(type == SYMBOL){
+		x = [x[0].string()$type,x[1].string()$type]
+	}else if(type == MONTH){
+		x = [2020.01M,2020.06M,2020.11M,2021.01M,2021.06M,2021.07M,2021.08M,2021.11M]
+	}else{
+		x = [x[0]$type,x[1]$type]
+	}
+	db = database(dbName, partitionType=LIST, partitionScheme=x,locations=getNodeHost().string()+":"+getNodePort().string() take x.size(),engine=`TSDB,atomic=`TRANS,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_LIST_CHUNK_TABLE"
+types = [INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_LIST_CHUNK_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x = [1..10,20..25]
+	if(type == SYMBOL){
+		x = [x[0].string()$type,x[1].string()$type]
+	}else if(type == MONTH){
+		x = [2020.01M,2020.06M,2020.11M,2021.01M,2021.06M,2021.07M,2021.08M,2021.11M]
+	}else{
+		x = [x[0]$type,x[1]$type]
+	}
+	db = database(dbName, partitionType=LIST, partitionScheme=x,locations=getNodeHost().string()+":"+getNodePort().string() take x.size(),engine=`TSDB,atomic=`CHUNK,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_LIST_CHUNK_DATABASE"
+types = [INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_LIST_CHUNK_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x = [1..10,20..25]
+	if(type == SYMBOL){
+		x = [x[0].string()$type,x[1].string()$type]
+	}else if(type == MONTH){
+		x = [2020.01M,2020.06M,2020.11M,2021.01M,2021.06M,2021.07M,2021.08M,2021.11M]
+	}else{
+		x = [x[0]$type,x[1]$type]
+	}
+	db = database(dbName, partitionType=LIST, partitionScheme=x,locations=getNodeHost().string()+":"+getNodePort().string() take x.size(),engine=`TSDB,atomic=`CHUNK,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_COMPO_TRANS_TABLE"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_COMPO_TRANS_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x1 = [0,5,10]
+	x2 = 1..10
+	if(type == CHAR){
+		x1 = (x1+'a')$type
+		x2 = (x2+'a')$type
+	}else if(type == SYMBOL){
+		x1 = (string(x1)$type).sort()
+		x2 = (string(x2)$type).sort()
+	}else if(type == MONTH){
+		x1 = [2020.01M,2020.06M,2020.11M]
+		x2 = [2020.01M,2020.06M,2020.11M]
+	}else{
+		x1 = x1$type
+		x2 = x2$type
+	}
+	dbDate = database(, partitionType=VALUE, partitionScheme=x2)
+	dbID = database(, partitionType=RANGE, partitionScheme=x1)
+	db = database(dbName, partitionType=COMPO, partitionScheme=[dbDate,dbID],engine=`OLAP,atomic=`TRANS,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_COMPO_TRANS_DATABASE"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_COMPO_TRANS_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x1 = [0,5,10]
+	x2 = 1..10
+	if(type == CHAR){
+		x1 = (x1+'a')$type
+		x2 = (x2+'a')$type
+	}else if(type == SYMBOL){
+		x1 = (string(x1)$type).sort()
+		x2 = (string(x2)$type).sort()
+	}else if(type == MONTH){
+		x1 = [2020.01M,2020.06M,2020.11M]
+		x2 = [2020.01M,2020.06M,2020.11M]
+	}else{
+		x1 = x1$type
+		x2 = x2$type
+	}
+	dbDate = database(, partitionType=VALUE, partitionScheme=x2)
+	dbID = database(, partitionType=RANGE, partitionScheme=x1)
+	db = database(dbName, partitionType=COMPO, partitionScheme=[dbDate,dbID],engine=`OLAP,atomic=`TRANS,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_COMPO_CHUNK_TABLE"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_COMPO_CHUNK_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x1 = [0,5,10]
+	x2 = 1..10
+	if(type == CHAR){
+		x1 = (x1+'a')$type
+		x2 = (x2+'a')$type
+	}else if(type == SYMBOL){
+		x1 = (string(x1)$type).sort()
+		x2 = (string(x2)$type).sort()
+	}else if(type == MONTH){
+		x1 = [2020.01M,2020.06M,2020.11M]
+		x2 = [2020.01M,2020.06M,2020.11M]
+	}else{
+		x1 = x1$type
+		x2 = x2$type
+	}
+	dbDate = database(, partitionType=VALUE, partitionScheme=x2)
+	dbID = database(, partitionType=RANGE, partitionScheme=x1)
+	db = database(dbName, partitionType=COMPO, partitionScheme=[dbDate,dbID],engine=`OLAP,atomic=`CHUNK,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_COMPO_CHUNK_DATABASE"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_COMPO_CHUNK_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x1 = [0,5,10]
+	x2 = 1..10
+	if(type == CHAR){
+		x1 = (x1+'a')$type
+		x2 = (x2+'a')$type
+	}else if(type == SYMBOL){
+		x1 = (string(x1)$type).sort()
+		x2 = (string(x2)$type).sort()
+	}else if(type == MONTH){
+		x1 = [2020.01M,2020.06M,2020.11M]
+		x2 = [2020.01M,2020.06M,2020.11M]
+	}else{
+		x1 = x1$type
+		x2 = x2$type
+	}
+	dbDate = database(, partitionType=VALUE, partitionScheme=x2)
+	dbID = database(, partitionType=RANGE, partitionScheme=x1)
+	db = database(dbName, partitionType=COMPO, partitionScheme=[dbDate,dbID],engine=`OLAP,atomic=`CHUNK,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_COMPO_TRANS_TABLE"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_COMPO_TRANS_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x1 = [0,5,10]
+	x2 = 1..10
+	if(type == CHAR){
+		x1 = (x1+'a')$type
+		x2 = (x2+'a')$type
+	}else if(type == SYMBOL){
+		x1 = (string(x1)$type).sort()
+		x2 = (string(x2)$type).sort()
+	}else if(type == MONTH){
+		x1 = [2020.01M,2020.06M,2020.11M]
+		x2 = [2020.01M,2020.06M,2020.11M]
+	}else{
+		x1 = x1$type
+		x2 = x2$type
+	}
+	dbDate = database(, partitionType=VALUE, partitionScheme=x2)
+	dbID = database(, partitionType=RANGE, partitionScheme=x1)
+	db = database(dbName, partitionType=COMPO, partitionScheme=[dbDate,dbID],engine=`TSDB,atomic=`TRANS,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_COMPO_TRANS_DATABASE"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_COMPO_TRANS_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x1 = [0,5,10]
+	x2 = 1..10
+	if(type == CHAR){
+		x1 = (x1+'a')$type
+		x2 = (x2+'a')$type
+	}else if(type == SYMBOL){
+		x1 = (string(x1)$type).sort()
+		x2 = (string(x2)$type).sort()
+	}else if(type == MONTH){
+		x1 = [2020.01M,2020.06M,2020.11M]
+		x2 = [2020.01M,2020.06M,2020.11M]
+	}else{
+		x1 = x1$type
+		x2 = x2$type
+	}
+	dbDate = database(, partitionType=VALUE, partitionScheme=x2)
+	dbID = database(, partitionType=RANGE, partitionScheme=x1)
+	db = database(dbName, partitionType=COMPO, partitionScheme=[dbDate,dbID],engine=`TSDB,atomic=`TRANS,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_COMPO_CHUNK_TABLE"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_COMPO_CHUNK_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x1 = [0,5,10]
+	x2 = 1..10
+	if(type == CHAR){
+		x1 = (x1+'a')$type
+		x2 = (x2+'a')$type
+	}else if(type == SYMBOL){
+		x1 = (string(x1)$type).sort()
+		x2 = (string(x2)$type).sort()
+	}else if(type == MONTH){
+		x1 = [2020.01M,2020.06M,2020.11M]
+		x2 = [2020.01M,2020.06M,2020.11M]
+	}else{
+		x1 = x1$type
+		x2 = x2$type
+	}
+	dbDate = database(, partitionType=VALUE, partitionScheme=x2)
+	dbID = database(, partitionType=RANGE, partitionScheme=x1)
+	db = database(dbName, partitionType=COMPO, partitionScheme=[dbDate,dbID],engine=`TSDB,atomic=`CHUNK,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_COMPO_CHUNK_DATABASE"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_COMPO_CHUNK_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x1 = [0,5,10]
+	x2 = 1..10
+	if(type == CHAR){
+		x1 = (x1+'a')$type
+		x2 = (x2+'a')$type
+	}else if(type == SYMBOL){
+		x1 = (string(x1)$type).sort()
+		x2 = (string(x2)$type).sort()
+	}else if(type == MONTH){
+		x1 = [2020.01M,2020.06M,2020.11M]
+		x2 = [2020.01M,2020.06M,2020.11M]
+	}else{
+		x1 = x1$type
+		x2 = x2$type
+	}
+	dbDate = database(, partitionType=VALUE, partitionScheme=x2)
+	dbID = database(, partitionType=RANGE, partitionScheme=x1)
+	db = database(dbName, partitionType=COMPO, partitionScheme=[dbDate,dbID],engine=`TSDB,atomic=`CHUNK,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_SEQ_TRANS_TABLE_len30"
+types = [CHAR, SHORT, INT]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_SEQ_TRANS_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	db = database(dbName, partitionType=SEQ, partitionScheme=30$type,locations=getNodeHost().string()+":"+getNodePort().string() take 30,engine=`OLAP,atomic=`TRANS,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_SEQ_TRANS_DATABASE_len30"
+types = [CHAR, SHORT, INT]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_SEQ_TRANS_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	db = database(dbName, partitionType=SEQ, partitionScheme=30$type,locations=getNodeHost().string()+":"+getNodePort().string() take 30,engine=`OLAP,atomic=`TRANS,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_SEQ_CHUNK_TABLE_len30"
+types = [CHAR, SHORT, INT]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_SEQ_CHUNK_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	db = database(dbName, partitionType=SEQ, partitionScheme=30$type,locations=getNodeHost().string()+":"+getNodePort().string() take 30,engine=`OLAP,atomic=`CHUNK,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_SEQ_CHUNK_DATABASE_len30"
+types = [CHAR, SHORT, INT]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_SEQ_CHUNK_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	db = database(dbName, partitionType=SEQ, partitionScheme=30$type,locations=getNodeHost().string()+":"+getNodePort().string() take 30,engine=`OLAP,atomic=`CHUNK,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_SEQ_TRANS_TABLE_len30"
+types = [CHAR, SHORT, INT]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_SEQ_TRANS_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	db = database(dbName, partitionType=SEQ, partitionScheme=30$type,locations=getNodeHost().string()+":"+getNodePort().string() take 30,engine=`TSDB,atomic=`TRANS,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_SEQ_TRANS_DATABASE_len30"
+types = [CHAR, SHORT, INT]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_SEQ_TRANS_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	db = database(dbName, partitionType=SEQ, partitionScheme=30$type,locations=getNodeHost().string()+":"+getNodePort().string() take 30,engine=`TSDB,atomic=`TRANS,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_SEQ_CHUNK_TABLE_len30"
+types = [CHAR, SHORT, INT]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_SEQ_CHUNK_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	db = database(dbName, partitionType=SEQ, partitionScheme=30$type,locations=getNodeHost().string()+":"+getNodePort().string() take 30,engine=`TSDB,atomic=`CHUNK,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_SEQ_CHUNK_DATABASE_len30"
+types = [CHAR, SHORT, INT]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_SEQ_CHUNK_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	db = database(dbName, partitionType=SEQ, partitionScheme=30$type,locations=getNodeHost().string()+":"+getNodePort().string() take 30,engine=`TSDB,atomic=`CHUNK,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_RANGE_TRANS_TABLE_len30"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_RANGE_TRANS_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x = 0..30
+	if(type == CHAR){
+		x = 'A'..'D' join 'a'..'z'
+	}else if(type == SYMBOL){
+		x = (string(x)$type).sort()
+	}else if(type == MONTH){
+		x = x + 2020.01M
+	}else{
+		x = x$type
+	}
+	db = database(dbName, partitionType=RANGE, partitionScheme=x,locations=getNodeHost().string()+":"+getNodePort().string() take (x.size()-1),engine=`OLAP,atomic=`TRANS,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_RANGE_TRANS_DATABASE_len30"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_RANGE_TRANS_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x = 0..30
+	if(type == CHAR){
+		x = 'A'..'D' join 'a'..'z'
+	}else if(type == SYMBOL){
+		x = (string(x)$type).sort()
+	}else if(type == MONTH){
+		x = x + 2020.01M
+	}else{
+		x = x$type
+	}
+	db = database(dbName, partitionType=RANGE, partitionScheme=x,locations=getNodeHost().string()+":"+getNodePort().string() take (x.size()-1),engine=`OLAP,atomic=`TRANS,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_RANGE_CHUNK_TABLE_len30"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_RANGE_CHUNK_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x = 0..30
+	if(type == CHAR){
+		x = 'A'..'D' join 'a'..'z'
+	}else if(type == SYMBOL){
+		x = (string(x)$type).sort()
+	}else if(type == MONTH){
+		x = x + 2020.01M
+	}else{
+		x = x$type
+	}
+	db = database(dbName, partitionType=RANGE, partitionScheme=x,locations=getNodeHost().string()+":"+getNodePort().string() take (x.size()-1),engine=`OLAP,atomic=`CHUNK,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_RANGE_CHUNK_DATABASE_len30"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_RANGE_CHUNK_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x = 0..30
+	if(type == CHAR){
+		x = 'A'..'D' join 'a'..'z'
+	}else if(type == SYMBOL){
+		x = (string(x)$type).sort()
+	}else if(type == MONTH){
+		x = x + 2020.01M
+	}else{
+		x = x$type
+	}
+	db = database(dbName, partitionType=RANGE, partitionScheme=x,locations=getNodeHost().string()+":"+getNodePort().string() take (x.size()-1),engine=`OLAP,atomic=`CHUNK,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_RANGE_TRANS_TABLE_len30"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_RANGE_TRANS_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x = 0..30
+	if(type == CHAR){
+		x = 'A'..'D' join 'a'..'z'
+	}else if(type == SYMBOL){
+		x = (string(x)$type).sort()
+	}else if(type == MONTH){
+		x = x + 2020.01M
+	}else{
+		x = x$type
+	}
+	db = database(dbName, partitionType=RANGE, partitionScheme=x,locations=getNodeHost().string()+":"+getNodePort().string() take (x.size()-1),engine=`TSDB,atomic=`TRANS,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_RANGE_TRANS_DATABASE_len30"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_RANGE_TRANS_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x = 0..30
+	if(type == CHAR){
+		x = 'A'..'D' join 'a'..'z'
+	}else if(type == SYMBOL){
+		x = (string(x)$type).sort()
+	}else if(type == MONTH){
+		x = x + 2020.01M
+	}else{
+		x = x$type
+	}
+	db = database(dbName, partitionType=RANGE, partitionScheme=x,locations=getNodeHost().string()+":"+getNodePort().string() take (x.size()-1),engine=`TSDB,atomic=`TRANS,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_RANGE_CHUNK_TABLE_len30"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_RANGE_CHUNK_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x = 0..30
+	if(type == CHAR){
+		x = 'A'..'D' join 'a'..'z'
+	}else if(type == SYMBOL){
+		x = (string(x)$type).sort()
+	}else if(type == MONTH){
+		x = x + 2020.01M
+	}else{
+		x = x$type
+	}
+	db = database(dbName, partitionType=RANGE, partitionScheme=x,locations=getNodeHost().string()+":"+getNodePort().string() take (x.size()-1),engine=`TSDB,atomic=`CHUNK,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_RANGE_CHUNK_DATABASE_len30"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_RANGE_CHUNK_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x = 0..30
+	if(type == CHAR){
+		x = 'A'..'D' join 'a'..'z'
+	}else if(type == SYMBOL){
+		x = (string(x)$type).sort()
+	}else if(type == MONTH){
+		x = x + 2020.01M
+	}else{
+		x = x$type
+	}
+	db = database(dbName, partitionType=RANGE, partitionScheme=x,locations=getNodeHost().string()+":"+getNodePort().string() take (x.size()-1),engine=`TSDB,atomic=`CHUNK,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_HASH_TRANS_TABLE_len30"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_HASH_TRANS_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	db = database(dbName, partitionType=HASH, partitionScheme=[type,30],locations=getNodeHost().string()+":"+getNodePort().string() take 30,engine=`OLAP,atomic=`TRANS,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_HASH_TRANS_DATABASE_len30"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_HASH_TRANS_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	db = database(dbName, partitionType=HASH, partitionScheme=[type,30],locations=getNodeHost().string()+":"+getNodePort().string() take 30,engine=`OLAP,atomic=`TRANS,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_HASH_CHUNK_TABLE_len30"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_HASH_CHUNK_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	db = database(dbName, partitionType=HASH, partitionScheme=[type,30],locations=getNodeHost().string()+":"+getNodePort().string() take 30,engine=`OLAP,atomic=`CHUNK,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_HASH_CHUNK_DATABASE_len30"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_HASH_CHUNK_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	db = database(dbName, partitionType=HASH, partitionScheme=[type,30],locations=getNodeHost().string()+":"+getNodePort().string() take 30,engine=`OLAP,atomic=`CHUNK,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_HASH_TRANS_TABLE_len30"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_HASH_TRANS_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	db = database(dbName, partitionType=HASH, partitionScheme=[type,30],locations=getNodeHost().string()+":"+getNodePort().string() take 30,engine=`TSDB,atomic=`TRANS,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_HASH_TRANS_DATABASE_len30"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_HASH_TRANS_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	db = database(dbName, partitionType=HASH, partitionScheme=[type,30],locations=getNodeHost().string()+":"+getNodePort().string() take 30,engine=`TSDB,atomic=`TRANS,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_HASH_CHUNK_TABLE_len30"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_HASH_CHUNK_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	db = database(dbName, partitionType=HASH, partitionScheme=[type,30],locations=getNodeHost().string()+":"+getNodePort().string() take 30,engine=`TSDB,atomic=`CHUNK,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_HASH_CHUNK_DATABASE_len30"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_HASH_CHUNK_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	db = database(dbName, partitionType=HASH, partitionScheme=[type,30],locations=getNodeHost().string()+":"+getNodePort().string() take 30,engine=`TSDB,atomic=`CHUNK,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_LIST_TRANS_TABLE_len30"
+types = [INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_LIST_TRANS_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x = [1..30,50..65]
+	if(type == SYMBOL){
+		x = [x[0].string()$type,x[1].string()$type]
+	}else if(type == MONTH){
+		x = [1..30 + 2020.01M,1..20 + 2018.01M]
+	}else{
+		x = [x[0]$type,x[1]$type]
+	}
+	db = database(dbName, partitionType=LIST, partitionScheme=x,locations=getNodeHost().string()+":"+getNodePort().string() take x.size(),engine=`OLAP,atomic=`TRANS,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_LIST_TRANS_DATABASE_len30"
+types = [INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_LIST_TRANS_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x = [1..30,50..65]
+	if(type == SYMBOL){
+		x = [x[0].string()$type,x[1].string()$type]
+	}else if(type == MONTH){
+		x = [1..30 + 2020.01M,1..20 + 2018.01M]
+	}else{
+		x = [x[0]$type,x[1]$type]
+	}
+	db = database(dbName, partitionType=LIST, partitionScheme=x,locations=getNodeHost().string()+":"+getNodePort().string() take x.size(),engine=`OLAP,atomic=`TRANS,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_LIST_CHUNK_TABLE_len30"
+types = [INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_LIST_CHUNK_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x = [1..30,50..65]
+	if(type == SYMBOL){
+		x = [x[0].string()$type,x[1].string()$type]
+	}else if(type == MONTH){
+		x = [1..30 + 2020.01M,1..20 + 2018.01M]
+	}else{
+		x = [x[0]$type,x[1]$type]
+	}
+	db = database(dbName, partitionType=LIST, partitionScheme=x,locations=getNodeHost().string()+":"+getNodePort().string() take x.size(),engine=`OLAP,atomic=`CHUNK,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_LIST_CHUNK_DATABASE_len30"
+types = [INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_LIST_CHUNK_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x = [1..30,50..65]
+	if(type == SYMBOL){
+		x = [x[0].string()$type,x[1].string()$type]
+	}else if(type == MONTH){
+		x = [1..30 + 2020.01M,1..20 + 2018.01M]
+	}else{
+		x = [x[0]$type,x[1]$type]
+	}
+	db = database(dbName, partitionType=LIST, partitionScheme=x,locations=getNodeHost().string()+":"+getNodePort().string() take x.size(),engine=`OLAP,atomic=`CHUNK,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_LIST_TRANS_TABLE_len30"
+types = [INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_LIST_TRANS_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x = [1..30,50..65]
+	if(type == SYMBOL){
+		x = [x[0].string()$type,x[1].string()$type]
+	}else if(type == MONTH){
+		x = [1..30 + 2020.01M,1..20 + 2018.01M]
+	}else{
+		x = [x[0]$type,x[1]$type]
+	}
+	db = database(dbName, partitionType=LIST, partitionScheme=x,locations=getNodeHost().string()+":"+getNodePort().string() take x.size(),engine=`TSDB,atomic=`TRANS,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_LIST_TRANS_DATABASE_len30"
+types = [INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_LIST_TRANS_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x = [1..30,50..65]
+	if(type == SYMBOL){
+		x = [x[0].string()$type,x[1].string()$type]
+	}else if(type == MONTH){
+		x = [1..30 + 2020.01M,1..20 + 2018.01M]
+	}else{
+		x = [x[0]$type,x[1]$type]
+	}
+	db = database(dbName, partitionType=LIST, partitionScheme=x,locations=getNodeHost().string()+":"+getNodePort().string() take x.size(),engine=`TSDB,atomic=`TRANS,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_LIST_CHUNK_TABLE_len30"
+types = [INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_LIST_CHUNK_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x = [1..30,50..65]
+	if(type == SYMBOL){
+		x = [x[0].string()$type,x[1].string()$type]
+	}else if(type == MONTH){
+		x = [1..30 + 2020.01M,1..20 + 2018.01M]
+	}else{
+		x = [x[0]$type,x[1]$type]
+	}
+	db = database(dbName, partitionType=LIST, partitionScheme=x,locations=getNodeHost().string()+":"+getNodePort().string() take x.size(),engine=`TSDB,atomic=`CHUNK,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_LIST_CHUNK_DATABASE_len30"
+types = [INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_LIST_CHUNK_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x = [1..30,50..65]
+	if(type == SYMBOL){
+		x = [x[0].string()$type,x[1].string()$type]
+	}else if(type == MONTH){
+		x = [1..30 + 2020.01M,1..20 + 2018.01M]
+	}else{
+		x = [x[0]$type,x[1]$type]
+	}
+	db = database(dbName, partitionType=LIST, partitionScheme=x,locations=getNodeHost().string()+":"+getNodePort().string() take x.size(),engine=`TSDB,atomic=`CHUNK,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_COMPO_TRANS_TABLE_len30"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_COMPO_TRANS_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x1 = 1..30
+	x2 = 50..70
+	if(type == CHAR){
+		x1 = 'A'..'D' join 'a'..'z'
+		x2 = 'E'..'Z'
+	}else if(type == SYMBOL){
+		x1 = (string(x1)$type).sort()
+		x2 = (string(x2)$type).sort()
+	}else if(type == MONTH){
+		x1 = x1 + 2020.01M
+		x2 = x2 + 2022.01M
+	}else{
+		x1 = x1$type
+		x2 = x2$type
+	}
+	dbDate = database(, partitionType=VALUE, partitionScheme=x2)
+	dbID = database(, partitionType=RANGE, partitionScheme=x1)
+	db = database(dbName, partitionType=COMPO, partitionScheme=[dbDate,dbID],engine=`OLAP,atomic=`TRANS,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_COMPO_TRANS_DATABASE_len30"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_COMPO_TRANS_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x1 = 1..30
+	x2 = 50..70
+	if(type == CHAR){
+		x1 = 'A'..'D' join 'a'..'z'
+		x2 = 'E'..'Z'
+	}else if(type == SYMBOL){
+		x1 = (string(x1)$type).sort()
+		x2 = (string(x2)$type).sort()
+	}else if(type == MONTH){
+		x1 = x1 + 2020.01M
+		x2 = x2 + 2022.01M
+	}else{
+		x1 = x1$type
+		x2 = x2$type
+	}
+	dbDate = database(, partitionType=VALUE, partitionScheme=x2)
+	dbID = database(, partitionType=RANGE, partitionScheme=x1)
+	db = database(dbName, partitionType=COMPO, partitionScheme=[dbDate,dbID],engine=`OLAP,atomic=`TRANS,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_COMPO_CHUNK_TABLE_len30"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_COMPO_CHUNK_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x1 = 1..30
+	x2 = 50..70
+	if(type == CHAR){
+		x1 = 'A'..'D' join 'a'..'z'
+		x2 = 'E'..'Z'
+	}else if(type == SYMBOL){
+		x1 = (string(x1)$type).sort()
+		x2 = (string(x2)$type).sort()
+	}else if(type == MONTH){
+		x1 = x1 + 2020.01M
+		x2 = x2 + 2022.01M
+	}else{
+		x1 = x1$type
+		x2 = x2$type
+	}
+	dbDate = database(, partitionType=VALUE, partitionScheme=x2)
+	dbID = database(, partitionType=RANGE, partitionScheme=x1)
+	db = database(dbName, partitionType=COMPO, partitionScheme=[dbDate,dbID],engine=`OLAP,atomic=`CHUNK,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_COMPO_CHUNK_DATABASE_len30"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_COMPO_CHUNK_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x1 = 1..30
+	x2 = 50..70
+	if(type == CHAR){
+		x1 = 'A'..'D' join 'a'..'z'
+		x2 = 'E'..'Z'
+	}else if(type == SYMBOL){
+		x1 = (string(x1)$type).sort()
+		x2 = (string(x2)$type).sort()
+	}else if(type == MONTH){
+		x1 = x1 + 2020.01M
+		x2 = x2 + 2022.01M
+	}else{
+		x1 = x1$type
+		x2 = x2$type
+	}
+	dbDate = database(, partitionType=VALUE, partitionScheme=x2)
+	dbID = database(, partitionType=RANGE, partitionScheme=x1)
+	db = database(dbName, partitionType=COMPO, partitionScheme=[dbDate,dbID],engine=`OLAP,atomic=`CHUNK,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_COMPO_TRANS_TABLE_len30"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_COMPO_TRANS_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x1 = 1..30
+	x2 = 50..70
+	if(type == CHAR){
+		x1 = 'A'..'D' join 'a'..'z'
+		x2 = 'E'..'Z'
+	}else if(type == SYMBOL){
+		x1 = (string(x1)$type).sort()
+		x2 = (string(x2)$type).sort()
+	}else if(type == MONTH){
+		x1 = x1 + 2020.01M
+		x2 = x2 + 2022.01M
+	}else{
+		x1 = x1$type
+		x2 = x2$type
+	}
+	dbDate = database(, partitionType=VALUE, partitionScheme=x2)
+	dbID = database(, partitionType=RANGE, partitionScheme=x1)
+	db = database(dbName, partitionType=COMPO, partitionScheme=[dbDate,dbID],engine=`TSDB,atomic=`TRANS,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_COMPO_TRANS_DATABASE_len30"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_COMPO_TRANS_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x1 = 1..30
+	x2 = 50..70
+	if(type == CHAR){
+		x1 = 'A'..'D' join 'a'..'z'
+		x2 = 'E'..'Z'
+	}else if(type == SYMBOL){
+		x1 = (string(x1)$type).sort()
+		x2 = (string(x2)$type).sort()
+	}else if(type == MONTH){
+		x1 = x1 + 2020.01M
+		x2 = x2 + 2022.01M
+	}else{
+		x1 = x1$type
+		x2 = x2$type
+	}
+	dbDate = database(, partitionType=VALUE, partitionScheme=x2)
+	dbID = database(, partitionType=RANGE, partitionScheme=x1)
+	db = database(dbName, partitionType=COMPO, partitionScheme=[dbDate,dbID],engine=`TSDB,atomic=`TRANS,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_COMPO_CHUNK_TABLE_len30"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_COMPO_CHUNK_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x1 = 1..30
+	x2 = 50..70
+	if(type == CHAR){
+		x1 = 'A'..'D' join 'a'..'z'
+		x2 = 'E'..'Z'
+	}else if(type == SYMBOL){
+		x1 = (string(x1)$type).sort()
+		x2 = (string(x2)$type).sort()
+	}else if(type == MONTH){
+		x1 = x1 + 2020.01M
+		x2 = x2 + 2022.01M
+	}else{
+		x1 = x1$type
+		x2 = x2$type
+	}
+	dbDate = database(, partitionType=VALUE, partitionScheme=x2)
+	dbID = database(, partitionType=RANGE, partitionScheme=x1)
+	db = database(dbName, partitionType=COMPO, partitionScheme=[dbDate,dbID],engine=`TSDB,atomic=`CHUNK,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_TSDB_COMPO_CHUNK_DATABASE_len30"
+types = [CHAR, SHORT, INT, DATE, MONTH, TIME, MINUTE, SECOND, DATETIME, SYMBOL]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_TSDB_COMPO_CHUNK_DATABASE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	x1 = 1..30
+	x2 = 50..70
+	if(type == CHAR){
+		x1 = 'A'..'D' join 'a'..'z'
+		x2 = 'E'..'Z'
+	}else if(type == SYMBOL){
+		x1 = (string(x1)$type).sort()
+		x2 = (string(x2)$type).sort()
+	}else if(type == MONTH){
+		x1 = x1 + 2020.01M
+		x2 = x2 + 2022.01M
+	}else{
+		x1 = x1$type
+		x2 = x2$type
+	}
+	dbDate = database(, partitionType=VALUE, partitionScheme=x2)
+	dbID = database(, partitionType=RANGE, partitionScheme=x1)
+	db = database(dbName, partitionType=COMPO, partitionScheme=[dbDate,dbID],engine=`TSDB,atomic=`CHUNK,chunkGranularity=`DATABASE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)
+
+@testing:case="test_function_getDatabaseDDL_OLAP_SEQ_TRANS_TABLE_named"
+types = [CHAR, SHORT, INT]
+def ops_getDBDDL_type(type){
+	dbName = "dfs://db_OLAP_SEQ_TRANS_TABLE"
+	if(existsDatabase(dbName)){
+		dropDatabase(dbName)
+	}
+	db = database(dbName, partitionType=SEQ, partitionScheme=8$type,locations=getNodeHost().string()+":"+getNodePort().string() take 8,engine=`OLAP,atomic=`TRANS,chunkGranularity=`TABLE)
+	dict1 = schema(database(dbName))
+	ddl = getDatabaseDDL(dbName=dbName)
+	dropDatabase(dbName)
+	runScript(ddl)
+	dict2 =  schema(database(dbName))
+	return each(eqObj,dict1.keys(),dict2.keys()) && each(eqObj,dict1.values(),dict2.values())
+}
+assert 1, each(ops_getDBDDL_type,types)

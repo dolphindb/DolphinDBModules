@@ -1,0 +1,15 @@
+module PayCatalogDos::PayFile::createDbAndTb::print
+
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "PayCatalogDos"
+    res["moduleVersion"] = "2.1.0"
+    res["isFree"] = true
+    return res
+}
+
+def toPrint(){
+    print("Hello World")
+}
+
+

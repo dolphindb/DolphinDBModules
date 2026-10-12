@@ -1,0 +1,2315 @@
+use ops
+//#include "./getDBTableDDL.txt"
+def compare2Dict(dict1,dict2,excludeKeys=NULL){
+	keyInDict1 = dict1.keys()[not dict1.keys() in array(STRING).append!(excludeKeys)]
+	keyInDict2 = dict2.keys()[not dict2.keys() in array(STRING).append!(excludeKeys)]
+	if(count(keyInDict1)!=count(keyInDict2)){
+		return false
+		}
+	for(i in keyInDict1){
+		//标量比较
+		typeName = split((typestr(dict1[i]))," ")
+		if(size(typeName)==1){
+			if(dict1[i]!=dict2[i]){
+				return false
+				}
+			}
+		//向量比较
+		else if(any(typeName==`VECTOR)){
+			if(any((dict1[i]!=dict2[i]).flatten())){
+				return false
+				}
+			}
+		//表比较
+		else if(any(typeName==`TABLE)){
+			if(!all(each(eqObj, dict1[i].values(), dict2[i].values()))){
+				return false
+				}
+			}
+		}
+	return true
+}
+
+def DB_table_check(d1,d2){
+    res1 = each(eqObj,d1.keys(),d2.keys())
+    if((!each(eqObj,d1.keys(),d2.keys())).any()){
+        return false
+    }
+    res2 = each(def(d1,d2,tn){
+        if(tn.string() == "compressMethods" || tn.string() == "colDefs"){
+            return byColumn(eqObj,d1[tn.string()],d2[tn.string()]).matrix()
+        }else{
+            return each(eqObj,d1[tn.string()],d2[tn.string()])
+        }
+    }{d1,d2},d1.keys())
+	return res2
+}
+
+login("admin", "123456")
+
+@testing:case="test_function_getDBTableDDL_syntax"
+assert 1,eqObj(syntax(getDBTableDDL),"getDBTableDDL(dbName,tbName)")
+
+@testing:case="test_function_getDBTableDDL_item_zero",exception=1
+getDBTableDDL()
+
+@testing:case="test_function_getDBTableDDL_item_three",syntaxError=1
+getDBTableDDL("dfs://t11","pt1",3)
+
+@testing:case="test_function_getDBTableDDL_dbName_error_scalar_void",exception=1
+getDBTableDDL(NULL,"pt")
+
+@testing:case="test_function_getDBTableDDL_dbName_error_scalar_bool",exception=1
+getDBTableDDL(bool(1),"pt")
+
+@testing:case="test_function_getDBTableDDL_dbName_error_scalar_char",exception=1
+getDBTableDDL(char(1),"pt")
+
+@testing:case="test_function_getDBTableDDL_dbName_error_scalar_short",exception=1
+getDBTableDDL(short(1),"pt")
+
+@testing:case="test_function_getDBTableDDL_dbName_error_scalar_int",exception=1
+getDBTableDDL(int(1),"pt")
+
+@testing:case="test_function_getDBTableDDL_dbName_error_scalar_long",exception=1
+getDBTableDDL(long(1),"pt")
+
+@testing:case="test_function_getDBTableDDL_dbName_error_scalar_float",exception=1
+getDBTableDDL(float(1),"pt")
+
+@testing:case="test_function_getDBTableDDL_dbName_error_scalar_double",exception=1
+getDBTableDDL(double(1),"pt")
+
+@testing:case="test_function_getDBTableDDL_dbName_error_scalar_date",exception=1
+getDBTableDDL(date(1),"pt")
+
+@testing:case="test_function_getDBTableDDL_dbName_error_scalar_month",exception=1
+getDBTableDDL(month(1),"pt")
+
+@testing:case="test_function_getDBTableDDL_dbName_error_scalar_time",exception=1
+getDBTableDDL(time(1),"pt")
+
+@testing:case="test_function_getDBTableDDL_dbName_error_scalar_minute",exception=1
+getDBTableDDL(minute(1),"pt")
+
+@testing:case="test_function_getDBTableDDL_dbName_error_scalar_second",exception=1
+getDBTableDDL(second(1),"pt")
+
+@testing:case="test_function_getDBTableDDL_dbName_error_scalar_datetime",exception=1
+getDBTableDDL(datetime(1),"pt")
+
+@testing:case="test_function_getDBTableDDL_dbName_error_scalar_timestamp",exception=1
+getDBTableDDL(timestamp(1),"pt")
+
+@testing:case="test_function_getDBTableDDL_dbName_error_scalar_nanotime",exception=1
+getDBTableDDL(nanotime(1),"pt")
+
+@testing:case="test_function_getDBTableDDL_dbName_error_scalar_nanotimestamp",exception=1
+getDBTableDDL(nanotimestamp(1),"pt")
+
+@testing:case="test_function_getDBTableDDL_dbName_error_scalar_datehour",exception=1
+getDBTableDDL(datehour(1),"pt")
+
+@testing:case="test_function_getDBTableDDL_dbName_error_scalar_decimal32",exception=1
+getDBTableDDL(decimal32(1,2),"pt")
+
+@testing:case="test_function_getDBTableDDL_dbName_error_scalar_decimal64",exception=1
+getDBTableDDL(decimal64(1,2),"pt")
+
+@testing:case="test_function_getDBTableDDL_dbName_error_scalar_decimal128",exception=1
+getDBTableDDL(decimal128(1,2),"pt")
+
+@testing:case="test_function_getDBTableDDL_dbName_error_scalar_uuid",exception=1
+getDBTableDDL(1$uuid,"pt")
+
+@testing:case="test_function_getDBTableDDL_dbName_error_scalar_ipaddr",exception=1
+getDBTableDDL(1$ipaddr,"pt")
+
+@testing:case="test_function_getDBTableDDL_dbName_error_scalar_int128",exception=1
+getDBTableDDL(int128(`e1671797c52e15f763380b45e841ec32),"pt")
+
+@testing:case="test_function_getDBTableDDL_dbName_error_scalar_complex",exception=1
+getDBTableDDL(1$complex,"pt")
+
+@testing:case="test_function_getDBTableDDL_dbName_error_scalar_point",exception=1
+getDBTableDDL(1$point,"pt")
+
+@testing:case="test_function_getDBTableDDL_dbName_error_array",exception=1
+getDBTableDDL([1,2,4,6],"pt")
+
+@testing:case="test_function_getDBTableDDL_dbName_error_pair",exception=1
+getDBTableDDL((1:1),"pt")
+
+@testing:case="test_function_getDBTableDDL_dbName_error_matrix",exception=1
+getDBTableDDL(rand(100,4)$2:2,"pt")
+
+@testing:case="test_function_getDBTableDDL_dbName_error_set",exception=1
+getDBTableDDL(set([1,2,3,4]),"pt")
+
+@testing:case="test_function_getDBTableDDL_dbName_error_dict",exception=1
+getDBTableDDL({1:12,`test:99,`1jk:`jjj,90:128},"pt")
+
+@testing:case="test_function_getDBTableDDL_dbName_error_table",exception=1
+getDBTableDDL(table(1..4 as now),"pt")
+
+@testing:case="test_function_getDBTableDDL_tbName_error_scalar_void",exception=1
+dbName = "mytest"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+database(dbName, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01)
+getDBTableDDL(dbName,NULL)
+
+@testing:case="test_function_getDBTableDDL_tbName_error_scalar_bool",exception=1
+dbName = "mytest"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+database(dbName, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01)
+getDBTableDDL(dbName,bool(1))
+
+@testing:case="test_function_getDBTableDDL_tbName_error_scalar_char",exception=1
+dbName = "mytest"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+database(dbName, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01)
+getDBTableDDL(dbName,char(1))
+
+@testing:case="test_function_getDBTableDDL_tbName_error_scalar_short",exception=1
+dbName = "mytest"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+database(dbName, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01)
+getDBTableDDL(dbName,short(1))
+
+@testing:case="test_function_getDBTableDDL_tbName_error_scalar_int",exception=1
+dbName = "mytest"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+database(dbName, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01)
+getDBTableDDL(dbName,int(1))
+
+@testing:case="test_function_getDBTableDDL_tbName_error_scalar_long",exception=1
+dbName = "mytest"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+database(dbName, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01)
+getDBTableDDL(dbName,long(1))
+
+@testing:case="test_function_getDBTableDDL_tbName_error_scalar_float",exception=1
+dbName = "mytest"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+database(dbName, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01)
+getDBTableDDL(dbName,float(1))
+
+@testing:case="test_function_getDBTableDDL_tbName_error_scalar_double",exception=1
+dbName = "mytest"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+database(dbName, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01)
+getDBTableDDL(dbName,double(1))
+
+@testing:case="test_function_getDBTableDDL_tbName_error_scalar_date",exception=1
+dbName = "mytest"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+database(dbName, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01)
+getDBTableDDL(dbName,date(1))
+
+@testing:case="test_function_getDBTableDDL_tbName_error_scalar_month",exception=1
+dbName = "mytest"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+database(dbName, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01)
+getDBTableDDL(dbName,month(1))
+
+@testing:case="test_function_getDBTableDDL_tbName_error_scalar_time",exception=1
+dbName = "mytest"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+database(dbName, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01)
+getDBTableDDL(dbName,time(1))
+
+@testing:case="test_function_getDBTableDDL_tbName_error_scalar_minute",exception=1
+dbName = "mytest"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+database(dbName, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01)
+getDBTableDDL(dbName,minute(1))
+
+@testing:case="test_function_getDBTableDDL_tbName_error_scalar_second",exception=1
+dbName = "mytest"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+database(dbName, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01)
+getDBTableDDL(dbName,second(1))
+
+@testing:case="test_function_getDBTableDDL_tbName_error_scalar_datetime",exception=1
+dbName = "mytest"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+database(dbName, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01)
+getDBTableDDL(dbName,datetime(1))
+
+@testing:case="test_function_getDBTableDDL_tbName_error_scalar_timestamp",exception=1
+dbName = "mytest"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+database(dbName, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01)
+getDBTableDDL(dbName,timestamp(1))
+
+@testing:case="test_function_getDBTableDDL_tbName_error_scalar_nanotime",exception=1
+dbName = "mytest"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+database(dbName, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01)
+getDBTableDDL(dbName,nanotime(1))
+
+@testing:case="test_function_getDBTableDDL_tbName_error_scalar_nanotimestamp",exception=1
+dbName = "mytest"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+database(dbName, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01)
+getDBTableDDL(dbName,nanotimestamp(1))
+
+@testing:case="test_function_getDBTableDDL_tbName_error_scalar_datehour",exception=1
+dbName = "mytest"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+database(dbName, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01)
+getDBTableDDL(dbName,datehour(1))
+
+@testing:case="test_function_getDBTableDDL_tbName_error_scalar_decimal32",exception=1
+dbName = "mytest"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+database(dbName, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01)
+getDBTableDDL(dbName,decimal32(1,2))
+
+@testing:case="test_function_getDBTableDDL_tbName_error_scalar_decimal64",exception=1
+dbName = "mytest"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+database(dbName, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01)
+getDBTableDDL(dbName,decimal64(1,2))
+
+@testing:case="test_function_getDBTableDDL_tbName_error_scalar_decimal128",exception=1
+dbName = "mytest"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+database(dbName, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01)
+getDBTableDDL(dbName,decimal128(1,2))
+
+@testing:case="test_function_getDBTableDDL_tbName_error_scalar_uuid",exception=1
+dbName = "mytest"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+database(dbName, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01)
+getDBTableDDL(dbName,1$uuid)
+
+@testing:case="test_function_getDBTableDDL_tbName_error_scalar_ipaddr",exception=1
+dbName = "mytest"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+database(dbName, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01)
+getDBTableDDL(dbName,1$ipaddr)
+
+@testing:case="test_function_getDBTableDDL_tbName_error_scalar_int128",exception=1
+dbName = "mytest"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+database(dbName, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01)
+getDBTableDDL(dbName,int128(`e1671797c52e15f763380b45e841ec32))
+
+@testing:case="test_function_getDBTableDDL_tbName_error_scalar_complex",exception=1
+dbName = "mytest"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+database(dbName, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01)
+getDBTableDDL(dbName,1$complex)
+
+@testing:case="test_function_getDBTableDDL_tbName_error_scalar_point",exception=1
+dbName = "mytest"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+database(dbName, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01)
+getDBTableDDL(dbName,1$point)
+
+@testing:case="test_function_getDBTableDDL_tbName_error_array",exception=1
+dbName = "mytest"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+database(dbName, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01)
+getDBTableDDL(dbName,[1,2,4,6])
+
+@testing:case="test_function_getDBTableDDL_tbName_error_pair",exception=1
+dbName = "mytest"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+database(dbName, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01)
+getDBTableDDL(dbName,(1:1))
+
+@testing:case="test_function_getDBTableDDL_tbName_error_matrix",exception=1
+dbName = "mytest"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+database(dbName, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01)
+getDBTableDDL(dbName,rand(100,4)$2:2)
+
+@testing:case="test_function_getDBTableDDL_tbName_error_set",exception=1
+dbName = "mytest"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+database(dbName, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01)
+getDBTableDDL(dbName,set([1,2,3,4]))
+
+@testing:case="test_function_getDBTableDDL_tbName_error_dict",exception=1
+dbName = "mytest"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+database(dbName, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01)
+getDBTableDDL(dbName,{1:12,`test:99,`1jk:`jjj,90:128})
+
+@testing:case="test_function_getDBTableDDL_tbName_error_table",exception=1
+dbName = "mytest"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+database(dbName, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01)
+getDBTableDDL(dbName,table(1..4 as now))
+
+@testing:case="test_function_getDBTableDDL_tbName_not_exist"
+dbName = "mytest"
+if(existsDatabase(dbName)){
+	dropDatabase(dbName)
+}
+database(dbName, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01)
+getDBTableDDL(dbName,"pt")
+
+@testing:case="test_function_getDBTableDDL_dbName_not_exist"
+getDBTableDDL("dfs://test_not_exist", "pt")
+
+
+
+@testing:case="test_function_getDBTableDDL_OLAP_MUT_RANGE"
+dbName = "dfs://test_OLAP_MUT_RANGE"
+tbName1 = "partition1"
+tbName2= "dimension1"
+if (!existsDatabase(dbName)){
+	db1 = database(dbName, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01 2005.01.01 2010.01.01)
+}
+db = database(dbName)
+tbSchema = table(1:0, `SecurityID`DateTime`Open`High`Low`Close, [SYMBOL, DATETIME, DOUBLE, DOUBLE, DOUBLE, DOUBLE])
+if (!existsTable(dbName, tbName1)){
+	tb1 = createPartitionedTable(db, tbSchema, tbName1, ["DateTime"])
+}
+if (!existsTable(dbName, tbName2)){
+	tb2 = createTable(db, tbSchema, tbName2)
+}
+dict1 = schema(loadTable(dbName,tbName1))
+ddl = getDBTableDDL(dbName,tbName1)
+dropTable(database(dbName),tbName1)
+go
+runScript(ddl)
+dict2 =  schema(loadTable(dbName,tbName1))
+
+assert tbName1, compare2Dict(dict1,dict2)
+
+
+dict1 = schema(loadTable(dbName,tbName2))
+ddl = getDBTableDDL(dbName,tbName2)
+dropTable(database(dbName),tbName2)
+go
+runScript(ddl)
+dict2 =  schema(loadTable(dbName,tbName2))
+
+assert tbName2, compare2Dict(dict1,dict2)
+
+dropDatabase(dbName)
+
+
+@testing:case="test_function_getDBTableDDL_OLAP_MUT_RANGE_HASH"
+dbName = "dfs://test_OLAP_MUT_RANGE_HASH"
+tbName1 = "partition1"
+tbName2= "dimension1"
+if(!existsDatabase(dbName)){
+    db1 = database(, RANGE, 1985.01.01 1990.01.01 1995.01.01 2000.01.01 2005.01.01 2010.01.01)
+    db2 = database(, HASH, [SYMBOL, 10])
+    db12 = database(dbName, COMPO, [db1, db2])
+}
+db = database(dbName)
+tbSchema = table(1:0, `SecurityID`DateTime`Open`High`Low`Close, [SYMBOL, DATETIME, DOUBLE, DOUBLE, DOUBLE, DOUBLE])
+if (!existsTable(dbName, tbName1)){
+	tb1 = createPartitionedTable(db, tbSchema, tbName1, `DateTime`SecurityID)
+}
+if (!existsTable(dbName, tbName2)){
+tb2 = createTable(db, tbSchema, tbName2)
+}
+
+dict1 = schema(loadTable(dbName,tbName1))
+ddl = getDBTableDDL(dbName,tbName1)
+dropTable(database(dbName),tbName1)
+go
+runScript(ddl)
+dict2 =  schema(loadTable(dbName,tbName1))
+
+assert tbName1, compare2Dict(dict1,dict2)
+
+
+dict1 = schema(loadTable(dbName,tbName2))
+ddl = getDBTableDDL(dbName,tbName2)
+dropTable(database(dbName),tbName2)
+go
+runScript(ddl)
+dict2 =  schema(loadTable(dbName,tbName2))
+
+assert tbName2, compare2Dict(dict1,dict2)
+
+dropDatabase(dbName)
+
+
+
+
+@testing:case="test_function_getDBTableDDL_TSDB_SIN_VALUE_sortKeyMap2"
+dbName = "dfs://test_TSDB_SIN_VALUE_sortKeyMap2"
+tbName1 = "partition1"
+tbName2= "dimension1"
+
+n = 1000
+SecurityID = rand(`st0001`st0002`st0003`st0004`st0005, n)
+sym = rand(1 5, n)
+TradeDate = 2022.01.01 + rand(100,n)
+TotalVolumeTrade = rand(1000..3000, n)
+TotalValueTrade = rand(100.0, n)
+schemaTable_snap = table(SecurityID, TradeDate, TotalVolumeTrade, TotalValueTrade).sortBy!(`SecurityID`TradeDate)
+
+if(existsDatabase(dbName)){dropDatabase(dbName)}
+db_snap = database(dbName, VALUE, 2022.01.01..2022.01.05, engine='TSDB')
+if (!existsTable(dbName, tbName1)){
+	snap=createPartitionedTable(dbHandle=db_snap, table=schemaTable_snap, tableName=tbName1, partitionColumns=`TradeDate, sortColumns=`SecurityID`TotalVolumeTrade`TradeDate, keepDuplicates=ALL, sortKeyMappingFunction=[hashBucket{,5},hashBucket{,1}])
+}
+if (!existsTable(dbName, tbName2)){
+tb2 = createTable(db_snap, schemaTable_snap, tbName2,sortColumns=`SecurityID`TotalVolumeTrade`TradeDate, keepDuplicates=ALL)
+}
+
+
+dict1 = schema(loadTable(dbName,tbName1))
+ddl = getDBTableDDL(dbName,tbName1)
+dropTable(database(dbName),tbName1)
+go
+runScript(ddl)
+dict2 =  schema(loadTable(dbName,tbName1))
+
+assert tbName1, compare2Dict(dict1,dict2)
+
+
+dict1 = schema(loadTable(dbName,tbName2))
+ddl = getDBTableDDL(dbName,tbName2)
+dropTable(database(dbName),tbName2)
+go
+runScript(ddl)
+dict2 =  schema(loadTable(dbName,tbName2))
+
+assert tbName2, compare2Dict(dict1,dict2)
+
+dropDatabase(dbName)
+
+// create partition table
+@testing:case="test_function_getDBTableDDL_TSDB_one_slice_partition_table_ALL"
+dbName = "dfs://test_TSDB_table_one_slice"
+tbName = "pt1"
+if(existsDatabase(dbName)){
+    dropDatabase(dbName)
+}
+mcolNames = `symbold`ID`timestampxd`stringd`boold`chard`shortd`intd`longd`dated`timed`monthd`minuted`secondd`datetimed`timestampd`nanotimed`nanotimestampd`floatd`doubled`decimal32d`decimal64d`decimal128d
+mcolTypes = [SYMBOL, INT, TIMESTAMP, STRING, BOOL , CHAR , SHORT , INT , LONG , DATE , TIME , MONTH , MINUTE , SECOND , DATETIME , TIMESTAMP , NANOTIME , NANOTIMESTAMP , FLOAT , DOUBLE ,DECIMAL32(2) ,DECIMAL64(2) ,DECIMAL128(2) ]
+t = table(1:0,mcolNames, mcolTypes)
+db = database(dbName,RANGE,1 5,engine=`TSDB)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = `ID
+sortCols = `symbold
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()),keepDuplicates=ALL )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 1,DB_table_check(dict1,dict2)
+
+if(existsTable(dbName,tbName))
+	dropTable(database(dbName),tbName)
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,rand(string() join `lz4`delta ,partitionCols.size())),keepDuplicates=ALL )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 2,DB_table_check(dict1,dict2)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,string() take partitionCols.size()),keepDuplicates=ALL )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 3,DB_table_check(dict1,dict2)
+
+@testing:case="test_function_getDBTableDDL_TSDB_one_slice_partition_table_LAST&FIRST"
+dbName = "dfs://test_TSDB_table_one_slice"
+tbName = "pt1"
+if(existsDatabase(dbName)){
+    dropDatabase(dbName)
+}
+mcolNames = `symbold`ID`timestampxd`stringd`boold`chard`shortd`intd`longd`dated`timed`monthd`minuted`secondd`datetimed`timestampd`nanotimed`nanotimestampd`floatd`doubled`decimal32d`decimal64d`decimal128d
+mcolTypes = [SYMBOL, INT, TIMESTAMP, STRING, BOOL , CHAR , SHORT , INT , LONG , DATE , TIME , MONTH , MINUTE , SECOND , DATETIME , TIMESTAMP , NANOTIME , NANOTIMESTAMP , FLOAT , DOUBLE ,DECIMAL32(2) ,DECIMAL64(2) ,DECIMAL128(2) ]
+t = table(1:0,mcolNames, mcolTypes)
+db = database(dbName,RANGE,1 5,engine=`TSDB)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = `ID
+sortCols = `symbold`timestampxd`ID
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()),keepDuplicates= LAST )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 1,DB_table_check(dict1,dict2)
+
+assert 2,each(def(db,t,dbName,tbName,partitionCols,sortCols,x){
+    if(existsTable(dbName,tbName))
+        dropTable(database(dbName),tbName)
+    tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,rand(string() join `lz4`delta ,partitionCols.size())),keepDuplicates= LAST )
+    dict1 = schema(loadTable(dbName,tbName))
+    ddl = getDBTableDDL(dbName,tbName)
+    dropTable(database(dbName),tbName)
+    go
+    runScript(ddl)
+    dict2 = schema(loadTable(dbName,tbName))
+    return DB_table_check(dict1,dict2)
+}{db,t,dbName,tbName,partitionCols,sortCols},1..10).all()
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,string() take partitionCols.size()),keepDuplicates= LAST )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 3,DB_table_check(dict1,dict2)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = `ID
+sortCols = `symbold`timestampxd`ID
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()),keepDuplicates=  FIRST )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 4,DB_table_check(dict1,dict2)
+
+assert 5,each(def(db,t,dbName,tbName,partitionCols,sortCols,x){
+    if(existsTable(dbName,tbName))
+        dropTable(database(dbName),tbName)
+    tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,rand(string() join `lz4`delta ,partitionCols.size())),keepDuplicates=  FIRST )
+    dict1 = schema(loadTable(dbName,tbName))
+    ddl = getDBTableDDL(dbName,tbName)
+    dropTable(database(dbName),tbName)
+    go
+    runScript(ddl)
+    dict2 = schema(loadTable(dbName,tbName))
+    return DB_table_check(dict1,dict2)
+}{db,t,dbName,tbName,partitionCols,sortCols},1..10).all()
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,string() take partitionCols.size()),keepDuplicates=  FIRST )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 6,DB_table_check(dict1,dict2)
+
+@testing:case="test_function_getDBTableDDL_TSDB_one_slice_partition_table_one_sortKey"
+dbName = "dfs://test_TSDB_table_one_slice"
+tbName = "pt1"
+if(existsDatabase(dbName)){
+    dropDatabase(dbName)
+}
+mcolNames = `symbold`ID`timestampxd`stringd`boold`chard`shortd`intd`longd`dated`timed`monthd`minuted`secondd`datetimed`timestampd`nanotimed`nanotimestampd`floatd`doubled`decimal32d`decimal64d`decimal128d
+mcolTypes = [SYMBOL, INT, TIMESTAMP, STRING, BOOL , CHAR , SHORT , INT , LONG , DATE , TIME , MONTH , MINUTE , SECOND , DATETIME , TIMESTAMP , NANOTIME , NANOTIMESTAMP , FLOAT , DOUBLE ,DECIMAL32(2) ,DECIMAL64(2) ,DECIMAL128(2) ]
+t = table(1:0,mcolNames, mcolTypes)
+db = database(dbName,RANGE,1 5,engine=`TSDB)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = `ID
+sortCols = `symbold
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()),keepDuplicates=ALL,sortKeyMappingFunction=[hashBucket{,5}])
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 1,DB_table_check(dict1,dict2)
+
+assert 2,each(def(db,t,dbName,tbName,partitionCols,sortCols,x){
+    if(existsTable(dbName,tbName))
+        dropTable(database(dbName),tbName)
+    tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,rand(string() join `lz4`delta ,partitionCols.size())),keepDuplicates=ALL ,sortKeyMappingFunction=[hashBucket{,5}])
+    dict1 = schema(loadTable(dbName,tbName))
+    ddl = getDBTableDDL(dbName,tbName)
+    dropTable(database(dbName),tbName)
+    go
+    runScript(ddl)
+    dict2 = schema(loadTable(dbName,tbName))
+    return DB_table_check(dict1,dict2)
+}{db,t,dbName,tbName,partitionCols,sortCols},1..10).all()
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,string() take partitionCols.size()),keepDuplicates=ALL ,sortKeyMappingFunction=[hashBucket{,5}])
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 3,DB_table_check(dict1,dict2)
+
+@testing:case="test_function_getDBTableDDL_TSDB_one_slice_partition_table_LAST&FIRST_more_sortKey"
+dbName = "dfs://test_TSDB_table_one_slice"
+tbName = "pt1"
+if(existsDatabase(dbName)){
+    dropDatabase(dbName)
+}
+mcolNames = `symbold`ID`timestampxd`stringd`boold`chard`shortd`intd`longd`dated`timed`monthd`minuted`secondd`datetimed`timestampd`nanotimed`nanotimestampd`floatd`doubled`decimal32d`decimal64d`decimal128d
+mcolTypes = [SYMBOL, INT, TIMESTAMP, STRING, BOOL , CHAR , SHORT , INT , LONG , DATE , TIME , MONTH , MINUTE , SECOND , DATETIME , TIMESTAMP , NANOTIME , NANOTIMESTAMP , FLOAT , DOUBLE ,DECIMAL32(2) ,DECIMAL64(2) ,DECIMAL128(2) ]
+t = table(1:0,mcolNames, mcolTypes)
+db = database(dbName,RANGE,1 5,engine=`TSDB)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = `ID
+sortCols = `symbold`timestampxd`ID
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()),keepDuplicates= LAST ,sortKeyMappingFunction=[hashBucket{,5},hashBucket{,3}])
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 1,DB_table_check(dict1,dict2)
+
+assert 2,each(def(db,t,dbName,tbName,partitionCols,sortCols,x){
+    if(existsTable(dbName,tbName))
+        dropTable(database(dbName),tbName)
+    tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,rand(string() join `lz4`delta ,partitionCols.size())),keepDuplicates= LAST ,sortKeyMappingFunction=[hashBucket{,5},hashBucket{,3}])
+    dict1 = schema(loadTable(dbName,tbName))
+    ddl = getDBTableDDL(dbName,tbName)
+    dropTable(database(dbName),tbName)
+    go
+    runScript(ddl)
+    dict2 = schema(loadTable(dbName,tbName))
+    return DB_table_check(dict1,dict2)
+}{db,t,dbName,tbName,partitionCols,sortCols},1..10).all()
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,string() take partitionCols.size()),keepDuplicates= LAST ,sortKeyMappingFunction=[hashBucket{,5},hashBucket{,3}])
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 3,DB_table_check(dict1,dict2)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = `ID
+sortCols = `symbold`timestampxd`ID
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()),keepDuplicates=  FIRST ,sortKeyMappingFunction=[hashBucket{,5},hashBucket{,3}])
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 4,DB_table_check(dict1,dict2)
+
+assert 5,each(def(db,t,dbName,tbName,partitionCols,sortCols,x){
+    if(existsTable(dbName,tbName))
+        dropTable(database(dbName),tbName)
+    tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,rand(string() join `lz4`delta ,partitionCols.size())),keepDuplicates=  FIRST ,sortKeyMappingFunction=[hashBucket{,5},hashBucket{,3}])
+    dict1 = schema(loadTable(dbName,tbName))
+    ddl = getDBTableDDL(dbName,tbName)
+    dropTable(database(dbName),tbName)
+    go
+    runScript(ddl)
+    dict2 = schema(loadTable(dbName,tbName))
+    return DB_table_check(dict1,dict2)
+}{db,t,dbName,tbName,partitionCols,sortCols},1..10).all()
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,string() take partitionCols.size()),keepDuplicates=  FIRST ,sortKeyMappingFunction=[hashBucket{,5},hashBucket{,3}])
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 6,DB_table_check(dict1,dict2)
+
+@testing:case="test_function_getDBTableDDL_TSDB_ more_slice_partition_table_ALL"
+dbName = "dfs://test_TSDB_table_ more_slice"
+tbName = "pt1"
+if(existsDatabase(dbName)){
+    dropDatabase(dbName)
+}
+mcolNames = `symbold`ID`timestampxd`stringd`boold`chard`shortd`intd`longd`dated`timed`monthd`minuted`secondd`datetimed`timestampd`nanotimed`nanotimestampd`floatd`doubled`decimal32d`decimal64d`decimal128d
+mcolTypes = [SYMBOL, INT, TIMESTAMP, STRING, BOOL , CHAR , SHORT , INT , LONG , DATE , TIME , MONTH , MINUTE , SECOND , DATETIME , TIMESTAMP , NANOTIME , NANOTIMESTAMP , FLOAT , DOUBLE ,DECIMAL32(2) ,DECIMAL64(2) ,DECIMAL128(2) ]
+t = table(1:0,mcolNames, mcolTypes)
+db = database(dbName,RANGE,1 5 10 15,engine=`TSDB)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = `ID
+sortCols = `symbold
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()),keepDuplicates=ALL )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 1,DB_table_check(dict1,dict2)
+
+assert 2,each(def(db,t,dbName,tbName,partitionCols,sortCols,x){
+    if(existsTable(dbName,tbName))
+        dropTable(database(dbName),tbName)
+    tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,rand(string() join `lz4`delta ,partitionCols.size())),keepDuplicates=ALL )
+    dict1 = schema(loadTable(dbName,tbName))
+    ddl = getDBTableDDL(dbName,tbName)
+    dropTable(database(dbName),tbName)
+    go
+    runScript(ddl)
+    dict2 = schema(loadTable(dbName,tbName))
+    return DB_table_check(dict1,dict2)
+}{db,t,dbName,tbName,partitionCols,sortCols},1..10).all()
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,string() take partitionCols.size()),keepDuplicates=ALL )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 3,DB_table_check(dict1,dict2)
+
+@testing:case="test_function_getDBTableDDL_TSDB_ more_slice_partition_table_LAST&FIRST"
+dbName = "dfs://test_TSDB_table_ more_slice"
+tbName = "pt1"
+if(existsDatabase(dbName)){
+    dropDatabase(dbName)
+}
+mcolNames = `symbold`ID`timestampxd`stringd`boold`chard`shortd`intd`longd`dated`timed`monthd`minuted`secondd`datetimed`timestampd`nanotimed`nanotimestampd`floatd`doubled`decimal32d`decimal64d`decimal128d
+mcolTypes = [SYMBOL, INT, TIMESTAMP, STRING, BOOL , CHAR , SHORT , INT , LONG , DATE , TIME , MONTH , MINUTE , SECOND , DATETIME , TIMESTAMP , NANOTIME , NANOTIMESTAMP , FLOAT , DOUBLE ,DECIMAL32(2) ,DECIMAL64(2) ,DECIMAL128(2) ]
+t = table(1:0,mcolNames, mcolTypes)
+db = database(dbName,RANGE,1 5 10 15,engine=`TSDB)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = `ID
+sortCols = `symbold`timestampxd`ID
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()),keepDuplicates= LAST )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 1,DB_table_check(dict1,dict2)
+
+assert 2,each(def(db,t,dbName,tbName,partitionCols,sortCols,x){
+    if(existsTable(dbName,tbName))
+        dropTable(database(dbName),tbName)
+    tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,rand(string() join `lz4`delta ,partitionCols.size())),keepDuplicates= LAST )
+    dict1 = schema(loadTable(dbName,tbName))
+    ddl = getDBTableDDL(dbName,tbName)
+    dropTable(database(dbName),tbName)
+    go
+    runScript(ddl)
+    dict2 = schema(loadTable(dbName,tbName))
+    return DB_table_check(dict1,dict2)
+}{db,t,dbName,tbName,partitionCols,sortCols},1..10).all()
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,string() take partitionCols.size()),keepDuplicates= LAST )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 3,DB_table_check(dict1,dict2)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = `ID
+sortCols = `symbold`timestampxd`ID
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()),keepDuplicates=  FIRST )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 4,DB_table_check(dict1,dict2)
+
+assert 5,each(def(db,t,dbName,tbName,partitionCols,sortCols,x){
+    if(existsTable(dbName,tbName))
+        dropTable(database(dbName),tbName)
+    tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,rand(string() join `lz4`delta ,partitionCols.size())),keepDuplicates=  FIRST )
+    dict1 = schema(loadTable(dbName,tbName))
+    ddl = getDBTableDDL(dbName,tbName)
+    dropTable(database(dbName),tbName)
+    go
+    runScript(ddl)
+    dict2 = schema(loadTable(dbName,tbName))
+    return DB_table_check(dict1,dict2)
+}{db,t,dbName,tbName,partitionCols,sortCols},1..10).all()
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,string() take partitionCols.size()),keepDuplicates=  FIRST )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 6,DB_table_check(dict1,dict2)
+
+@testing:case="test_function_getDBTableDDL_TSDB_ more_slice_partition_table_one_sortKey"
+dbName = "dfs://test_TSDB_table_ more_slice"
+tbName = "pt1"
+if(existsDatabase(dbName)){
+    dropDatabase(dbName)
+}
+mcolNames = `symbold`ID`timestampxd`stringd`boold`chard`shortd`intd`longd`dated`timed`monthd`minuted`secondd`datetimed`timestampd`nanotimed`nanotimestampd`floatd`doubled`decimal32d`decimal64d`decimal128d
+mcolTypes = [SYMBOL, INT, TIMESTAMP, STRING, BOOL , CHAR , SHORT , INT , LONG , DATE , TIME , MONTH , MINUTE , SECOND , DATETIME , TIMESTAMP , NANOTIME , NANOTIMESTAMP , FLOAT , DOUBLE ,DECIMAL32(2) ,DECIMAL64(2) ,DECIMAL128(2) ]
+t = table(1:0,mcolNames, mcolTypes)
+db = database(dbName,RANGE,1 5 10 15,engine=`TSDB)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = `ID
+sortCols = `symbold
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()),keepDuplicates=ALL,sortKeyMappingFunction=[hashBucket{,5}])
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 1,DB_table_check(dict1,dict2)
+
+assert 2,each(def(db,t,dbName,tbName,partitionCols,sortCols,x){
+    if(existsTable(dbName,tbName))
+        dropTable(database(dbName),tbName)
+    tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,rand(string() join `lz4`delta ,partitionCols.size())),keepDuplicates=ALL ,sortKeyMappingFunction=[hashBucket{,5}])
+    dict1 = schema(loadTable(dbName,tbName))
+    ddl = getDBTableDDL(dbName,tbName)
+    dropTable(database(dbName),tbName)
+    go
+    runScript(ddl)
+    dict2 = schema(loadTable(dbName,tbName))
+    return DB_table_check(dict1,dict2)
+}{db,t,dbName,tbName,partitionCols,sortCols},1..10).all()
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,string() take partitionCols.size()),keepDuplicates=ALL ,sortKeyMappingFunction=[hashBucket{,5}])
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 3,DB_table_check(dict1,dict2)
+
+@testing:case="test_function_getDBTableDDL_TSDB_ more_slice_partition_table_LAST&FIRST_more_sortKey"
+dbName = "dfs://test_TSDB_table_ more_slice"
+tbName = "pt1"
+if(existsDatabase(dbName)){
+    dropDatabase(dbName)
+}
+mcolNames = `symbold`ID`timestampxd`stringd`boold`chard`shortd`intd`longd`dated`timed`monthd`minuted`secondd`datetimed`timestampd`nanotimed`nanotimestampd`floatd`doubled`decimal32d`decimal64d`decimal128d
+mcolTypes = [SYMBOL, INT, TIMESTAMP, STRING, BOOL , CHAR , SHORT , INT , LONG , DATE , TIME , MONTH , MINUTE , SECOND , DATETIME , TIMESTAMP , NANOTIME , NANOTIMESTAMP , FLOAT , DOUBLE ,DECIMAL32(2) ,DECIMAL64(2) ,DECIMAL128(2) ]
+t = table(1:0,mcolNames, mcolTypes)
+db = database(dbName,RANGE,1 5 10 15,engine=`TSDB)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = `ID
+sortCols = `symbold`timestampxd`ID
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()),keepDuplicates= LAST ,sortKeyMappingFunction=[hashBucket{,5},hashBucket{,3}])
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 1,DB_table_check(dict1,dict2)
+
+assert 2,each(def(db,t,dbName,tbName,partitionCols,sortCols,x){
+    if(existsTable(dbName,tbName))
+        dropTable(database(dbName),tbName)
+    tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,rand(string() join `lz4`delta ,partitionCols.size())),keepDuplicates= LAST ,sortKeyMappingFunction=[hashBucket{,5},hashBucket{,3}])
+    dict1 = schema(loadTable(dbName,tbName))
+    ddl = getDBTableDDL(dbName,tbName)
+    dropTable(database(dbName),tbName)
+    go
+    runScript(ddl)
+    dict2 = schema(loadTable(dbName,tbName))
+    return DB_table_check(dict1,dict2)
+}{db,t,dbName,tbName,partitionCols,sortCols},1..10).all()
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,string() take partitionCols.size()),keepDuplicates= LAST ,sortKeyMappingFunction=[hashBucket{,5},hashBucket{,3}])
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 3,DB_table_check(dict1,dict2)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = `ID
+sortCols = `symbold`timestampxd`ID
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()),keepDuplicates=  FIRST ,sortKeyMappingFunction=[hashBucket{,5},hashBucket{,3}])
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 4,DB_table_check(dict1,dict2)
+
+assert 5,each(def(db,t,dbName,tbName,partitionCols,sortCols,x){
+    if(existsTable(dbName,tbName))
+        dropTable(database(dbName),tbName)
+    tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,rand(string() join `lz4`delta ,partitionCols.size())),keepDuplicates=  FIRST ,sortKeyMappingFunction=[hashBucket{,5},hashBucket{,3}])
+    dict1 = schema(loadTable(dbName,tbName))
+    ddl = getDBTableDDL(dbName,tbName)
+    dropTable(database(dbName),tbName)
+    go
+    runScript(ddl)
+    dict2 = schema(loadTable(dbName,tbName))
+    return DB_table_check(dict1,dict2)
+}{db,t,dbName,tbName,partitionCols,sortCols},1..10).all()
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,string() take partitionCols.size()),keepDuplicates=  FIRST ,sortKeyMappingFunction=[hashBucket{,5},hashBucket{,3}])
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 6,DB_table_check(dict1,dict2)
+
+@testing:case="test_function_getDBTableDDL_TSDB_one_slice_partition_array_vector_table_ALL"
+dbName = "dfs://test_TSDB_table_one_slice"
+tbName = "pt1"
+if(existsDatabase(dbName)){
+    dropDatabase(dbName)
+}
+mcolNames = `symbold`ID`timestampxd`stringd`boold`chard`shortd`intd`longd`dated`timed`monthd`minuted`secondd`datetimed`timestampd`nanotimed`nanotimestampd`floatd`doubled`decimal32d`decimal64d`decimal128d
+mcolTypes = [SYMBOL, INT, TIMESTAMP, STRING, BOOL[], CHAR[], SHORT[], INT[], LONG[], DATE[], TIME[], MONTH[], MINUTE[], SECOND[], DATETIME[], TIMESTAMP[], NANOTIME[], NANOTIMESTAMP[], FLOAT[], DOUBLE[],DECIMAL32(2)[],DECIMAL64(2)[],DECIMAL128(2)[]]
+t = table(1:0,mcolNames, mcolTypes)
+db = database(dbName,RANGE,1 5,engine=`TSDB)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = `ID
+sortCols = `symbold
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()),keepDuplicates=ALL )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 1,DB_table_check(dict1,dict2)
+
+assert 2,each(def(db,t,dbName,tbName,partitionCols,sortCols,x){
+    if(existsTable(dbName,tbName))
+        dropTable(database(dbName),tbName)
+    tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,rand(string() join `lz4`delta ,partitionCols.size())),keepDuplicates=ALL )
+    dict1 = schema(loadTable(dbName,tbName))
+    ddl = getDBTableDDL(dbName,tbName)
+    dropTable(database(dbName),tbName)
+    go
+    runScript(ddl)
+    dict2 = schema(loadTable(dbName,tbName))
+    return DB_table_check(dict1,dict2)
+}{db,t,dbName,tbName,partitionCols,sortCols},1..10).all()
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,string() take partitionCols.size()),keepDuplicates=ALL )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 3,DB_table_check(dict1,dict2)
+
+@testing:case="test_function_getDBTableDDL_TSDB_one_slice_partition_array_vector_table_LAST&FIRST"
+dbName = "dfs://test_TSDB_table_one_slice"
+tbName = "pt1"
+if(existsDatabase(dbName)){
+    dropDatabase(dbName)
+}
+mcolNames = `symbold`ID`timestampxd`stringd`boold`chard`shortd`intd`longd`dated`timed`monthd`minuted`secondd`datetimed`timestampd`nanotimed`nanotimestampd`floatd`doubled`decimal32d`decimal64d`decimal128d
+mcolTypes = [SYMBOL, INT, TIMESTAMP, STRING, BOOL[], CHAR[], SHORT[], INT[], LONG[], DATE[], TIME[], MONTH[], MINUTE[], SECOND[], DATETIME[], TIMESTAMP[], NANOTIME[], NANOTIMESTAMP[], FLOAT[], DOUBLE[],DECIMAL32(2)[],DECIMAL64(2)[],DECIMAL128(2)[]]
+t = table(1:0,mcolNames, mcolTypes)
+db = database(dbName,RANGE,1 5,engine=`TSDB)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = `ID
+sortCols = `symbold`timestampxd`ID
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()),keepDuplicates= LAST )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 1,DB_table_check(dict1,dict2)
+
+if(existsTable(dbName,tbName))
+	dropTable(database(dbName),tbName)
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,rand(string() join `lz4`delta ,partitionCols.size())),keepDuplicates= LAST )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 2,DB_table_check(dict1,dict2)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,string() take partitionCols.size()),keepDuplicates= LAST )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 3,DB_table_check(dict1,dict2)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = `ID
+sortCols = `symbold`timestampxd`ID
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()),keepDuplicates=  FIRST )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 4,DB_table_check(dict1,dict2)
+
+assert 5,each(def(db,t,dbName,tbName,partitionCols,sortCols,x){
+    if(existsTable(dbName,tbName))
+        dropTable(database(dbName),tbName)
+    tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,rand(string() join `lz4`delta ,partitionCols.size())),keepDuplicates=  FIRST )
+    dict1 = schema(loadTable(dbName,tbName))
+    ddl = getDBTableDDL(dbName,tbName)
+    dropTable(database(dbName),tbName)
+    go
+    runScript(ddl)
+    dict2 = schema(loadTable(dbName,tbName))
+    return DB_table_check(dict1,dict2)
+}{db,t,dbName,tbName,partitionCols,sortCols},1..10).all()
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,string() take partitionCols.size()),keepDuplicates=  FIRST )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 6,DB_table_check(dict1,dict2)
+
+@testing:case="test_function_getDBTableDDL_TSDB_one_slice_partition_array_vector_table_one_sortKey"
+dbName = "dfs://test_TSDB_table_one_slice"
+tbName = "pt1"
+if(existsDatabase(dbName)){
+    dropDatabase(dbName)
+}
+mcolNames = `symbold`ID`timestampxd`stringd`boold`chard`shortd`intd`longd`dated`timed`monthd`minuted`secondd`datetimed`timestampd`nanotimed`nanotimestampd`floatd`doubled`decimal32d`decimal64d`decimal128d
+mcolTypes = [SYMBOL, INT, TIMESTAMP, STRING, BOOL[], CHAR[], SHORT[], INT[], LONG[], DATE[], TIME[], MONTH[], MINUTE[], SECOND[], DATETIME[], TIMESTAMP[], NANOTIME[], NANOTIMESTAMP[], FLOAT[], DOUBLE[],DECIMAL32(2)[],DECIMAL64(2)[],DECIMAL128(2)[]]
+t = table(1:0,mcolNames, mcolTypes)
+db = database(dbName,RANGE,1 5,engine=`TSDB)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = `ID
+sortCols = `symbold
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()),keepDuplicates=ALL,sortKeyMappingFunction=[hashBucket{,5}])
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 1,DB_table_check(dict1,dict2)
+
+assert 2,each(def(db,t,dbName,tbName,partitionCols,sortCols,x){
+    if(existsTable(dbName,tbName))
+        dropTable(database(dbName),tbName)
+    tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,rand(string() join `lz4`delta ,partitionCols.size())),keepDuplicates=ALL ,sortKeyMappingFunction=[hashBucket{,5}])
+    dict1 = schema(loadTable(dbName,tbName))
+    ddl = getDBTableDDL(dbName,tbName)
+    dropTable(database(dbName),tbName)
+    go
+    runScript(ddl)
+    dict2 = schema(loadTable(dbName,tbName))
+    return DB_table_check(dict1,dict2)
+}{db,t,dbName,tbName,partitionCols,sortCols},1..10).all()
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,string() take partitionCols.size()),keepDuplicates=ALL ,sortKeyMappingFunction=[hashBucket{,5}])
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 3,DB_table_check(dict1,dict2)
+
+@testing:case="test_function_getDBTableDDL_TSDB_one_slice_partition_array_vector_table_LAST&FIRST_more_sortKey"
+dbName = "dfs://test_TSDB_table_one_slice"
+tbName = "pt1"
+if(existsDatabase(dbName)){
+    dropDatabase(dbName)
+}
+mcolNames = `symbold`ID`timestampxd`stringd`boold`chard`shortd`intd`longd`dated`timed`monthd`minuted`secondd`datetimed`timestampd`nanotimed`nanotimestampd`floatd`doubled`decimal32d`decimal64d`decimal128d
+mcolTypes = [SYMBOL, INT, TIMESTAMP, STRING, BOOL[], CHAR[], SHORT[], INT[], LONG[], DATE[], TIME[], MONTH[], MINUTE[], SECOND[], DATETIME[], TIMESTAMP[], NANOTIME[], NANOTIMESTAMP[], FLOAT[], DOUBLE[],DECIMAL32(2)[],DECIMAL64(2)[],DECIMAL128(2)[]]
+t = table(1:0,mcolNames, mcolTypes)
+db = database(dbName,RANGE,1 5,engine=`TSDB)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = `ID
+sortCols = `symbold`timestampxd`ID
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()),keepDuplicates= LAST ,sortKeyMappingFunction=[hashBucket{,5},hashBucket{,3}])
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 1,DB_table_check(dict1,dict2)
+
+assert 2,each(def(db,t,dbName,tbName,partitionCols,sortCols,x){
+    if(existsTable(dbName,tbName))
+        dropTable(database(dbName),tbName)
+    tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,rand(string() join `lz4`delta ,partitionCols.size())),keepDuplicates= LAST ,sortKeyMappingFunction=[hashBucket{,5},hashBucket{,3}])
+    dict1 = schema(loadTable(dbName,tbName))
+    ddl = getDBTableDDL(dbName,tbName)
+    dropTable(database(dbName),tbName)
+    go
+    runScript(ddl)
+    dict2 = schema(loadTable(dbName,tbName))
+    return DB_table_check(dict1,dict2)
+}{db,t,dbName,tbName,partitionCols,sortCols},1..10).all()
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,string() take partitionCols.size()),keepDuplicates= LAST ,sortKeyMappingFunction=[hashBucket{,5},hashBucket{,3}])
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 3,DB_table_check(dict1,dict2)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = `ID
+sortCols = `symbold`timestampxd`ID
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()),keepDuplicates=  FIRST ,sortKeyMappingFunction=[hashBucket{,5},hashBucket{,3}])
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 4,DB_table_check(dict1,dict2)
+
+assert 5,each(def(db,t,dbName,tbName,partitionCols,sortCols,x){
+    if(existsTable(dbName,tbName))
+        dropTable(database(dbName),tbName)
+    tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,rand(string() join `lz4`delta ,partitionCols.size())),keepDuplicates=  FIRST ,sortKeyMappingFunction=[hashBucket{,5},hashBucket{,3}])
+    dict1 = schema(loadTable(dbName,tbName))
+    ddl = getDBTableDDL(dbName,tbName)
+    dropTable(database(dbName),tbName)
+    go
+    runScript(ddl)
+    dict2 = schema(loadTable(dbName,tbName))
+    return DB_table_check(dict1,dict2)
+}{db,t,dbName,tbName,partitionCols,sortCols},1..10).all()
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,string() take partitionCols.size()),keepDuplicates=  FIRST ,sortKeyMappingFunction=[hashBucket{,5},hashBucket{,3}])
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 6,DB_table_check(dict1,dict2)
+
+@testing:case="test_function_getDBTableDDL_TSDB_ more_slice_partition_array_vector_table_ALL"
+dbName = "dfs://test_TSDB_table_ more_slice"
+tbName = "pt1"
+if(existsDatabase(dbName)){
+    dropDatabase(dbName)
+}
+mcolNames = `symbold`ID`timestampxd`stringd`boold`chard`shortd`intd`longd`dated`timed`monthd`minuted`secondd`datetimed`timestampd`nanotimed`nanotimestampd`floatd`doubled`decimal32d`decimal64d`decimal128d
+mcolTypes = [SYMBOL, INT, TIMESTAMP, STRING, BOOL[], CHAR[], SHORT[], INT[], LONG[], DATE[], TIME[], MONTH[], MINUTE[], SECOND[], DATETIME[], TIMESTAMP[], NANOTIME[], NANOTIMESTAMP[], FLOAT[], DOUBLE[],DECIMAL32(2)[],DECIMAL64(2)[],DECIMAL128(2)[]]
+t = table(1:0,mcolNames, mcolTypes)
+db = database(dbName,RANGE,1 5 10 15,engine=`TSDB)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = `ID
+sortCols = `symbold
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()),keepDuplicates=ALL )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 1,DB_table_check(dict1,dict2)
+
+assert 2,each(def(db,t,dbName,tbName,partitionCols,sortCols,x){
+    if(existsTable(dbName,tbName))
+        dropTable(database(dbName),tbName)
+    tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,rand(string() join `lz4`delta ,partitionCols.size())),keepDuplicates=ALL )
+    dict1 = schema(loadTable(dbName,tbName))
+    ddl = getDBTableDDL(dbName,tbName)
+    dropTable(database(dbName),tbName)
+    go
+    runScript(ddl)
+    dict2 = schema(loadTable(dbName,tbName))
+    return DB_table_check(dict1,dict2)
+}{db,t,dbName,tbName,partitionCols,sortCols},1..10).all()
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,string() take partitionCols.size()),keepDuplicates=ALL )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 3,DB_table_check(dict1,dict2)
+
+@testing:case="test_function_getDBTableDDL_TSDB_ more_slice_partition_array_vector_table_LAST&FIRST"
+dbName = "dfs://test_TSDB_table_ more_slice"
+tbName = "pt1"
+if(existsDatabase(dbName)){
+    dropDatabase(dbName)
+}
+mcolNames = `symbold`ID`timestampxd`stringd`boold`chard`shortd`intd`longd`dated`timed`monthd`minuted`secondd`datetimed`timestampd`nanotimed`nanotimestampd`floatd`doubled`decimal32d`decimal64d`decimal128d
+mcolTypes = [SYMBOL, INT, TIMESTAMP, STRING, BOOL[], CHAR[], SHORT[], INT[], LONG[], DATE[], TIME[], MONTH[], MINUTE[], SECOND[], DATETIME[], TIMESTAMP[], NANOTIME[], NANOTIMESTAMP[], FLOAT[], DOUBLE[],DECIMAL32(2)[],DECIMAL64(2)[],DECIMAL128(2)[]]
+t = table(1:0,mcolNames, mcolTypes)
+db = database(dbName,RANGE,1 5 10 15,engine=`TSDB)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = `ID
+sortCols = `symbold`timestampxd`ID
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()),keepDuplicates= LAST )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 1,DB_table_check(dict1,dict2)
+
+assert 2,each(def(db,t,dbName,tbName,partitionCols,sortCols,x){
+    if(existsTable(dbName,tbName))
+        dropTable(database(dbName),tbName)
+    tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,rand(string() join `lz4`delta ,partitionCols.size())),keepDuplicates= LAST )
+    dict1 = schema(loadTable(dbName,tbName))
+    ddl = getDBTableDDL(dbName,tbName)
+    dropTable(database(dbName),tbName)
+    go
+    runScript(ddl)
+    dict2 = schema(loadTable(dbName,tbName))
+    return DB_table_check(dict1,dict2)
+}{db,t,dbName,tbName,partitionCols,sortCols},1..10).all()
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,string() take partitionCols.size()),keepDuplicates= LAST )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 3,DB_table_check(dict1,dict2)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = `ID
+sortCols = `symbold`timestampxd`ID
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()),keepDuplicates=  FIRST )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 4,DB_table_check(dict1,dict2)
+
+assert 5,each(def(db,t,dbName,tbName,partitionCols,sortCols,x){
+    if(existsTable(dbName,tbName))
+        dropTable(database(dbName),tbName)
+    tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,rand(string() join `lz4`delta ,partitionCols.size())),keepDuplicates=  FIRST )
+    dict1 = schema(loadTable(dbName,tbName))
+    ddl = getDBTableDDL(dbName,tbName)
+    dropTable(database(dbName),tbName)
+    go
+    runScript(ddl)
+    dict2 = schema(loadTable(dbName,tbName))
+    return DB_table_check(dict1,dict2)
+}{db,t,dbName,tbName,partitionCols,sortCols},1..10).all()
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,string() take partitionCols.size()),keepDuplicates=  FIRST )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 6,DB_table_check(dict1,dict2)
+
+@testing:case="test_function_getDBTableDDL_TSDB_ more_slice_partition_array_vector_table_one_sortKey"
+dbName = "dfs://test_TSDB_table_ more_slice"
+tbName = "pt1"
+if(existsDatabase(dbName)){
+    dropDatabase(dbName)
+}
+mcolNames = `symbold`ID`timestampxd`stringd`boold`chard`shortd`intd`longd`dated`timed`monthd`minuted`secondd`datetimed`timestampd`nanotimed`nanotimestampd`floatd`doubled`decimal32d`decimal64d`decimal128d
+mcolTypes = [SYMBOL, INT, TIMESTAMP, STRING, BOOL[], CHAR[], SHORT[], INT[], LONG[], DATE[], TIME[], MONTH[], MINUTE[], SECOND[], DATETIME[], TIMESTAMP[], NANOTIME[], NANOTIMESTAMP[], FLOAT[], DOUBLE[],DECIMAL32(2)[],DECIMAL64(2)[],DECIMAL128(2)[]]
+t = table(1:0,mcolNames, mcolTypes)
+db = database(dbName,RANGE,1 5 10 15,engine=`TSDB)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = `ID
+sortCols = `symbold
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()),keepDuplicates=ALL,sortKeyMappingFunction=[hashBucket{,5}])
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 1,DB_table_check(dict1,dict2)
+
+assert 2,each(def(db,t,dbName,tbName,partitionCols,sortCols,x){
+    if(existsTable(dbName,tbName))
+        dropTable(database(dbName),tbName)
+    tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,rand(string() join `lz4`delta ,partitionCols.size())),keepDuplicates=ALL ,sortKeyMappingFunction=[hashBucket{,5}])
+    dict1 = schema(loadTable(dbName,tbName))
+    ddl = getDBTableDDL(dbName,tbName)
+    dropTable(database(dbName),tbName)
+    go
+    runScript(ddl)
+    dict2 = schema(loadTable(dbName,tbName))
+    return DB_table_check(dict1,dict2)
+}{db,t,dbName,tbName,partitionCols,sortCols},1..10).all()
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,string() take partitionCols.size()),keepDuplicates=ALL ,sortKeyMappingFunction=[hashBucket{,5}])
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 3,DB_table_check(dict1,dict2)
+
+@testing:case="test_function_getDBTableDDL_TSDB_ more_slice_partition_array_vector_table_LAST&FIRST_more_sortKey"
+dbName = "dfs://test_TSDB_table_ more_slice"
+tbName = "pt1"
+if(existsDatabase(dbName)){
+    dropDatabase(dbName)
+}
+mcolNames = `symbold`ID`timestampxd`stringd`boold`chard`shortd`intd`longd`dated`timed`monthd`minuted`secondd`datetimed`timestampd`nanotimed`nanotimestampd`floatd`doubled`decimal32d`decimal64d`decimal128d
+mcolTypes = [SYMBOL, INT, TIMESTAMP, STRING, BOOL[], CHAR[], SHORT[], INT[], LONG[], DATE[], TIME[], MONTH[], MINUTE[], SECOND[], DATETIME[], TIMESTAMP[], NANOTIME[], NANOTIMESTAMP[], FLOAT[], DOUBLE[],DECIMAL32(2)[],DECIMAL64(2)[],DECIMAL128(2)[]]
+db = database(dbName,RANGE,1 5 10 15,engine=`TSDB)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = `ID
+sortCols = `symbold`timestampxd`ID
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()),keepDuplicates= LAST ,sortKeyMappingFunction=[hashBucket{,5},hashBucket{,3}])
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 1,DB_table_check(dict1,dict2)
+
+assert 2,each(def(db,t,dbName,tbName,partitionCols,sortCols,x){
+    if(existsTable(dbName,tbName))
+        dropTable(database(dbName),tbName)
+    tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,rand(string() join `lz4`delta ,partitionCols.size())),keepDuplicates= LAST ,sortKeyMappingFunction=[hashBucket{,5},hashBucket{,3}])
+    dict1 = schema(loadTable(dbName,tbName))
+    ddl = getDBTableDDL(dbName,tbName)
+    dropTable(database(dbName),tbName)
+    go
+    runScript(ddl)
+    dict2 = schema(loadTable(dbName,tbName))
+    return DB_table_check(dict1,dict2)
+}{db,t,dbName,tbName,partitionCols,sortCols},1..10).all()
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,string() take partitionCols.size()),keepDuplicates= LAST ,sortKeyMappingFunction=[hashBucket{,5},hashBucket{,3}])
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 3,DB_table_check(dict1,dict2)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = `ID
+sortCols = `symbold`timestampxd`ID
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()),keepDuplicates=  FIRST ,sortKeyMappingFunction=[hashBucket{,5},hashBucket{,3}])
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 4,DB_table_check(dict1,dict2)
+
+assert 5,each(def(db,t,dbName,tbName,partitionCols,sortCols,x){
+    if(existsTable(dbName,tbName))
+        dropTable(database(dbName),tbName)
+    tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,rand(string() join `lz4`delta ,partitionCols.size())),keepDuplicates=  FIRST ,sortKeyMappingFunction=[hashBucket{,5},hashBucket{,3}])
+    dict1 = schema(loadTable(dbName,tbName))
+    ddl = getDBTableDDL(dbName,tbName)
+    dropTable(database(dbName),tbName)
+    go
+    runScript(ddl)
+    dict2 = schema(loadTable(dbName,tbName))
+    return DB_table_check(dict1,dict2)
+}{db,t,dbName,tbName,partitionCols,sortCols},1..10).all()
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,compressMethods=dict(partitionCols,string() take partitionCols.size()),keepDuplicates=  FIRST ,sortKeyMappingFunction=[hashBucket{,5},hashBucket{,3}])
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 6,DB_table_check(dict1,dict2)
+
+
+@testing:case="test_function_getDBTableDDL_OLAP_one_slice_partition_table"
+dbName = "dfs://test_OLAP_table_one_slice"
+tbName = "pt1"
+if(existsDatabase(dbName)){
+    dropDatabase(dbName)
+}
+mcolNames = `symbold`ID`timestampxd`stringd`boold`chard`shortd`intd`longd`dated`timed`monthd`minuted`secondd`datetimed`timestampd`nanotimed`nanotimestampd`floatd`doubled`decimal32d`decimal64d`decimal128d
+mcolTypes = [SYMBOL, INT, TIMESTAMP, STRING, BOOL , CHAR , SHORT , INT , LONG , DATE , TIME , MONTH , MINUTE , SECOND , DATETIME , TIMESTAMP , NANOTIME , NANOTIMESTAMP , FLOAT , DOUBLE ,DECIMAL32(2) ,DECIMAL64(2) ,DECIMAL128(2) ]
+t = table(1:0,mcolNames, mcolTypes)
+db = database(dbName,RANGE,1 5,engine=`OLAP)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = `ID
+sortCols = `symbold
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols ,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()) )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 1,DB_table_check(dict1,dict2)
+
+assert 2,each(def(db,t,dbName,tbName,partitionCols,sortCols,x){
+    if(existsTable(dbName,tbName))
+        dropTable(database(dbName),tbName)
+    tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols ,compressMethods=dict(partitionCols,rand(string() join `lz4`delta ,partitionCols.size())) )
+    dict1 = schema(loadTable(dbName,tbName))
+    ddl = getDBTableDDL(dbName,tbName)
+    dropTable(database(dbName),tbName)
+    go
+    runScript(ddl)
+    dict2 = schema(loadTable(dbName,tbName))
+    return DB_table_check(dict1,dict2)
+}{db,t,dbName,tbName,partitionCols,sortCols},1..10).all()
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols ,compressMethods=dict(partitionCols,string() take partitionCols.size()) )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 3,DB_table_check(dict1,dict2)
+
+@testing:case="test_function_getDBTableDDL_OLAP_ more_slice_partition_table"
+dbName = "dfs://test_OLAP_table_ more_slice"
+tbName = "pt1"
+if(existsDatabase(dbName)){
+    dropDatabase(dbName)
+}
+mcolNames = `symbold`ID`timestampxd`stringd`boold`chard`shortd`intd`longd`dated`timed`monthd`minuted`secondd`datetimed`timestampd`nanotimed`nanotimestampd`floatd`doubled`decimal32d`decimal64d`decimal128d
+mcolTypes = [SYMBOL, INT, TIMESTAMP, STRING, BOOL , CHAR , SHORT , INT , LONG , DATE , TIME , MONTH , MINUTE , SECOND , DATETIME , TIMESTAMP , NANOTIME , NANOTIMESTAMP , FLOAT , DOUBLE ,DECIMAL32(2) ,DECIMAL64(2) ,DECIMAL128(2) ]
+t = table(1:0,mcolNames, mcolTypes)
+db = database(dbName,RANGE,1 5 10 15,engine=`OLAP)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = `ID
+sortCols = `symbold
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols ,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()) )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 1,DB_table_check(dict1,dict2)
+
+assert 2,each(def(db,t,dbName,tbName,partitionCols,sortCols,x){
+    if(existsTable(dbName,tbName))
+        dropTable(database(dbName),tbName)
+    tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols ,compressMethods=dict(partitionCols,rand(string() join `lz4`delta ,partitionCols.size())) )
+    dict1 = schema(loadTable(dbName,tbName))
+    ddl = getDBTableDDL(dbName,tbName)
+    dropTable(database(dbName),tbName)
+    go
+    runScript(ddl)
+    dict2 = schema(loadTable(dbName,tbName))
+    return DB_table_check(dict1,dict2)
+}{db,t,dbName,tbName,partitionCols,sortCols},1..10).all()
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols ,compressMethods=dict(partitionCols,string() take partitionCols.size()) )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 3,DB_table_check(dict1,dict2)
+
+// create table
+@testing:case="test_function_getDBTableDDL_TSDB_one_slice_table_ALL"
+dbName = "dfs://test_TSDB_table_one_slice"
+tbName = "pt1"
+if(existsDatabase(dbName)){
+    dropDatabase(dbName)
+}
+mcolNames = `symbold`ID`timestampxd`stringd`boold`chard`shortd`intd`longd`dated`timed`monthd`minuted`secondd`datetimed`timestampd`nanotimed`nanotimestampd`floatd`doubled`decimal32d`decimal64d`decimal128d
+mcolTypes = [SYMBOL, INT, TIMESTAMP, STRING, BOOL , CHAR , SHORT , INT , LONG , DATE , TIME , MONTH , MINUTE , SECOND , DATETIME , TIMESTAMP , NANOTIME , NANOTIMESTAMP , FLOAT , DOUBLE ,DECIMAL32(2) ,DECIMAL64(2) ,DECIMAL128(2) ]
+t = table(1:0,mcolNames, mcolTypes)
+db = database(dbName,RANGE,1 5,engine=`TSDB)
+
+rand(string() join `lz4,1) join rand(string() join `lz4`delta,2) join rand(string() join `lz4,4) join rand(string() join `lz4`delta,5) join rand(string() join `lz4,2) join rand(string() join `lz4`delta,4) join rand(string() join `lz4,2) join rand(string() join `lz4`delta,2) join rand(string() join `lz4,1)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = mcolNames
+sortCols = `symbold
+tb = db. createTable(table=t,tableName=tbName, sortColumns=sortCols,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()),keepDuplicates=ALL )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 1,DB_table_check(dict1,dict2)
+
+assert 2,each(def(db,t,dbName,tbName,partitionCols,sortCols,x){
+    if(existsTable(dbName,tbName))
+        dropTable(database(dbName),tbName)
+    tb = db. createTable(table=t,tableName=tbName, sortColumns=sortCols,compressMethods=dict(partitionCols,rand(string() join `lz4,1) join rand(string() join `lz4`delta,2) join rand(string() join `lz4,4) join rand(string() join `lz4`delta,5) join rand(string() join `lz4,2) join rand(string() join `lz4`delta,4) join rand(string() join `lz4,2) join rand(string() join `lz4`delta,2) join rand(string() join `lz4,1)),keepDuplicates=ALL )
+    dict1 = schema(loadTable(dbName,tbName))
+    ddl = getDBTableDDL(dbName,tbName)
+    dropTable(database(dbName),tbName)
+    go
+    runScript(ddl)
+    dict2 = schema(loadTable(dbName,tbName))
+    return DB_table_check(dict1,dict2)
+}{db,t,dbName,tbName,partitionCols,sortCols},1..10).all()
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+tb = db. createTable(table=t,tableName=tbName, sortColumns=sortCols,compressMethods=dict(partitionCols,string() take partitionCols.size()),keepDuplicates=ALL )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 3,DB_table_check(dict1,dict2)
+
+@testing:case="test_function_getDBTableDDL_TSDB_one_slice_table_LAST&FIRST"
+dbName = "dfs://test_TSDB_table_one_slice"
+tbName = "pt1"
+if(existsDatabase(dbName)){
+    dropDatabase(dbName)
+}
+mcolNames = `symbold`ID`timestampxd`stringd`boold`chard`shortd`intd`longd`dated`timed`monthd`minuted`secondd`datetimed`timestampd`nanotimed`nanotimestampd`floatd`doubled`decimal32d`decimal64d`decimal128d
+mcolTypes = [SYMBOL, INT, TIMESTAMP, STRING, BOOL , CHAR , SHORT , INT , LONG , DATE , TIME , MONTH , MINUTE , SECOND , DATETIME , TIMESTAMP , NANOTIME , NANOTIMESTAMP , FLOAT , DOUBLE ,DECIMAL32(2) ,DECIMAL64(2) ,DECIMAL128(2) ]
+t = table(1:0,mcolNames, mcolTypes)
+db = database(dbName,RANGE,1 5,engine=`TSDB)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = mcolNames
+sortCols = `symbold`timestampxd`ID
+tb = db. createTable(table=t,tableName=tbName, sortColumns=sortCols,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()),keepDuplicates= LAST )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 1,DB_table_check(dict1,dict2)
+
+assert 2,each(def(db,t,dbName,tbName,partitionCols,sortCols,x){
+    if(existsTable(dbName,tbName))
+        dropTable(database(dbName),tbName)
+    tb = db. createTable(table=t,tableName=tbName, sortColumns=sortCols,compressMethods=dict(partitionCols,rand(string() join `lz4,1) join rand(string() join `lz4`delta,2) join rand(string() join `lz4,4) join rand(string() join `lz4`delta,5) join rand(string() join `lz4,2) join rand(string() join `lz4`delta,4) join rand(string() join `lz4,2) join rand(string() join `lz4`delta,2) join rand(string() join `lz4,1)),keepDuplicates= LAST )
+    dict1 = schema(loadTable(dbName,tbName))
+    ddl = getDBTableDDL(dbName,tbName)
+    dropTable(database(dbName),tbName)
+    go
+    runScript(ddl)
+    dict2 = schema(loadTable(dbName,tbName))
+    return DB_table_check(dict1,dict2)
+}{db,t,dbName,tbName,partitionCols,sortCols},1..10).all()
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+tb = db. createTable(table=t,tableName=tbName, sortColumns=sortCols,compressMethods=dict(partitionCols,string() take partitionCols.size()),keepDuplicates= LAST )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 3,DB_table_check(dict1,dict2)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = mcolNames
+sortCols = `symbold`timestampxd`ID
+tb = db. createTable(table=t,tableName=tbName, sortColumns=sortCols,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()),keepDuplicates=  FIRST )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 4,DB_table_check(dict1,dict2)
+
+assert 5,each(def(db,t,dbName,tbName,partitionCols,sortCols,x){
+    if(existsTable(dbName,tbName))
+        dropTable(database(dbName),tbName)
+    tb = db. createTable(table=t,tableName=tbName, sortColumns=sortCols,compressMethods=dict(partitionCols,rand(string() join `lz4,1) join rand(string() join `lz4`delta,2) join rand(string() join `lz4,4) join rand(string() join `lz4`delta,5) join rand(string() join `lz4,2) join rand(string() join `lz4`delta,4) join rand(string() join `lz4,2) join rand(string() join `lz4`delta,2) join rand(string() join `lz4,1)),keepDuplicates=  FIRST )
+    dict1 = schema(loadTable(dbName,tbName))
+    ddl = getDBTableDDL(dbName,tbName)
+    dropTable(database(dbName),tbName)
+    go
+    runScript(ddl)
+    dict2 = schema(loadTable(dbName,tbName))
+    return DB_table_check(dict1,dict2)
+}{db,t,dbName,tbName,partitionCols,sortCols},1..10).all()
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+tb = db. createTable(table=t,tableName=tbName, sortColumns=sortCols,compressMethods=dict(partitionCols,string() take partitionCols.size()),keepDuplicates=  FIRST )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 6,DB_table_check(dict1,dict2)
+
+@testing:case="test_function_getDBTableDDL_TSDB_ more_slice_table"
+dbName = "dfs://test_TSDB_table_ more_slice"
+tbName = "pt1"
+if(existsDatabase(dbName)){
+    dropDatabase(dbName)
+}
+mcolNames = `symbold`ID`timestampxd`stringd`boold`chard`shortd`intd`longd`dated`timed`monthd`minuted`secondd`datetimed`timestampd`nanotimed`nanotimestampd`floatd`doubled`decimal32d`decimal64d`decimal128d
+mcolTypes = [SYMBOL, INT, TIMESTAMP, STRING, BOOL , CHAR , SHORT , INT , LONG , DATE , TIME , MONTH , MINUTE , SECOND , DATETIME , TIMESTAMP , NANOTIME , NANOTIMESTAMP , FLOAT , DOUBLE ,DECIMAL32(2) ,DECIMAL64(2) ,DECIMAL128(2) ]
+t = table(1:0,mcolNames, mcolTypes)
+db = database(dbName,RANGE,1 5 10 15,engine=`TSDB)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = mcolNames
+sortCols = `symbold
+tb = db. createTable(table=t,tableName=tbName, sortColumns=sortCols,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()),keepDuplicates=ALL )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 1,DB_table_check(dict1,dict2)
+
+assert 2,each(def(db,t,dbName,tbName,partitionCols,sortCols,x){
+    if(existsTable(dbName,tbName))
+        dropTable(database(dbName),tbName)
+    tb = db. createTable(table=t,tableName=tbName, sortColumns=sortCols,compressMethods=dict(partitionCols,rand(string() join `lz4,1) join rand(string() join `lz4`delta,2) join rand(string() join `lz4,4) join rand(string() join `lz4`delta,5) join rand(string() join `lz4,2) join rand(string() join `lz4`delta,4) join rand(string() join `lz4,2) join rand(string() join `lz4`delta,2) join rand(string() join `lz4,1)),keepDuplicates=ALL )
+    dict1 = schema(loadTable(dbName,tbName))
+    ddl = getDBTableDDL(dbName,tbName)
+    dropTable(database(dbName),tbName)
+    go
+    runScript(ddl)
+    dict2 = schema(loadTable(dbName,tbName))
+    return DB_table_check(dict1,dict2)
+}{db,t,dbName,tbName,partitionCols,sortCols},1..10).all()
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+tb = db. createTable(table=t,tableName=tbName, sortColumns=sortCols,compressMethods=dict(partitionCols,string() take partitionCols.size()),keepDuplicates=ALL )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 3,DB_table_check(dict1,dict2)
+
+@testing:case="test_function_getDBTableDDL_TSDB_ more_slice_table_LAST&FIRST"
+dbName = "dfs://test_TSDB_table_ more_slice"
+tbName = "pt1"
+if(existsDatabase(dbName)){
+    dropDatabase(dbName)
+}
+mcolNames = `symbold`ID`timestampxd`stringd`boold`chard`shortd`intd`longd`dated`timed`monthd`minuted`secondd`datetimed`timestampd`nanotimed`nanotimestampd`floatd`doubled`decimal32d`decimal64d`decimal128d
+mcolTypes = [SYMBOL, INT, TIMESTAMP, STRING, BOOL , CHAR , SHORT , INT , LONG , DATE , TIME , MONTH , MINUTE , SECOND , DATETIME , TIMESTAMP , NANOTIME , NANOTIMESTAMP , FLOAT , DOUBLE ,DECIMAL32(2) ,DECIMAL64(2) ,DECIMAL128(2) ]
+t = table(1:0,mcolNames, mcolTypes)
+db = database(dbName,RANGE,1 5 10 15,engine=`TSDB)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = mcolNames
+sortCols = `symbold`timestampxd`ID
+tb = db. createTable(table=t,tableName=tbName, sortColumns=sortCols,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()),keepDuplicates= LAST )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 1,DB_table_check(dict1,dict2)
+
+assert 2,each(def(db,t,dbName,tbName,partitionCols,sortCols,x){
+    if(existsTable(dbName,tbName))
+        dropTable(database(dbName),tbName)
+    tb = db. createTable(table=t,tableName=tbName, sortColumns=sortCols,compressMethods=dict(partitionCols,rand(string() join `lz4,1) join rand(string() join `lz4`delta,2) join rand(string() join `lz4,4) join rand(string() join `lz4`delta,5) join rand(string() join `lz4,2) join rand(string() join `lz4`delta,4) join rand(string() join `lz4,2) join rand(string() join `lz4`delta,2) join rand(string() join `lz4,1)),keepDuplicates= LAST )
+    dict1 = schema(loadTable(dbName,tbName))
+    ddl = getDBTableDDL(dbName,tbName)
+    dropTable(database(dbName),tbName)
+    go
+    runScript(ddl)
+    dict2 = schema(loadTable(dbName,tbName))
+    return DB_table_check(dict1,dict2)
+}{db,t,dbName,tbName,partitionCols,sortCols},1..10).all()
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+tb = db. createTable(table=t,tableName=tbName, sortColumns=sortCols,compressMethods=dict(partitionCols,string() take partitionCols.size()),keepDuplicates= LAST )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 3,DB_table_check(dict1,dict2)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = mcolNames
+sortCols = `symbold`timestampxd`ID
+tb = db. createTable(table=t,tableName=tbName, sortColumns=sortCols,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()),keepDuplicates=  FIRST )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 4,DB_table_check(dict1,dict2)
+
+assert 5,each(def(db,t,dbName,tbName,partitionCols,sortCols,x){
+    if(existsTable(dbName,tbName))
+        dropTable(database(dbName),tbName)
+    tb = db. createTable(table=t,tableName=tbName, sortColumns=sortCols,compressMethods=dict(partitionCols,rand(string() join `lz4,1) join rand(string() join `lz4`delta,2) join rand(string() join `lz4,4) join rand(string() join `lz4`delta,5) join rand(string() join `lz4,2) join rand(string() join `lz4`delta,4) join rand(string() join `lz4,2) join rand(string() join `lz4`delta,2) join rand(string() join `lz4,1)),keepDuplicates=  FIRST )
+    dict1 = schema(loadTable(dbName,tbName))
+    ddl = getDBTableDDL(dbName,tbName)
+    dropTable(database(dbName),tbName)
+    go
+    runScript(ddl)
+    dict2 = schema(loadTable(dbName,tbName))
+    return DB_table_check(dict1,dict2)
+}{db,t,dbName,tbName,partitionCols,sortCols},1..10).all()
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+tb = db. createTable(table=t,tableName=tbName, sortColumns=sortCols,compressMethods=dict(partitionCols,string() take partitionCols.size()),keepDuplicates=  FIRST )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 6,DB_table_check(dict1,dict2)
+
+@testing:case="test_function_getDBTableDDL_TSDB_one_slice_array_vector_table_ALL"
+dbName = "dfs://test_TSDB_table_one_slice"
+tbName = "pt1"
+if(existsDatabase(dbName)){
+    dropDatabase(dbName)
+}
+mcolNames = `symbold`ID`timestampxd`stringd`boold`chard`shortd`intd`longd`dated`timed`monthd`minuted`secondd`datetimed`timestampd`nanotimed`nanotimestampd`floatd`doubled`decimal32d`decimal64d`decimal128d
+mcolTypes = [SYMBOL, INT, TIMESTAMP, STRING, BOOL[], CHAR[], SHORT[], INT[], LONG[], DATE[], TIME[], MONTH[], MINUTE[], SECOND[], DATETIME[], TIMESTAMP[], NANOTIME[], NANOTIMESTAMP[], FLOAT[], DOUBLE[],DECIMAL32(2)[],DECIMAL64(2)[],DECIMAL128(2)[]]
+t = table(1:0,mcolNames, mcolTypes)
+db = database(dbName,RANGE,1 5,engine=`TSDB)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = mcolNames
+sortCols = `symbold
+tb = db. createTable(table=t,tableName=tbName, sortColumns=sortCols,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()),keepDuplicates=ALL )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 1,DB_table_check(dict1,dict2)
+
+@testing:case="test_function_getDBTableDDL_TSDB_one_slice_array_vector_table_LAST&FIRST"
+dbName = "dfs://test_TSDB_table_one_slice"
+tbName = "pt1"
+if(existsDatabase(dbName)){
+    dropDatabase(dbName)
+}
+mcolNames = `symbold`ID`timestampxd`stringd`boold`chard`shortd`intd`longd`dated`timed`monthd`minuted`secondd`datetimed`timestampd`nanotimed`nanotimestampd`floatd`doubled`decimal32d`decimal64d`decimal128d
+mcolTypes = [SYMBOL, INT, TIMESTAMP, STRING, BOOL[], CHAR[], SHORT[], INT[], LONG[], DATE[], TIME[], MONTH[], MINUTE[], SECOND[], DATETIME[], TIMESTAMP[], NANOTIME[], NANOTIMESTAMP[], FLOAT[], DOUBLE[],DECIMAL32(2)[],DECIMAL64(2)[],DECIMAL128(2)[]]
+t = table(1:0,mcolNames, mcolTypes)
+db = database(dbName,RANGE,1 5,engine=`TSDB)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = mcolNames
+sortCols = `symbold`timestampxd`ID
+tb = db. createTable(table=t,tableName=tbName, sortColumns=sortCols,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()),keepDuplicates= LAST )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 1,DB_table_check(dict1,dict2)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = mcolNames
+sortCols = `symbold`timestampxd`ID
+tb = db. createTable(table=t,tableName=tbName, sortColumns=sortCols,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()),keepDuplicates=  FIRST )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 4,DB_table_check(dict1,dict2)
+
+@testing:case="test_function_getDBTableDDL_TSDB_ more_slice_array_vector_table_ALL"
+dbName = "dfs://test_TSDB_table_ more_slice"
+tbName = "pt1"
+if(existsDatabase(dbName)){
+    dropDatabase(dbName)
+}
+mcolNames = `symbold`ID`timestampxd`stringd`boold`chard`shortd`intd`longd`dated`timed`monthd`minuted`secondd`datetimed`timestampd`nanotimed`nanotimestampd`floatd`doubled`decimal32d`decimal64d`decimal128d
+mcolTypes = [SYMBOL, INT, TIMESTAMP, STRING, BOOL[], CHAR[], SHORT[], INT[], LONG[], DATE[], TIME[], MONTH[], MINUTE[], SECOND[], DATETIME[], TIMESTAMP[], NANOTIME[], NANOTIMESTAMP[], FLOAT[], DOUBLE[],DECIMAL32(2)[],DECIMAL64(2)[],DECIMAL128(2)[]]
+t = table(1:0,mcolNames, mcolTypes)
+db = database(dbName,RANGE,1 5 10 15,engine=`TSDB)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = mcolNames
+sortCols = `symbold
+tb = db. createTable(table=t,tableName=tbName, sortColumns=sortCols,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()),keepDuplicates=ALL )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 1,DB_table_check(dict1,dict2)
+
+@testing:case="test_function_getDBTableDDL_TSDB_ more_slice_array_vector_table_LAST&FIRST"
+dbName = "dfs://test_TSDB_table_ more_slice"
+tbName = "pt1"
+if(existsDatabase(dbName)){
+    dropDatabase(dbName)
+}
+mcolNames = `symbold`ID`timestampxd`stringd`boold`chard`shortd`intd`longd`dated`timed`monthd`minuted`secondd`datetimed`timestampd`nanotimed`nanotimestampd`floatd`doubled`decimal32d`decimal64d`decimal128d
+mcolTypes = [SYMBOL, INT, TIMESTAMP, STRING, BOOL[], CHAR[], SHORT[], INT[], LONG[], DATE[], TIME[], MONTH[], MINUTE[], SECOND[], DATETIME[], TIMESTAMP[], NANOTIME[], NANOTIMESTAMP[], FLOAT[], DOUBLE[],DECIMAL32(2)[],DECIMAL64(2)[],DECIMAL128(2)[]]
+t = table(1:0,mcolNames, mcolTypes)
+db = database(dbName,RANGE,1 5 10 15,engine=`TSDB)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = mcolNames
+sortCols = `symbold`timestampxd`ID
+tb = db. createTable(table=t,tableName=tbName, sortColumns=sortCols,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()),keepDuplicates= LAST )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 1,DB_table_check(dict1,dict2)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = mcolNames
+sortCols = `symbold`timestampxd`ID
+tb = db. createTable(table=t,tableName=tbName, sortColumns=sortCols,compressMethods=dict(partitionCols,`lz4 take partitionCols.size()),keepDuplicates=  FIRST )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 4,DB_table_check(dict1,dict2)
+
+@testing:case="test_function_getDBTableDDL_OLAP_one_slice_table"
+dbName = "dfs://test_OLAP_table_one_slice"
+tbName = "pt1"
+if(existsDatabase(dbName)){
+    dropDatabase(dbName)
+}
+mcolNames = `symbold`ID`timestampxd`stringd`boold`chard`shortd`intd`longd`dated`timed`monthd`minuted`secondd`datetimed`timestampd`nanotimed`nanotimestampd`floatd`doubled`decimal32d`decimal64d`decimal128d
+mcolTypes = [SYMBOL, INT, TIMESTAMP, STRING, BOOL , CHAR , SHORT , INT , LONG , DATE , TIME , MONTH , MINUTE , SECOND , DATETIME , TIMESTAMP , NANOTIME , NANOTIMESTAMP , FLOAT , DOUBLE ,DECIMAL32(2) ,DECIMAL64(2) ,DECIMAL128(2) ]
+t = table(1:0,mcolNames, mcolTypes)
+db = database(dbName,RANGE,1 5,engine=`OLAP)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = mcolNames
+sortCols = `symbold
+tb = db. createTable(table=t,tableName=tbName,  compressMethods=dict(partitionCols,`lz4 take partitionCols.size()) )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 1,DB_table_check(dict1,dict2)
+
+assert 2,each(def(db,t,dbName,tbName,partitionCols,sortCols,x){
+    if(existsTable(dbName,tbName))
+        dropTable(database(dbName),tbName)
+    tb = db. createTable(table=t,tableName=tbName,  compressMethods=dict(partitionCols,rand(string() join `lz4,1) join rand(string() join `lz4`delta,2) join rand(string() join `lz4,4) join rand(string() join `lz4`delta,5) join rand(string() join `lz4,2) join rand(string() join `lz4`delta,4) join rand(string() join `lz4,2) join rand(string() join `lz4`delta,2) join rand(string() join `lz4,1)) )
+    dict1 = schema(loadTable(dbName,tbName))
+    ddl = getDBTableDDL(dbName,tbName)
+    dropTable(database(dbName),tbName)
+    go
+    runScript(ddl)
+    dict2 = schema(loadTable(dbName,tbName))
+    return DB_table_check(dict1,dict2)
+}{db,t,dbName,tbName,partitionCols,sortCols},1..10).all()
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+tb = db. createTable(table=t,tableName=tbName,  compressMethods=dict(partitionCols,string() take partitionCols.size()) )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 3,DB_table_check(dict1,dict2)
+
+@testing:case="test_function_getDBTableDDL_OLAP_ more_slice_table"
+dbName = "dfs://test_OLAP_table_ more_slice"
+tbName = "pt1"
+if(existsDatabase(dbName)){
+    dropDatabase(dbName)
+}
+mcolNames = `symbold`ID`timestampxd`stringd`boold`chard`shortd`intd`longd`dated`timed`monthd`minuted`secondd`datetimed`timestampd`nanotimed`nanotimestampd`floatd`doubled`decimal32d`decimal64d`decimal128d
+mcolTypes = [SYMBOL, INT, TIMESTAMP, STRING, BOOL , CHAR , SHORT , INT , LONG , DATE , TIME , MONTH , MINUTE , SECOND , DATETIME , TIMESTAMP , NANOTIME , NANOTIMESTAMP , FLOAT , DOUBLE ,DECIMAL32(2) ,DECIMAL64(2) ,DECIMAL128(2) ]
+t = table(1:0,mcolNames, mcolTypes)
+db = database(dbName,RANGE,1 5 10 15,engine=`OLAP)
+
+
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = mcolNames
+sortCols = `symbold
+tb = db. createTable(table=t,tableName=tbName,  compressMethods=dict(partitionCols,`lz4 take partitionCols.size()) )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 1,DB_table_check(dict1,dict2)
+
+assert 2,each(def(db,t,dbName,tbName,partitionCols,sortCols,x){
+    if(existsTable(dbName,tbName))
+        dropTable(database(dbName),tbName)
+    tb = db. createTable(table=t,tableName=tbName,  compressMethods=dict(partitionCols,rand(string() join `lz4,1) join rand(string() join `lz4`delta,2) join rand(string() join `lz4,4) join rand(string() join `lz4`delta,5) join rand(string() join `lz4,2) join rand(string() join `lz4`delta,4) join rand(string() join `lz4,2) join rand(string() join `lz4`delta,2) join rand(string() join `lz4,1)) )
+    dict1 = schema(loadTable(dbName,tbName))
+    ddl = getDBTableDDL(dbName,tbName)
+    dropTable(database(dbName),tbName)
+    go
+    runScript(ddl)
+    dict2 = schema(loadTable(dbName,tbName))
+    return DB_table_check(dict1,dict2)
+}{db,t,dbName,tbName,partitionCols,sortCols},1..10).all()
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+tb = db. createTable(table=t,tableName=tbName,  compressMethods=dict(partitionCols,string() take partitionCols.size()) )
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 3,DB_table_check(dict1,dict2)
+
+// softDelete
+@testing:case="test_function_getDBTableDDL_TSDB_one_slice_partition_table_softDelete"
+dbName = "dfs://test_TSDB_table_softDelete"
+tbName = "pt1"
+if(existsDatabase(dbName)){
+    dropDatabase(dbName)
+}
+mcolNames = `symbold`ID`timestampxd`stringd`boold`chard`shortd`intd`longd`dated`timed`monthd`minuted`secondd`datetimed`timestampd`nanotimed`nanotimestampd`floatd`doubled`decimal32d`decimal64d`decimal128d
+mcolTypes = [SYMBOL, INT, TIMESTAMP, STRING, BOOL , CHAR , SHORT , INT , LONG , DATE , TIME , MONTH , MINUTE , SECOND , DATETIME , TIMESTAMP , NANOTIME , NANOTIMESTAMP , FLOAT , DOUBLE ,DECIMAL32(2) ,DECIMAL64(2) ,DECIMAL128(2) ]
+t = table(1:0,mcolNames, mcolTypes)
+db = database(dbName,RANGE,1 5,engine=`TSDB)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+partitionCols = `ID
+sortCols = `symbold`timestampxd
+tb = db.createPartitionedTable(table=t,tableName=tbName, partitionColumns=partitionCols,sortColumns=sortCols,keepDuplicates=LAST,softDelete=true)
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 1,DB_table_check(dict1,dict2)
+
+@testing:case="test_function_getDBTableDDL_TSDB_one_slice_table_softDelete"
+dbName = "dfs://test_TSDB_table_softDelete"
+tbName = "pt1"
+if(existsDatabase(dbName)){
+    dropDatabase(dbName)
+}
+mcolNames = `symbold`ID`timestampxd`stringd`boold`chard`shortd`intd`longd`dated`timed`monthd`minuted`secondd`datetimed`timestampd`nanotimed`nanotimestampd`floatd`doubled`decimal32d`decimal64d`decimal128d
+mcolTypes = [SYMBOL, INT, TIMESTAMP, STRING, BOOL , CHAR , SHORT , INT , LONG , DATE , TIME , MONTH , MINUTE , SECOND , DATETIME , TIMESTAMP , NANOTIME , NANOTIMESTAMP , FLOAT , DOUBLE ,DECIMAL32(2) ,DECIMAL64(2) ,DECIMAL128(2) ]
+t = table(1:0,mcolNames, mcolTypes)
+db = database(dbName,RANGE,1 5,engine=`TSDB)
+
+if(existsTable(dbName,tbName)){
+    dropTable(database(dbName),tbName)
+}
+sortCols = `symbold`timestampxd
+tb = db.createTable(table=t,tableName=tbName,sortColumns=sortCols,keepDuplicates=LAST,softDelete=true)
+dict1 = schema(loadTable(dbName,tbName))
+ddl = getDBTableDDL(dbName,tbName)
+dropTable(database(dbName),tbName)
+go
+runScript(ddl)
+dict2 = schema(loadTable(dbName,tbName))
+assert 1,DB_table_check(dict1,dict2)

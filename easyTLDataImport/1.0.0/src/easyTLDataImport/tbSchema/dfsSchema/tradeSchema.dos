@@ -1,0 +1,59 @@
+module easyTLDataImport::tbSchema::dfsSchema::tradeSchema
+
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "easyTLDataImport"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+/*
+ * @FunctionName: tradeSchemaTb
+ * @Brief: Defines the schema for the trade data table for the Shenzhen market and the Shanghai market. 
+ * @Param: isConcatTime: A boolean flag indicating whether to concatenate trade date and time into a single timestamp (true) or keep them as separate columns (false).
+ * @Return: A table schema defining the structure of the trade data table.
+ */
+def tradeSchemaTb(isConcatTime){
+	if(isConcatTime==true){
+		name = `ChannelNo`ApplSeqNum`MDStreamID`BidApplSeqNum`OfferApplSeqNum`SecurityID`SecurityIDSource`TradePrice`TradeQty`ExecType`TradeTime`LocalTime`SeqNo`DataStatus`TradeMoney`TradeBSFlag`BizIndex`OrderKind`Market
+		type = [`INT, `LONG, `SYMBOL, `LONG, `LONG, `SYMBOL, `SYMBOL, `DOUBLE, `LONG, `SYMBOL, `TIMESTAMP, `TIME, `LONG, `INT, `DOUBLE, `SYMBOL, `LONG, `SYMBOL, `SYMBOL]
+	}else{
+		name = `ChannelNo`ApplSeqNum`MDStreamID`BidApplSeqNum`OfferApplSeqNum`SecurityID`SecurityIDSource`TradePrice`TradeQty`ExecType`TradeDate`TradeTime`LocalTime`SeqNo`DataStatus`TradeMoney`TradeBSFlag`BizIndex`OrderKind`Market
+		type = [`INT, `LONG, `SYMBOL, `LONG, `LONG, `SYMBOL, `SYMBOL, `DOUBLE, `LONG, `SYMBOL, `DATE, `TIME, `TIME, `LONG, `INT, `DOUBLE, `SYMBOL, `LONG, `SYMBOL, `SYMBOL]
+	}
+	return table(1:0, name, type)
+}
+
+/*
+ * @FunctionName: tradeSchemaTbSZ
+ * @Brief: Defines the schema for the trade data table for the Shenzhen market. 
+ * @Param: isConcatTime: A boolean flag indicating whether to concatenate trade date and time into a single timestamp (true) or keep them as separate columns (false).
+ * @Return: A table schema defining the structure of the trade data table.
+ */
+def tradeSchemaTbSZ(isConcatTime){
+	if(isConcatTime==true){
+		name = `ChannelNo`ApplSeqNum`MDStreamID`BidApplSeqNum`OfferApplSeqNum`SecurityID`SecurityIDSource`TradePrice`TradeQty`ExecType`TradeTime`LocalTime`SeqNo`OrderKind
+		type = `INT`LONG`SYMBOL`LONG`LONG`SYMBOL`SYMBOL`DOUBLE`LONG`SYMBOL`TIMESTAMP`TIME`LONG`SYMBOL
+	}else{
+		name = `ChannelNo`ApplSeqNum`MDStreamID`BidApplSeqNum`OfferApplSeqNum`SecurityID`SecurityIDSource`TradePrice`TradeQty`ExecType`TradeDate`TradeTime`LocalTime`SeqNo`OrderKind
+		type = `INT`LONG`SYMBOL`LONG`LONG`SYMBOL`SYMBOL`DOUBLE`LONG`SYMBOL`DATE`TIME`TIME`LONG`SYMBOL
+	}
+	return table(1:0, name, type)
+}
+
+/*
+ * @FunctionName: tradeSchemaTbSH
+ * @Brief: Defines the schema for the trade data table for the Shanghai market. 
+ * @Param: isConcatTime: A boolean flag indicating whether to concatenate trade date and time into a single timestamp (true) or keep them as separate columns (false).
+ * @Return: A table schema defining the structure of the trade data table.
+ */
+def tradeSchemaTbSH(isConcatTime){
+	if(isConcatTime==true){
+		name = `DataStatus`ApplSeqNum`ChannelNo`SecurityID`TradeTime`TradePrice`TradeQty`TradeMoney`BidApplSeqNum`OfferApplSeqNum`TradeBSFlag`BizIndex`LocalTime`SeqNo
+		type = `INT`LONG`INT`SYMBOL`TIMESTAMP`DOUBLE`LONG`DOUBLE`LONG`LONG`SYMBOL`LONG`TIME`LONG
+	}else{
+		name = `DataStatus`ApplSeqNum`ChannelNo`SecurityID`TradeDate`TradeTime`TradePrice`TradeQty`TradeMoney`BidApplSeqNum`OfferApplSeqNum`TradeBSFlag`BizIndex`LocalTime`SeqNo
+		type = `INT`LONG`INT`SYMBOL`DATE`TIME`DOUBLE`LONG`DOUBLE`LONG`LONG`SYMBOL`LONG`TIME`LONG
+	}
+	return table(1:0, name, type)
+}

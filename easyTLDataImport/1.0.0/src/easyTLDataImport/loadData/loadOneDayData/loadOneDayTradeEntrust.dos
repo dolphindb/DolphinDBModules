@@ -1,0 +1,207 @@
+module easyTLDataImport::loadData::loadOneDayData::loadOneDayTradeEntrust
+
+use easyTLDataImport::tbSchema::csvSchema::tradeEntrustCsvSchema
+
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "easyTLDataImport"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+/*
+ * @FunctionName: transformTradeSH
+ * @Brief: Transforms the trade data for the Shanghai market into a standardized format.
+ * @Param: day: The specific trading day for which the data is being processed.
+ * @Param: merge: A boolean flag indicating whether to merge the data from different exchanges.
+ * @Param: t: The input data table containing the original trade data.
+ * @Return: A table containing transformed trade data in the specified format.
+ */
+def transformTradeSH(day, merge, t){
+	if(merge==true){
+		tmpData = select Channel as ChannelNo, 
+						BizIndex as ApplSeqNum, 
+						"" as MDStreamID, 
+						BuyOrderNO as BidApplSeqNum, 
+						SellOrderNO as OfferApplSeqNum, 
+						SecurityID as SecurityID, 
+						"" as SecurityIDSource, 
+						Price as TradPrice, 
+						Qty as TradeQty, 
+						"" as ExecType, 
+						day as TradeDate, 
+						TickTime as TradeTime, 
+						LocalTime as LocalTime, 
+						SeqNo as SeqNo, 
+						int(NULL) as DataStatus, 
+						TradeMoney as TradeMoney, 
+						TickBSFlag as TradeBSFlag, 
+						BizIndex as BizIndex, 
+						"" as OrderKind, 
+						"SH" as Market 
+					from t 
+					where Type="T"
+	}else{
+		tmpData = select int(NULL) as DataStatus, 
+						BizIndex as ApplSeqNum, 
+						Channel as ChannelNo, 
+						SecurityID as SecurityID, 
+						day as TradeDate, 
+						TickTime as TradeTime, 
+						Price as TradPrice, 
+						Qty as TradeQty, 
+						TradeMoney as TradeMoney, 
+						BuyOrderNO as BidApplSeqNum, 
+						SellOrderNO as OfferApplSeqNum, 
+						TickBSFlag as TradeBSFlag, 
+						BizIndex as BizIndex, 
+						LocalTime as LocalTime, 
+						SeqNo as SeqNo 
+					from t 
+					where Type="T"
+	}
+	return tmpData
+}
+
+/*
+ * @FunctionName: transformEntrustSH
+ * @Brief: Transforms the entrust data for the Shanghai market into a standardized format.
+ * @Param: day: The specific trading day for which the data is being processed.
+ * @Param: merge: A boolean flag indicating whether to merge the data from different exchanges.
+ * @Param: t: The input data table containing the original entrust data.
+ * @Return: A table containing transformed entrust data in the specified format.
+ */
+def transformEntrustSH(day, merge, t){
+	if(merge==true){
+		tmpData = select Channel as ChannelNo, 
+					BizIndex as ApplSeqNum, 
+					"" as MDStreamID, 
+					SecurityID as SecurityID, 
+					"" as SecurityIDSource, 
+					Price as Price, 
+					Qty as OrderQty, 
+					TickBSFlag as Side, 
+					day as TradeDate, 
+					TickTime as TradeTime, 
+					Type as OrderType, 
+					LocalTime as LocalTime, 
+					SeqNo as SeqNo, 
+					iif(BuyOrderNO>SellOrderNO, BuyOrderNO, SellOrderNO) as OrderNO, 
+					int(NULL) as DataStatus, 
+					BizIndex as BizIndex, 
+					"SH" as Market 
+				from t where Type!="T"
+	}else{
+		tmpData = select int(NULL) as DataStatus, 
+						BizIndex as ApplSeqNum, 
+						Channel as ChannelNo, 
+						SecurityID as SecurityID, 
+						day as TradeDate, 
+						TickTime as TradeTime, 
+						Type as OrderType, 
+						iif(BuyOrderNO>SellOrderNO, BuyOrderNO, SellOrderNO) as OrderNO, 
+						Price as Price, 
+						Qty as OrderQty, 
+						TickBSFlag as Side, 
+						BizIndex as BizIndex, 
+						LocalTime as LocalTime, 
+						SeqNo as SeqNo
+					from t 
+					where Type!="T"
+	}
+	return tmpData
+}
+
+/*
+ * @FunctionName: appendTradeEntrust
+ * @Brief: Appends or upserts transformed trade and entrust data into the specified database tables.
+ * @Param: day: The specific trading day for which the data is being processed.
+ * @Param: merge: A boolean flag indicating whether to merge the data from different exchanges.
+ * @Param: t: The input data table containing the original trade and entrust data to be transformed and appended.
+ * @Param: isConcatTime: A boolean flag indicating whether to concatenate trade date and time into a single timestamp.
+ * @Param: isDataDuplicated: A boolean flag indicating whether to remove duplicate entries from the data.
+ * @Param: dbNames: A vector of database names where the trade and entrust data will be stored.
+ * @Param: tbNames: A vector of table names corresponding to the databases where the data will be appended or upserted.
+ * @Param: dtypes: A vector representing the data types (e.g., "Trade", "Entrust") that will be processed.
+ */
+def appendTradeEntrust(day, merge, t, isConcatTime, isDataDuplicated, dbNames, tbNames, dtypes){
+	// Call the transformation function to standardize the data
+	tradeData = transformTradeSH(day, merge, t)
+	entrustData = transformEntrustSH(day, merge, t)
+	
+	// Remove duplicate entries from the data if specified
+	if(isDataDuplicated==true){
+		tradeData = select * from tradeData where isDuplicated([ChannelNo, ApplSeqNum], LAST)=false
+		entrustData = select * from entrustData where isDuplicated([ChannelNo, ApplSeqNum], LAST)=false
+	}
+
+	// Handle concatenation of trade date and time if specified
+	if(isConcatTime==true){
+		tradeData.replaceColumn!(`TradeTime, concatDateTime(tradeData["TradeDate"], tradeData["TradeTime"]))
+		tradeData.dropColumns!(`TradeDate)
+		entrustData.replaceColumn!(`TradeTime, concatDateTime(entrustData["TradeDate"], entrustData["TradeTime"]))
+		entrustData.dropColumns!(`TradeDate)
+	}
+
+	keyColNames=`ApplSeqNum`ChannelNo
+	// Importing trade data if "TLTrade" is specified in dtypes
+	if ("TLTrade" in dtypes) {
+		dbNameTrade = dbNames[dtypes=="TLTrade"][0]
+		tbNameTrade = tbNames[dtypes=="TLTrade"][0]
+		pt = loadTable(dbNameTrade, tbNameTrade)
+		if(isDataDuplicated==true)	upsert!(pt, tradeData, keyColNames=keyColNames) 
+		else						pt.append!(tradeData)
+	}
+
+	 // Importing entrust data if "TLEntrust" is specified in dtypes
+	if ("TLEntrust" in dtypes) {
+		dbNameEntrust = dbNames[dtypes=="TLEntrust"][0]
+		tbNameEntrust = tbNames[dtypes=="TLEntrust"][0]
+		pt = loadTable(dbNameEntrust, tbNameEntrust)
+		if(isDataDuplicated==true)	upsert!(pt, entrustData, keyColNames=keyColNames) 
+		else						pt.append!(entrustData)	
+	}
+}
+
+
+/*
+ * @FunctionName: loadOneDayTradeEntrustSH
+ * @Brief: Loads one day's worth of trade and entrust data for the Shanghai market from the specified CSV file.
+ * @Param: csvFiles: A vector of CSV file paths containing the trade and entrust data for the specified day.
+ * @Param: day: The specific trading day for which the data is being loaded.
+ * @Param: dbNames: A vector of database names where the trade and entrust data will be stored.
+ * @Param: tbNames: A vector of table names corresponding to the databases where the data will be loaded.
+ * @Param: dtypes: A vector of data types indicating the nature of the data being processed (e.g., "TLTrade", "TLEntrust").
+ * @Param: merge: A boolean flag indicating whether to merge the data from different exchanges.
+ * @Param: isConcatTime: A boolean flag indicating whether to concatenate trade date and time into a single timestamp.
+ * @Param: isDataDuplicated: A boolean flag indicating whether to handle duplicate data entries during loading.
+ * @Return: A message indicating the success or failure of the loading process, or an error message if an error occurs.
+ */
+def loadOneDayTradeEntrustSH(csvFiles, day, dbNames, tbNames, dtypes, merge, isConcatTime, isDataDuplicated){
+	// Check if the required data file exists for the specified trading day
+	csvNames = "mdl_4_24_0.csv"
+	csvPath = csvFiles[endsWith(csvFiles, csvNames)][0]
+	if(csvPath==NULL){
+		errorMessage = dict(`message`code, ["上交所 [" + string(day) + "] 日期的 [" + csvNames + "] 的 csv 文件不全或者不存在", "error"])
+		return errorMessage
+	}
+
+	// Validate the number of columns in the trade and entrust data against the expected schema
+	schemaTB = tradeEntrustCsvSchemaSH()
+	schemaTest = extractTextSchema(csvPath)
+	if(schemaTB.rows() != schemaTest.rows()){
+		errorMessage = dict(`message`code, ["[" + csvPath + "] 的数据格式有误，列数不匹配", "error"])
+		return errorMessage
+	}
+
+	try{
+		// Create a data source for loading the CSV in chunks
+		ds = textChunkDS(filename=csvPath, chunkSize=512, schema=schemaTB)
+		// Use map-reduce to process the data, appending the transformed entries to the database
+		mr(ds, appendTradeEntrust{day, merge, , isConcatTime, isDataDuplicated, dbNames, tbNames, dtypes}, parallel=false)
+	}catch(ex){
+		errorMessage = dict(`message`code, [string(ex[0])+":"+string(ex[1]), "error"])
+		return errorMessage
+	}
+	return true
+}

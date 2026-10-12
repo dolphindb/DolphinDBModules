@@ -1,0 +1,164 @@
+#include "setup/settings.txt"
+
+login("admin", "123456")
+use EasyTushare::TsInit
+use EasyTushare::stock::StockInit
+use EasyTushare::etf::EtfInit
+use EasyTushare::fund::FundInit
+use EasyTushare::futures::FuturesInit
+use EasyTushare::bond::BondInit
+use EasyTushare::index::IndexInit
+use EasyTushare::options::OptionsInit
+use EasyTushare::foreignExchangre::FxInit
+use EasyTushare::spot::SpotInit
+use EasyTushare::llm::LlmInit
+use EasyTushare::macroeconomics::MacroeconomicsInit
+use EasyTushare::macroeconomics::MacroeconomicsCreateTable
+
+tsPluginInit("httpClient")
+createDb()
+
+def ensureHistoryTestTables(){
+    if(!existsTable("dfs://tushare_basic_db", "stock_basic")){
+        stockInitTables(["stock_basic"])
+    }
+    if(!existsTable("dfs://tushare_basic_db", "etf_basic")){
+        etfInitTables(["etf_basic"])
+    }
+    if(!existsTable("dfs://tushare_basic_db", "fund_basic")){
+        fundInitTables(["fund_basic"])
+    }
+    if(!existsTable("dfs://tushare_basic_db", "fut_basic")){
+        futuresInitTables(["fut_basic"])
+    }
+    if(!existsTable("dfs://tushare_basic_db", "cb_basic")){
+        bondInitTables(["cb_basic"])
+    }
+    if(!existsTable("dfs://tushare_basic_db", "index_basic")){
+        indexInitTables(["index_basic"])
+    }
+    if(!existsTable("dfs://tushare_daily_db", "opt_daily")){
+        optionsInitTables(["opt_daily"])
+    }
+    if(!existsTable("dfs://tushare_basic_db", "fx_obasic")){
+        fxInitTables(["fx_obasic"])
+    }
+    if(!existsTable("dfs://tushare_basic_db", "sge_basic")){
+        spotInitTables(["sge_basic"])
+    }
+    if(!existsTable("dfs://tushare_daily_db", "cctv_news")){
+        llmInitTables(["cctv_news"])
+    }
+    // MacroeconomicsInit resolves createShibor, but the exported creator is
+    // currently named createTableShibor.
+    if(!existsTable("dfs://tushare_daily_db", "shibor")){
+        createTableShibor()
+    }
+}
+
+def runHistoryImport(token, historyFunc, sourceTable, expectedJobDesc, dbPath, targetTable, startDate, endDate){
+    submittedAt = now()
+    historyFunc(token, startDate, endDate, [sourceTable])
+    jobs = exec jobId from getRecentJobs() where jobDesc == expectedJobDesc and receivedTime >= submittedAt
+    if(jobs.size() != 1){
+        return [long(-1), long(-1), long(-1), long(-1)]
+    }
+    getJobReturn(jobs[0], true)
+    rowCount = exec count(*) from loadTable(dbPath, targetTable)
+    currentImportCount = exec count(*) from loadTable(dbPath, targetTable) where update_time >= submittedAt
+    nullUpdateTimeCount = exec count(*) from loadTable(dbPath, targetTable) where isNull(update_time)
+    return [long(jobs.size()), long(rowCount), long(currentImportCount), long(nullUpdateTimeCount)]
+}
+
+ensureHistoryTestTables()
+
+@testing:case="test_stockHistoryDataLoad"
+assert 1, token != ""
+result = runHistoryImport(token,stockHistoryDataLoad, "stock_basic", "append_stock_basic", "dfs://tushare_basic_db", "stock_basic", 2024.01.02, 2024.01.02)
+assert 2, result[0] == 1
+assert 3, result[1] > 0
+assert 4, result[2] > 0
+assert 5, result[3] == 0
+
+@testing:case="test_etfHistoryDataLoad"
+assert 1, token != ""
+result = runHistoryImport(token,etfHistoryDataLoad, "etf_basic", "append_etf_basic", "dfs://tushare_basic_db", "etf_basic", 2024.01.02, 2024.01.02)
+assert 2, result[0] == 1
+assert 3, result[1] > 0
+assert 4, result[2] > 0
+assert 5, result[3] == 0
+
+@testing:case="test_fundHistoryDataLoad"
+assert 1, token != ""
+result = runHistoryImport(token,fundHistoryDataLoad, "fund_basic", "append_fund_basic", "dfs://tushare_basic_db", "fund_basic", 2024.01.02, 2024.01.02)
+assert 2, result[0] == 1
+assert 3, result[1] > 0
+assert 4, result[2] > 0
+assert 5, result[3] == 0
+
+@testing:case="test_futuresHistoryDataLoad"
+assert 1, token != ""
+result = runHistoryImport(token,futuresHistoryDataLoad, "fut_basic", "append_fut_basic", "dfs://tushare_basic_db", "fut_basic", 2024.01.02, 2024.01.02)
+assert 2, result[0] == 1
+assert 3, result[1] > 0
+assert 4, result[2] > 0
+assert 5, result[3] == 0
+
+@testing:case="test_bondHistoryDataLoad"
+assert 1, token != ""
+result = runHistoryImport(token,bondHistoryDataLoad, "cb_basic", "append_cb_basic", "dfs://tushare_basic_db", "cb_basic", 2024.01.02, 2024.01.02)
+assert 2, result[0] == 1
+assert 3, result[1] > 0
+assert 4, result[2] > 0
+assert 5, result[3] == 0
+
+@testing:case="test_indexHistoryDataLoad"
+assert 1, token != ""
+result = runHistoryImport(token,indexHistoryDataLoad, "index_basic", "append_index_basic", "dfs://tushare_basic_db", "index_basic", 2024.01.02, 2024.01.02)
+assert 2, result[0] == 1
+assert 3, result[1] > 0
+assert 4, result[2] > 0
+assert 5, result[3] == 0
+
+@testing:case="test_optionsHistoryDataLoad"
+assert 1, token != ""
+result = runHistoryImport(token,optionsHistoryDataLoad, "opt_daily", "appendOptDaily", "dfs://tushare_daily_db", "opt_daily", 2024.01.02, 2024.01.02)
+assert 2, result[0] == 1
+assert 3, result[1] > 0
+assert 4, result[2] > 0
+assert 5, result[3] == 0
+assert 6, (exec count(*) from loadTable("dfs://tushare_daily_db", "opt_daily") where trade_date == 2024.01.02) > 0
+
+@testing:case="test_fxHistoryDataLoad"
+assert 1, token != ""
+result = runHistoryImport(token,fxHistoryDataLoad, "fx_obasic", "append_fx_obasic", "dfs://tushare_basic_db", "fx_obasic", 2024.01.02, 2024.01.02)
+assert 2, result[0] == 1
+assert 3, result[1] > 0
+assert 4, result[2] > 0
+assert 5, result[3] == 0
+
+@testing:case="test_spotHistoryDataLoad"
+assert 1, token != ""
+result = runHistoryImport(token,spotHistoryDataLoad, "sge_basic", "append_sge_basic", "dfs://tushare_basic_db", "sge_basic", 2024.01.02, 2024.01.02)
+assert 2, result[0] == 1
+assert 3, result[1] > 0
+assert 4, result[2] > 0
+assert 5, result[3] == 0
+
+@testing:case="test_llmHistoryDataLoad"
+assert 1, token != ""
+result = runHistoryImport(token,llmHistoryDataLoad, "cctv_news", "append_cctv_news", "dfs://tushare_daily_db", "cctv_news", 2024.01.02, 2024.01.02)
+assert 2, result[0] == 1
+assert 3, result[1] > 0
+assert 4, result[2] > 0
+assert 5, result[3] == 0
+assert 6, (exec count(*) from loadTable("dfs://tushare_daily_db", "cctv_news") where news_date == 2024.01.02) > 0
+
+@testing:case="test_macroeconomicsHistoryDataLoad"
+assert 1, token != ""
+result = runHistoryImport(token,macroeconomicsHistoryDataLoad, "shibor", "append_shibor", "dfs://tushare_daily_db", "shibor", 2024.01.02, 2024.01.02)
+assert 2, result[0] == 1
+assert 3, result[1] > 0
+assert 4, result[2] > 0
+assert 5, result[3] == 0
+assert 6, (exec count(*) from loadTable("dfs://tushare_daily_db", "shibor") where trade_date == 2024.01.02) > 0

@@ -1,0 +1,99 @@
+module DolphinDBModules::easyTLDataImport::createDbAndTb::createTB
+
+use DolphinDBModules::easyTLDataImport::createDbAndTb::createDB
+use DolphinDBModules::easyTLDataImport::tbSchema::dfsSchema::snapshotSchema
+use DolphinDBModules::easyTLDataImport::tbSchema::dfsSchema::entrustSchema
+use DolphinDBModules::easyTLDataImport::tbSchema::dfsSchema::tradeSchema
+
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "DolphinDBModules"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+/*
+ * @FunctionNames: createTb
+ * @Brief: Function to create a table in the specified database.
+ * @Param: dbName: The name of the database where the table will be created.
+ * @Param: tbName: The name of the table to be created.
+ * @Param: dataSource: The type of data for the table (e.g., TLSnapshot, TLEntrust, TLTrade).
+ * @Param: market: The market type (ALL, SH, SZ) that defines how the table is structured.
+ * @Param: isConcatTime: A boolean flag indicating whether the date and time should be concatenated.
+ */
+def createTb(dbName, tbName, dataSource, market, isConcatTime){
+    db = database(dbName)
+    // Handle different data types for the table
+    if(dataSource=="TLSnapshot"){
+        if(market=="ALL"){  
+            t = snapshotSchemaTb(isConcatTime)  
+            sortColumns=`Market`SecurityID`TradeTime
+        }else if(market=="SH"){  
+            t = snapshotSchemaTbSH(isConcatTime) 
+            sortColumns=`SecurityID`TradeTime
+        }else if(market=="SZ"){  
+            t = snapshotSchemaTbSZ(isConcatTime)
+            sortColumns=`SecurityID`TradeTime 
+        }
+        partitionColumns=iif(isConcatTime, `TradeTime`SecurityID, `TradeDate`SecurityID)
+        db.createPartitionedTable(table=t, tableName=tbName, partitionColumns=partitionColumns, sortColumns=sortColumns, keepDuplicates=ALL)
+    }else if(dataSource=="TLEntrust"){
+        if(market=="ALL"){  
+            t = entrustSchemaTb(isConcatTime)  
+            sortColumns=`Market`SecurityID`TradeTime
+        }else if(market=="SH"){  
+            t = entrustSchemaTbSH(isConcatTime) 
+            sortColumns=`SecurityID`TradeTime
+        }else if(market=="SZ"){  
+            t = entrustSchemaTbSZ(isConcatTime) 
+            sortColumns=`SecurityID`TradeTime 
+        }
+        partitionColumns=iif(isConcatTime, `TradeTime`SecurityID, `TradeDate`SecurityID)
+        db.createPartitionedTable(table=t, tableName=tbName, partitionColumns=partitionColumns, sortColumns=sortColumns, keepDuplicates=ALL)
+    }else if(dataSource=="TLTrade"){
+        if(market=="ALL"){  
+            t = tradeSchemaTb(isConcatTime) 
+            sortColumns=`Market`SecurityID`TradeTime 
+        }else if(market=="SH"){  
+            t = tradeSchemaTbSH(isConcatTime)
+            sortColumns=`SecurityID`TradeTime 
+        }else if(market=="SZ"){  
+            t = tradeSchemaTbSZ(isConcatTime) 
+            sortColumns=`SecurityID`TradeTime 
+        }
+        partitionColumns=iif(isConcatTime, `TradeTime`SecurityID, `TradeDate`SecurityID)
+        db.createPartitionedTable(table=t, tableName=tbName, partitionColumns=partitionColumns, sortColumns=sortColumns, keepDuplicates=ALL)
+    }
+}
+
+/*
+ * @FunctionName: createTB
+ * @Brief: Main function to create a table, also handles database creation.
+ * @Param: dbName: The name of the database where the table will be created.
+ * @Param: tbName: The name of the table to be created.
+ * @Param: dataSource: The type of data for the table (e.g., TLSnapshot, TLEntrust, TLTrade).
+ * @Param: initialTB: A boolean flag indicating whether to drop an existing table before creating a new one.
+ * @Param: initialDB: A boolean flag indicating whether to drop an existing database before creating a new one.
+ * @Param: market: The market type (ALL, SH, SZ) defining how the table is structured.
+ * @Param: isConcatTime: A boolean flag indicating whether the date and time should be concatenated.
+ */
+def createTB(dbName, tbName, dataSource, initialTB, initialDB, market, isConcatTime){
+    // Create the database if needed
+	merge = iif(market=="ALL", true, false)
+	createDB(dbName, dataSource, initialDB, merge)
+	// Create the table
+    if(existsTable(dbName, tbName)){
+        // If the table exists and initialTB is true, drop the existing table
+		if(initialTB==true)	dropTable(database(dbName), tbName)
+		else{
+            // Log an informational message if the table already exists and is not to be dropped
+			errorMessage = dict(`message`code, ["数据库 [" + dbName + "] 已经存在表 [" + tbName + "]", "info"])
+            errorMessage = toStdJson(errorMessage)
+            writeLog(errorMessage)
+            print(errorMessage)
+            return 
+		}
+	}
+    // Create the table with the specified parameters
+    createTb(dbName, tbName, dataSource, market, isConcatTime)
+}

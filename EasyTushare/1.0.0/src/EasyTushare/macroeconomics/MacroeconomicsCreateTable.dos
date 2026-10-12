@@ -1,0 +1,771 @@
+module EasyTushare::macroeconomics::MacroeconomicsCreateTable
+/* 
+*  @Brief: 宏观经济数据表创建函数模块
+*  @Author: DolphinDB
+*  @Last modification time: 2026.03.31
+*  @DolphinDB server version: 3.00.5 2026.02.06 LINUX x86_64
+*/
+
+
+/*
+*  @FunctionName: module_info
+*  @Brief: 模块信息,一个相同模块dir下的每个dos都需要有module_info函数,且是相同的
+*  @Param: None
+*  @Return: dict
+*  @SampleUsage: module_info()
+*/
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "EasyTushare"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+/*
+*  @FunctionName: createTableShibor
+*  @Brief: Create a DFS table for Tushare API shibor
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableShibor()
+*/
+def createTableShibor(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "shibor"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        schemaTB = table(1:0, `trade_date`on`w1`w2`m1`m3`m6`m9`y1`update_time, [DATE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,TIMESTAMP])
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["trade_date"] = "date"
+        columnComments["on"] = "on"
+        columnComments["w1"] = "1w"
+        columnComments["w2"] = "2w"
+        columnComments["m1"] = "1m"
+        columnComments["m3"] = "3m"
+        columnComments["m6"] = "6m"
+        columnComments["m9"] = "9m"
+        columnComments["y1"] = "1y"
+        columnComments["update_time"] = "update time"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+// ===== FILE: create_shibor_quote.dos =====
+/*
+*  @FunctionName: createTableShiborQuote
+*  @Brief: Create a DFS table for Tushare API shibor_quote
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableShiborQuote()
+*/
+def createTableShiborQuote(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "shibor_quote"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        schemaTB = table(1:0, `trade_date`bank`on_b`on_a`w_b1`w_a1`w_b2`w_a2`m_b1`m_a1`m_b3`m_a3`m_b6`m_a6`m_b9`m_a9`y_b1`y_a1`update_time, [DATE,SYMBOL,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,TIMESTAMP])
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["trade_date"] = "date"
+        columnComments["bank"] = "bank"
+        columnComments["on_b"] = "on_b"
+        columnComments["on_a"] = "on_a"
+        columnComments["w_b1"] = "1w_b"
+        columnComments["w_a1"] = "1w_a"
+        columnComments["w_b2"] = "2w_b"
+        columnComments["w_a2"] = "2w_a"
+        columnComments["m_b1"] = "1m_b"
+        columnComments["m_a1"] = "1m_a"
+        columnComments["m_b3"] = "3m_b"
+        columnComments["m_a3"] = "3m_a"
+        columnComments["m_b6"] = "6m_b"
+        columnComments["m_a6"] = "6m_a"
+        columnComments["m_b9"] = "9m_b"
+        columnComments["m_a9"] = "9m_a"
+        columnComments["y_b1"] = "1y_b"
+        columnComments["y_a1"] = "1y_a"
+        columnComments["update_time"] = "update time"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+// ===== FILE: create_shibor_lpr.dos =====
+/*
+*  @FunctionName: createTableShiborLpr
+*  @Brief: Create a DFS table for Tushare API shibor_lpr
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableShiborLpr()
+*/
+def createTableShiborLpr(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "shibor_lpr"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        schemaTB = table(1:0, `trade_date`y1`y5`update_time, [DATE,DOUBLE,DOUBLE,TIMESTAMP])
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["trade_date"] = "date"
+        columnComments["y1"] = "1y"
+        columnComments["y5"] = "5y"
+        columnComments["update_time"] = "update time"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+// ===== FILE: create_libor.dos =====
+/*
+*  @FunctionName: createTableLibor
+*  @Brief: Create a DFS table for Tushare API libor
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableLibor()
+*/
+def createTableLibor(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "libor"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        schemaTB = table(1:0, `trade_date`curr_type`on`w1`m1`m2`m3`m6`m12`update_time, [DATE,SYMBOL,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,TIMESTAMP])
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["trade_date"] = "date"
+        columnComments["curr_type"] = "curr_type"
+        columnComments["on"] = "on"
+        columnComments["w1"] = "1w"
+        columnComments["m1"] = "1m"
+        columnComments["m2"] = "2m"
+        columnComments["m3"] = "3m"
+        columnComments["m6"] = "6m"
+        columnComments["m12"] = "12m"
+        columnComments["update_time"] = "update time"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+// ===== FILE: create_hibor.dos =====
+/*
+*  @FunctionName: createTableHibor
+*  @Brief: Create a DFS table for Tushare API hibor
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableHibor()
+*/
+def createTableHibor(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "hibor"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        schemaTB = table(1:0, `trade_date`on`w1`w2`m1`m2`m3`m6`m12`update_time, [DATE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,TIMESTAMP])
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["trade_date"] = "date"
+        columnComments["on"] = "on"
+        columnComments["w1"] = "1w"
+        columnComments["w2"] = "2w"
+        columnComments["m1"] = "1m"
+        columnComments["m2"] = "2m"
+        columnComments["m3"] = "3m"
+        columnComments["m6"] = "6m"
+        columnComments["m12"] = "12m"
+        columnComments["update_time"] = "update time"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+// ===== FILE: create_wz_index.dos =====
+/*
+*  @FunctionName: createTableWzIndex
+*  @Brief: Create a DFS table for Tushare API wz_index
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableWzIndex()
+*/
+def createTableWzIndex(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "wz_index"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        schemaTB = table(1:0, `trade_date`comp_rate`center_rate`micro_rate`cm_rate`sdb_rate`om_rate`aa_rate`m1_rate`m3_rate`m6_rate`m12_rate`long_rate`update_time, [DATE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,TIMESTAMP])
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["trade_date"] = "date"
+        columnComments["comp_rate"] = "comp_rate"
+        columnComments["center_rate"] = "center_rate"
+        columnComments["micro_rate"] = "micro_rate"
+        columnComments["cm_rate"] = "cm_rate"
+        columnComments["sdb_rate"] = "sdb_rate"
+        columnComments["om_rate"] = "om_rate"
+        columnComments["aa_rate"] = "aa_rate"
+        columnComments["m1_rate"] = "m1_rate"
+        columnComments["m3_rate"] = "m3_rate"
+        columnComments["m6_rate"] = "m6_rate"
+        columnComments["m12_rate"] = "m12_rate"
+        columnComments["long_rate"] = "long_rate"
+        columnComments["update_time"] = "update time"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+// ===== FILE: create_gz_index.dos =====
+/*
+*  @FunctionName: createTableGzIndex
+*  @Brief: Create a DFS table for Tushare API gz_index
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableGzIndex()
+*/
+def createTableGzIndex(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "gz_index"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        schemaTB = table(1:0, `trade_date`d10_rate`m1_rate`m3_rate`m6_rate`m12_rate`long_rate`update_time, [DATE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,TIMESTAMP])
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["trade_date"] = "date"
+        columnComments["d10_rate"] = "d10_rate"
+        columnComments["m1_rate"] = "m1_rate"
+        columnComments["m3_rate"] = "m3_rate"
+        columnComments["m6_rate"] = "m6_rate"
+        columnComments["m12_rate"] = "m12_rate"
+        columnComments["long_rate"] = "long_rate"
+        columnComments["update_time"] = "update time"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+// ===== FILE: create_cn_gdp.dos =====
+/*
+*  @FunctionName: createTableCnGdp
+*  @Brief: Create a DFS table for Tushare API cn_gdp
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableCnGdp()
+*/
+def createTableCnGdp(){
+    dbName = "dfs://tushare_basic_db"
+    tbName = "cn_gdp"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        schemaTB = table(1:0, `quarter`gdp`gdp_yoy`pi`pi_yoy`si`si_yoy`ti`ti_yoy`update_time, [STRING,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,TIMESTAMP])
+        db.createTable(
+            table = schemaTB,
+            tableName = tbName
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["quarter"] = "quarter"
+        columnComments["gdp"] = "gdp"
+        columnComments["gdp_yoy"] = "gdp_yoy"
+        columnComments["pi"] = "pi"
+        columnComments["pi_yoy"] = "pi_yoy"
+        columnComments["si"] = "si"
+        columnComments["si_yoy"] = "si_yoy"
+        columnComments["ti"] = "ti"
+        columnComments["ti_yoy"] = "ti_yoy"
+        columnComments["update_time"] = "update time"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+// ===== FILE: create_cn_cpi.dos =====
+/*
+*  @FunctionName: createTableCnCpi
+*  @Brief: Create a DFS table for Tushare API cn_cpi
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableCnCpi()
+*/
+def createTableCnCpi(){
+    dbName = "dfs://tushare_basic_db"
+    tbName = "cn_cpi"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        schemaTB = table(1:0, `trade_month`nt_val`nt_yoy`nt_mom`nt_accu`town_val`town_yoy`town_mom`town_accu`cnt_val`cnt_yoy`cnt_mom`cnt_accu`update_time, [MONTH,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,TIMESTAMP])
+        db.createTable(
+            table = schemaTB,
+            tableName = tbName
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["trade_month"] = "trade_month"
+        columnComments["nt_val"] = "nt_val"
+        columnComments["nt_yoy"] = "nt_yoy"
+        columnComments["nt_mom"] = "nt_mom"
+        columnComments["nt_accu"] = "nt_accu"
+        columnComments["town_val"] = "town_val"
+        columnComments["town_yoy"] = "town_yoy"
+        columnComments["town_mom"] = "town_mom"
+        columnComments["town_accu"] = "town_accu"
+        columnComments["cnt_val"] = "cnt_val"
+        columnComments["cnt_yoy"] = "cnt_yoy"
+        columnComments["cnt_mom"] = "cnt_mom"
+        columnComments["cnt_accu"] = "cnt_accu"
+        columnComments["update_time"] = "update time"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+// ===== FILE: create_cn_ppi.dos =====
+/*
+*  @FunctionName: createTableCnPpi
+*  @Brief: Create a DFS table for Tushare API cn_ppi
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableCnPpi()
+*/
+def createTableCnPpi(){
+    dbName = "dfs://tushare_basic_db"
+    tbName = "cn_ppi"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        schemaTB = table(1:0, `trade_month`ppi_yoy`ppi_mp_yoy`ppi_mp_qm_yoy`ppi_mp_rm_yoy`ppi_mp_p_yoy`ppi_cg_yoy`ppi_cg_f_yoy`ppi_cg_c_yoy`ppi_cg_adu_yoy`ppi_cg_dcg_yoy`ppi_mom`ppi_mp_mom`ppi_mp_qm_mom`ppi_mp_rm_mom`ppi_mp_p_mom`ppi_cg_mom`ppi_cg_f_mom`ppi_cg_c_mom`ppi_cg_adu_mom`ppi_cg_dcg_mom`ppi_accu`ppi_mp_accu`ppi_mp_qm_accu`ppi_mp_rm_accu`ppi_mp_p_accu`ppi_cg_accu`ppi_cg_f_accu`ppi_cg_c_accu`ppi_cg_adu_accu`ppi_cg_dcg_accu`update_time, [MONTH,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,TIMESTAMP])
+        db.createTable(
+            table = schemaTB,
+            tableName = tbName
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["trade_month"] = "trade_month"
+        columnComments["ppi_yoy"] = "ppi_yoy"
+        columnComments["ppi_mp_yoy"] = "ppi_mp_yoy"
+        columnComments["ppi_mp_qm_yoy"] = "ppi_mp_qm_yoy"
+        columnComments["ppi_mp_rm_yoy"] = "ppi_mp_rm_yoy"
+        columnComments["ppi_mp_p_yoy"] = "ppi_mp_p_yoy"
+        columnComments["ppi_cg_yoy"] = "ppi_cg_yoy"
+        columnComments["ppi_cg_f_yoy"] = "ppi_cg_f_yoy"
+        columnComments["ppi_cg_c_yoy"] = "ppi_cg_c_yoy"
+        columnComments["ppi_cg_adu_yoy"] = "ppi_cg_adu_yoy"
+        columnComments["ppi_cg_dcg_yoy"] = "ppi_cg_dcg_yoy"
+        columnComments["ppi_mom"] = "ppi_mom"
+        columnComments["ppi_mp_mom"] = "ppi_mp_mom"
+        columnComments["ppi_mp_qm_mom"] = "ppi_mp_qm_mom"
+        columnComments["ppi_mp_rm_mom"] = "ppi_mp_rm_mom"
+        columnComments["ppi_mp_p_mom"] = "ppi_mp_p_mom"
+        columnComments["ppi_cg_mom"] = "ppi_cg_mom"
+        columnComments["ppi_cg_f_mom"] = "ppi_cg_f_mom"
+        columnComments["ppi_cg_c_mom"] = "ppi_cg_c_mom"
+        columnComments["ppi_cg_adu_mom"] = "ppi_cg_adu_mom"
+        columnComments["ppi_cg_dcg_mom"] = "ppi_cg_dcg_mom"
+        columnComments["ppi_accu"] = "ppi_accu"
+        columnComments["ppi_mp_accu"] = "ppi_mp_accu"
+        columnComments["ppi_mp_qm_accu"] = "ppi_mp_qm_accu"
+        columnComments["ppi_mp_rm_accu"] = "ppi_mp_rm_accu"
+        columnComments["ppi_mp_p_accu"] = "ppi_mp_p_accu"
+        columnComments["ppi_cg_accu"] = "ppi_cg_accu"
+        columnComments["ppi_cg_f_accu"] = "ppi_cg_f_accu"
+        columnComments["ppi_cg_c_accu"] = "ppi_cg_c_accu"
+        columnComments["ppi_cg_adu_accu"] = "ppi_cg_adu_accu"
+        columnComments["ppi_cg_dcg_accu"] = "ppi_cg_dcg_accu"
+        columnComments["update_time"] = "update time"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+// ===== FILE: create_cn_m.dos =====
+/*
+*  @FunctionName: createTableCnM
+*  @Brief: Create a DFS table for Tushare API cn_m
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableCnM()
+*/
+def createTableCnM(){
+    dbName = "dfs://tushare_basic_db"
+    tbName = "cn_m"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        schemaTB = table(1:0, `trade_month`m0`m0_yoy`m0_mom`m1`m1_yoy`m1_mom`m2`m2_yoy`m2_mom`update_time, [MONTH,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,TIMESTAMP])
+        db.createTable(
+            table = schemaTB,
+            tableName = tbName
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["trade_month"] = "trade_month"
+        columnComments["m0"] = "m0"
+        columnComments["m0_yoy"] = "m0_yoy"
+        columnComments["m0_mom"] = "m0_mom"
+        columnComments["m1"] = "m1"
+        columnComments["m1_yoy"] = "m1_yoy"
+        columnComments["m1_mom"] = "m1_mom"
+        columnComments["m2"] = "m2"
+        columnComments["m2_yoy"] = "m2_yoy"
+        columnComments["m2_mom"] = "m2_mom"
+        columnComments["update_time"] = "update time"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+// ===== FILE: create_sf_trade_month.dos =====
+/*
+*  @FunctionName: createTableSfTradeMonth
+*  @Brief: Create a DFS table for Tushare API sf_trade_month
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableSfTradeMonth()
+*/
+def createTableSfMonth(){
+    dbName = "dfs://tushare_basic_db"
+    tbName = "sf_month"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        schemaTB = table(1:0, `trade_month`inc_month`inc_cumval`stk_endval`update_time, [MONTH,DOUBLE,DOUBLE,DOUBLE,TIMESTAMP])
+        db.createTable(
+            table = schemaTB,
+            tableName = tbName
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["trade_month"] = "月度"
+        columnComments["inc_month"] = "社融增量当月值（亿元）"
+        columnComments["inc_cumval"] = "社融增量累计值（亿元）"
+        columnComments["stk_endval"] = "社融存量期末值（万亿元）"
+        columnComments["update_time"] = "update time"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+// ===== FILE: create_cn_pmi.dos =====
+/*
+*  @FunctionName: createTableCnPmi
+*  @Brief: Create a DFS table for Tushare API cn_pmi
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableCnPmi()
+*/
+def createTableCnPmi(){
+    dbName = "dfs://tushare_basic_db"
+    tbName = "cn_pmi"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        schemaTB = table(1:0, `trade_month`pmi010000`pmi010100`pmi010200`pmi010300`pmi010400`pmi010401`pmi010402`pmi010403`pmi010500`pmi010501`pmi010502`pmi010503`pmi010600`pmi010601`pmi010602`pmi010603`pmi010700`pmi010701`pmi010702`pmi010703`pmi010800`pmi010801`pmi010802`pmi010803`pmi010900`pmi011000`pmi011100`pmi011200`pmi011300`pmi011400`pmi011500`pmi011600`pmi011700`pmi011800`pmi011900`pmi012000`pmi020100`pmi020101`pmi020102`pmi020200`pmi020201`pmi020202`pmi020300`pmi020301`pmi020302`pmi020400`pmi020401`pmi020402`pmi020500`pmi020501`pmi020502`pmi020600`pmi020601`pmi020602`pmi020700`pmi020800`pmi020900`pmi021000`pmi030000`update_time, [MONTH,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,TIMESTAMP])
+        db.createTable(
+            table = schemaTB,
+            tableName = tbName
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["trade_month"] = "trade_month"
+        columnComments["pmi010000"] = "pmi010000"
+        columnComments["pmi010100"] = "pmi010100"
+        columnComments["pmi010200"] = "pmi010200"
+        columnComments["pmi010300"] = "pmi010300"
+        columnComments["pmi010400"] = "pmi010400"
+        columnComments["pmi010401"] = "pmi010401"
+        columnComments["pmi010402"] = "pmi010402"
+        columnComments["pmi010403"] = "pmi010403"
+        columnComments["pmi010500"] = "pmi010500"
+        columnComments["pmi010501"] = "pmi010501"
+        columnComments["pmi010502"] = "pmi010502"
+        columnComments["pmi010503"] = "pmi010503"
+        columnComments["pmi010600"] = "pmi010600"
+        columnComments["pmi010601"] = "pmi010601"
+        columnComments["pmi010602"] = "pmi010602"
+        columnComments["pmi010603"] = "pmi010603"
+        columnComments["pmi010700"] = "pmi010700"
+        columnComments["pmi010701"] = "pmi010701"
+        columnComments["pmi010702"] = "pmi010702"
+        columnComments["pmi010703"] = "pmi010703"
+        columnComments["pmi010800"] = "pmi010800"
+        columnComments["pmi010801"] = "pmi010801"
+        columnComments["pmi010802"] = "pmi010802"
+        columnComments["pmi010803"] = "pmi010803"
+        columnComments["pmi010900"] = "pmi010900"
+        columnComments["pmi011000"] = "pmi011000"
+        columnComments["pmi011100"] = "pmi011100"
+        columnComments["pmi011200"] = "pmi011200"
+        columnComments["pmi011300"] = "pmi011300"
+        columnComments["pmi011400"] = "pmi011400"
+        columnComments["pmi011500"] = "pmi011500"
+        columnComments["pmi011600"] = "pmi011600"
+        columnComments["pmi011700"] = "pmi011700"
+        columnComments["pmi011800"] = "pmi011800"
+        columnComments["pmi011900"] = "pmi011900"
+        columnComments["pmi012000"] = "pmi012000"
+        columnComments["pmi020100"] = "pmi020100"
+        columnComments["pmi020101"] = "pmi020101"
+        columnComments["pmi020102"] = "pmi020102"
+        columnComments["pmi020200"] = "pmi020200"
+        columnComments["pmi020201"] = "pmi020201"
+        columnComments["pmi020202"] = "pmi020202"
+        columnComments["pmi020300"] = "pmi020300"
+        columnComments["pmi020301"] = "pmi020301"
+        columnComments["pmi020302"] = "pmi020302"
+        columnComments["pmi020400"] = "pmi020400"
+        columnComments["pmi020401"] = "pmi020401"
+        columnComments["pmi020402"] = "pmi020402"
+        columnComments["pmi020500"] = "pmi020500"
+        columnComments["pmi020501"] = "pmi020501"
+        columnComments["pmi020502"] = "pmi020502"
+        columnComments["pmi020600"] = "pmi020600"
+        columnComments["pmi020601"] = "pmi020601"
+        columnComments["pmi020602"] = "pmi020602"
+        columnComments["pmi020700"] = "pmi020700"
+        columnComments["pmi020800"] = "pmi020800"
+        columnComments["pmi020900"] = "pmi020900"
+        columnComments["pmi021000"] = "pmi021000"
+        columnComments["pmi030000"] = "pmi030000"
+        columnComments["update_time"] = "update time"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+// ===== FILE: create_us_tycr.dos =====
+/*
+*  @FunctionName: createTableUsTycr
+*  @Brief: Create a DFS table for Tushare API us_tycr
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableUsTycr()
+*/
+def createTableUsTycr(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "us_tycr"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        schemaTB = table(1:0, `trade_date`m1`m2`m3`m4`m6`y1`y2`y3`y5`y7`y10`y20`y30`update_time, [DATE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,TIMESTAMP])
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["trade_date"] = "date"
+        columnComments["m1"] = "m1"
+        columnComments["m2"] = "m2"
+        columnComments["m3"] = "m3"
+        columnComments["m4"] = "m4"
+        columnComments["m6"] = "m6"
+        columnComments["y1"] = "y1"
+        columnComments["y2"] = "y2"
+        columnComments["y3"] = "y3"
+        columnComments["y5"] = "y5"
+        columnComments["y7"] = "y7"
+        columnComments["y10"] = "y10"
+        columnComments["y20"] = "y20"
+        columnComments["y30"] = "y30"
+        columnComments["update_time"] = "update time"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+// ===== FILE: create_us_trycr.dos =====
+/*
+*  @FunctionName: createTableUsTrycr
+*  @Brief: Create a DFS table for Tushare API us_trycr
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableUsTrycr()
+*/
+def createTableUsTrycr(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "us_trycr"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        schemaTB = table(1:0, `trade_date`y5`y7`y10`y20`y30`update_time, [DATE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,TIMESTAMP])
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["trade_date"] = "date"
+        columnComments["y5"] = "y5"
+        columnComments["y7"] = "y7"
+        columnComments["y10"] = "y10"
+        columnComments["y20"] = "y20"
+        columnComments["y30"] = "y30"
+        columnComments["update_time"] = "update time"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+// ===== FILE: create_us_tbr.dos =====
+/*
+*  @FunctionName: createTableUsTbr
+*  @Brief: Create a DFS table for Tushare API us_tbr
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableUsTbr()
+*/
+def createTableUsTbr(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "us_tbr"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        schemaTB = table(1:0, `trade_date`w4_bd`w4_ce`w8_bd`w8_ce`w13_bd`w13_ce`w17_bd`w17_ce`w26_bd`w26_ce`w52_bd`w52_ce`update_time, [DATE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,TIMESTAMP])
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["trade_date"] = "date"
+        columnComments["w4_bd"] = "w4_bd"
+        columnComments["w4_ce"] = "w4_ce"
+        columnComments["w8_bd"] = "w8_bd"
+        columnComments["w8_ce"] = "w8_ce"
+        columnComments["w13_bd"] = "w13_bd"
+        columnComments["w13_ce"] = "w13_ce"
+        columnComments["w17_bd"] = "w17_bd"
+        columnComments["w17_ce"] = "w17_ce"
+        columnComments["w26_bd"] = "w26_bd"
+        columnComments["w26_ce"] = "w26_ce"
+        columnComments["w52_bd"] = "w52_bd"
+        columnComments["w52_ce"] = "w52_ce"
+        columnComments["update_time"] = "update time"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+// ===== FILE: create_us_tltr.dos =====
+/*
+*  @FunctionName: createTableUsTltr
+*  @Brief: Create a DFS table for Tushare API us_tltr
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableUsTltr()
+*/
+def createTableUsTltr(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "us_tltr"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        schemaTB = table(1:0, `trade_date`ltc`cmt`e_factor`update_time, [DATE,DOUBLE,DOUBLE,DOUBLE,TIMESTAMP])
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["trade_date"] = "date"
+        columnComments["ltc"] = "ltc"
+        columnComments["cmt"] = "cmt"
+        columnComments["e_factor"] = "e_factor"
+        columnComments["update_time"] = "update time"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+// ===== FILE: create_us_trltr.dos =====
+/*
+*  @FunctionName: createTableUsTrltr
+*  @Brief: Create a DFS table for Tushare API us_trltr
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableUsTrltr()
+*/
+def createTableUsTrltr(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "us_trltr"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        schemaTB = table(1:0, `trade_date`ltr_avg`update_time, [DATE,DOUBLE,TIMESTAMP])
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["trade_date"] = "date"
+        columnComments["ltr_avg"] = "ltr_avg"
+        columnComments["update_time"] = "update time"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}

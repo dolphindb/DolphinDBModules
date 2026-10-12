@@ -1,0 +1,46 @@
+login(`admin, `123456)
+
+@testing:case = "test_topic_annotation_annotate_a_function_in_module"
+def getSyntaxFromDefs(funcName)
+{
+    return (exec syntax from defs() where name = funcName)[0]
+}
+
+try
+{
+    use testAnnotation
+}
+catch (ex)
+{}
+res = signature(testAnnotation::func1)
+assert 1, res[`name] == "testAnnotation::func1"
+assert 2, res[`description] == "A simple test function"
+assert 3, res[`parameters][`x] == "INT"
+assert 4, res[`parameters][`y] == "LONG"
+assert 5, res[`returnAnnotation] == "DOUBLE"
+assert 6, res[`maxParamCount] == 2
+assert 7, res[`minParamCount] == 2
+assert 8, res[`syntax] == getSyntaxFromDefs("testAnnotation::func1")
+assert 9, res[`isView] == false
+assert 10, res[`isCommand] == false
+assert 11, res[`isUserDefined] == true
+
+@testing:case = "test_topic_annotation_annotate_a_function_in_encrypted_module"
+try
+{
+    use testAnnotationEncrypted
+}
+catch (ex)
+{}
+res = signature(testAnnotationEncrypted::func1)
+assert 1, res[`name] == "testAnnotationEncrypted::func1"
+assert 2, res[`description] == "A simple test function"
+assert 3, res[`parameters][`x] == "INT"
+assert 4, res[`parameters][`y] == "LONG"
+assert 5, res[`returnAnnotation] == "DOUBLE"
+assert 6, res[`maxParamCount] == 2
+assert 7, res[`minParamCount] == 2
+assert 8, res[`syntax] == getSyntaxFromDefs("testAnnotationEncrypted::func1")
+assert 9, res[`isView] == false
+assert 10, res[`isCommand] == false
+assert 11, res[`isUserDefined] == true

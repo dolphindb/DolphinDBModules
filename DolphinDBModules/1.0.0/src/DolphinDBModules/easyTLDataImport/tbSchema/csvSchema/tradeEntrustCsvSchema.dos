@@ -1,0 +1,19 @@
+module DolphinDBModules::easyTLDataImport::tbSchema::csvSchema::tradeEntrustCsvSchema
+
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "DolphinDBModules"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+/*
+ * @FunctionName: tradeEntrustCsvSchemaSH
+ * @Brief: Defines the schema for the trade and entrust CSV data for the Shanghai market.
+ * @Return: A table schema defining the structure of the trade and entrust CSV data.
+ */
+def tradeEntrustCsvSchemaSH(){
+	name = `BizIndex`Channel`SecurityID`TickTime`Type`BuyOrderNO`SellOrderNO`Price`Qty`TradeMoney`TickBSFlag`LocalTime`SeqNo
+	typeString = `LONG`INT`SYMBOL`TIME`SYMBOL`LONG`LONG`DOUBLE`LONG`DOUBLE`SYMBOL`TIME`LONG
+	return table(name, typeString)
+}

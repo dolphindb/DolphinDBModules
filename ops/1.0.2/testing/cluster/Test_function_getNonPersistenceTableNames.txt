@@ -1,0 +1,58 @@
+
+use ops
+login("admin", "123456")
+
+@testing:case="prepare_data_1"
+existsTableCheck = getStreamTables().name
+clearSTable = def (stName){
+    try{
+    	if (existsStreamTable(stName)){
+        	dropStreamTable(stName)
+    	}
+    }catch(ex){}
+}
+each(clearSTable, existsTableCheck)
+try{
+	unsubscribeTable(,"st5","sub5")
+	dropStreamTable("st5")
+	}
+catch(ex){print(ex)}
+
+go
+colName=["time","x"]
+colType=["timestamp","int"]
+t1 = streamTable(100:0, colName, colType);
+enableTableShareAndPersistence(table=t1, tableName=`st1, cacheSize=1200000)
+go
+t2= streamTable(1:0, `time`sym`price, [TIMESTAMP, SYMBOL, DOUBLE])
+share t2 as st2
+enableTablePersistence(table=st2, cacheSize=1200000)
+go;
+sleep(1000)
+
+@testing:case="test_function_getNonPersistenceTableNames_Shared_And_Persistence"
+re =  ops::getNonPersistenceTableNames()
+assert 1, re == []
+
+clearTablePersistence(st1)
+re = ops::getNonPersistenceTableNames()
+assert 2, re == `st1
+
+@testing:case="prepare_data_2"
+t3= streamTable(1:0, `time`sym`price, [TIMESTAMP, SYMBOL, DOUBLE])
+share t3 as st3
+go;
+sleep(1000)
+
+@testing:case="test_function_getNonPersistenceTableNames_Not_Persistence"
+re =  ops::getNonPersistenceTableNames()
+assert 3, re == `st1`st3
+
+@testing:case="prepare_data_3"
+t4= streamTable(1:0, `time`sym`price, [TIMESTAMP, SYMBOL, DOUBLE])
+go;
+sleep(1000)
+
+@testing:case="test_function_getNonPersistenceTableNames_Not_Shared"
+re =  ops::getNonPersistenceTableNames()
+assert 4, re == `st1`st3

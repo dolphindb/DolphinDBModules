@@ -1,0 +1,233 @@
+module EasyTushare::TsInit
+
+/* 
+*  @Brief: EasyTushare模块依赖的基础环境和基础工具函数
+*  @Author: DolphinDB
+*  @Last modification time: 2026.03.31
+*  @DolphinDB server version: 3.00.5 2026.02.06 LINUX x86_64
+*/
+
+/*
+*  @FunctionName: module_info
+*  @Brief: 模块信息,一个相同模块dir下的每个dos都需要有module_info函数,且是相同的
+*  @Param: None
+*  @Return: dict
+*  @SampleUsage: module_info()
+*/
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "EasyTushare"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+
+def snakeToUpperCamel(name){
+    result = ""
+    for (part in name.split("_")){
+        result += upper(part.substr(0, 1)) + part.substr(1)
+    }
+    return result
+}
+
+def upperCamelToSnake(name){
+    if (name.isVoid() or name == ""){
+        return name
+    }
+
+    result = lower(name.substr(0, 1))
+    digits = string(0..9)
+    for (i in 1..(name.strlen() - 1)){
+        ch = name.substr(i, 1)
+        previous = name.substr(i - 1, 1)
+        isUppercase = ch == upper(ch) and ch != lower(ch)
+        isNumberBoundary = ch in digits and !(previous in digits) and !(result like "%top")
+        if (isUppercase or isNumberBoundary){
+            result += "_" + lower(ch)
+        } else {
+            result += ch
+        }
+    }
+    return result
+}
+
+/*
+*  @FunctionName: createDb
+*  @Brief: 创建所需的数据库
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createDb()
+*  @Data: 创建dfs://tushare_basic_db、dfs://tushare_daily_db、dfs://tushare_minute_db数据库
+*/
+def createDb(){
+    if (!existsDatabase("dfs://tushare_basic_db")){
+        database("dfs://tushare_basic_db", VALUE, 2025.01.01..2025.02.01)
+        print("数据库dfs://tushare_basic_db创建成功.")
+    } else{
+        print("数据库dfs://tushare_basic_db已存在.")
+    }
+    if (!existsDatabase("dfs://tushare_daily_db")){
+        database("dfs://tushare_daily_db", RANGE, date(datetimeAdd(1990.01M,0..100*12,'M')))
+        print("数据库dfs://tushare_daily_db创建成功.")
+    } else{
+        print("数据库dfs://tushare_daily_db已存在.")
+    }
+    if (!existsDatabase("dfs://tushare_minute_db")){
+        database("dfs://tushare_minute_db", VALUE, 2025.01.01..2025.02.01)
+        print("数据库dfs://tushare_minute_db创建成功.")
+    } else{
+        print("数据库dfs://tushare_minute_db已存在.")
+    }
+}
+
+/*
+*  @FunctionName: tsPluginInit
+*  @Brief: 初始化EasyTushare模块依赖的单个插件
+*  @Param: plugin_name - 插件名称
+*  @Return: None
+*  @SampleUsage: tsPluginInit("httpClient")
+*/
+def tsPluginInit(plugin_name){
+    /*@test
+    plugin_name = "httpClient"
+    */  
+    load_plugins = exec plugin from getLoadedPlugins()
+    if (plugin_name in load_plugins) {
+        print(plugin_name + "插件已加载.")
+    } else{
+        try{
+            loadPlugin(plugin_name)
+            print(plugin_name + "插件成功加载.")
+        } catch(ex){
+            if(ex[1] like "%The plugin directory%"){
+                try{
+                    installPlugin(plugin_name)
+                    print(plugin_name + "插件成功安装.")
+                } catch(ex){
+                    print(plugin_name + "插件安装失败, 请到官网下载安装包后离线安装.")
+                    print("官网地址: https://marketplace.dolphindb.cn/")
+                }
+                try{
+                    loadPlugin(plugin_name)
+                    print(plugin_name + "插件成功加载.")
+                } catch(ex){
+                    print(ex[1])
+                    print(plugin_name + "插件加载失败,请根据报错确认失败原因.")
+                }
+            }else{
+                print(ex[1])
+                print(plugin_name + "插件加载失败,请根据报错确认失败原因.")
+            }
+        }
+    }
+}
+
+/*
+*  @FunctionName: getApiData
+*  @Brief: 调用Tushare官方数据接口
+*  @Param: token: 用户的认证信息
+*  @Param: apiName: 接口名称
+*  @Param: params: 接口参数，（字典类型）
+*  @Param: columns: 指定返回的列，（数组类型）
+*  @Return: a table
+*  @SampleUsage: GetApiData( "xxx", "stock_basic", {"list_stauts":"L", "limit": 200}, ["ts_code","name","area","industry","list_date"] );
+*/
+def getApiData(token, apiName, params=NULL, columns=[], ddbCols=[]){
+    /*
+    token = "xxxxxx" 
+    apiName = "dividend"
+    params = {"ts_code" : code}
+    columns =["ts_code","end_date","ann_date","div_proc","stk_div","stk_bo_rate","stk_co_rate","cash_div","cash_div_tax","record_date","ex_date","pay_date","div_listdate","imp_ann_date","base_date","base_share"]
+    */
+    header=dict(string,string);
+    header["Authorization"] = token;
+    header["Agent"] = "DolpinDB";
+    data=dict(string,ANY);
+    data["params"] = params;
+    data["fields"] = columns;
+    // 添加重试逻辑，最多重试10次
+    retryCount = 0;
+    maxRetries = 10;
+    resp = NULL;
+    respData = NULL;
+    do{
+        try{
+            resp = httpClient::httpPost("https://api.tushare.pro/dataapi/"+apiName, toStdJson(data), 200000, header);
+            if (resp["responseCode"] == 200) {
+                respData = fromStdJson(resp["text"]);
+                if (respData["code"] == 0) {
+                    break;
+                }
+                print("[INFO] 接口返回异常: " + respData["msg"] + "，正在重试 (" + string(retryCount + 1) + "/" + string(maxRetries) + ")...");
+            } else {
+                print("[INFO] 网络请求失败，正在重试 (" + string(retryCount + 1) + "/" + string(maxRetries) + ")...");
+            }
+        }catch(ex){
+            print("[INFO] 请求异常: " + ex + "，正在重试 (" + string(retryCount + 1) + "/" + string(maxRetries) + ")...");
+        }
+        retryCount += 1;
+        sleep(1000); // 等待1秒后重试
+    } while(retryCount < maxRetries)
+    
+    if (resp.isVoid() or resp["responseCode"] != 200) {
+        throw "Tusahre接口,网络异常, 已重试" + string(maxRetries) + "次, " + (resp.isVoid() ? "无响应" : toStdJson(resp));
+    }
+    
+    if (respData.isVoid() or respData["code"] != 0) {
+        throw "Tusahre接口返回异常, " + apiName + ", " + (respData.isVoid() ? "无响应数据" : respData["msg"]);
+    }
+    
+    cols = respData["data"]["fields"];
+    rows = respData["data"]["items"];
+    if(rows.size()!=0){
+        trans_rows = transpose(rows);
+        res_rows = array(ANY, 0)
+        res_table = table(1:0,[`test],[DOUBLE])
+        for(i in (0..(trans_rows.size()-1))){ 
+            //  i = 1
+            row = trans_rows[i]
+            testCol = take(1, row.size())
+            test_table = table(testCol as `test)
+            if(i == 0){
+                 res_table.append!(test_table)
+            }
+            // row = trans_rows[7]
+            b = 1;
+
+            if(row.typestr() == 'ANY VECTOR'){
+                for(a in row){
+                    if(a != null){
+                        b = a;
+                        break;
+                    }
+                }
+                if (b.typestr()=='DATE') {b=""}
+                tans_vector=array(b.typestr(), 0) 
+                for(a in row){
+                    if(a != null){
+                        if (a.typestr()=='DATE'){
+                            a = temporalFormat(a,"yyyyMMdd")
+                        }
+                        tans_vector.append!(a);
+                    }else{
+                        tans_vector.append!(funcByName(lower(b.typestr()))(null));
+                    }
+                }
+                res_table["col"+ string(i+1)] = tans_vector;
+            }else{
+                res_table["col"+ string(i+1)] = row;
+            }
+        }
+        res_table.dropColumns!(`test)
+        if(ddbCols.size() != 0){
+            cols = ddbCols;
+        }
+        tt = res_table.rename!(cols);
+
+        return res_table
+    }else{
+        return null
+    }
+}
+
+

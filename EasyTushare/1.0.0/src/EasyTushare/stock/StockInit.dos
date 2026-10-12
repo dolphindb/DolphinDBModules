@@ -1,0 +1,208 @@
+module EasyTushare::stock::StockInit
+use EasyTushare::TsInit
+
+/* 
+*  @Brief: 股票历史数据导入函数模块
+*  @Author: DolphinDB
+*  @Last modification time: 2026.03.31
+*  @DolphinDB server version: 3.00.5 2026.02.06 LINUX x86_64
+*/
+
+use EasyTushare::stock::StockCreateTable
+
+/*
+*  @FunctionName: module_info
+*  @Brief: 模块信息,一个相同模块dir下的每个dos都需要有module_info函数,且是相同的
+*  @Param: None
+*  @Return: dict
+*  @SampleUsage: module_info()
+*/
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "EasyTushare"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+
+/*
+*  @FunctionName: stockInit
+*  @Brief: 初始化数据库表
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: stockInit()
+*/
+def stockInitTables(table_names = []){
+    if (size(table_names) == 0){
+       ts_create_tables = exec name from defs() where name like "EasyTushare::stock::StockCreateTable%"
+        for(table in ts_create_tables){
+            // table = 'EasyTushare::stock::StockCreateTable::createTopList'
+            funcByName(table)()
+        }
+    } else {
+        for (table_name in table_names){ 
+            funcByName("EasyTushare::stock::StockCreateTable::create" + snakeToUpperCamel(table_name))()
+        }
+    }
+}
+
+// 导入模块
+use EasyTushare::stock::StockLoadData
+/*
+*  @FunctionName: stockGetAllTableNames
+*  @Brief: 获取所有股票数据表名
+*  @Param: None
+*  @Return: list
+*  @SampleUsage: stockGetAllTableNames()
+*/
+def stockGetAllTableNames(){
+    ts_create_tables = exec name from defs() where name like "EasyTushare::stock::StockLoadData::append%"
+    return each(upperCamelToSnake, ts_create_tables.split("::")[3].substr(6))
+}
+
+/*
+*  @FunctionName: appendStockMink
+*  @Brief: 股票分钟K数据导入函数
+*  @Param: token, start_date, end_date
+*  @Return: None
+*  @SampleUsage: appendStockMink(token,start_date,end_date)
+*/
+def appendStockMink(token,start_date,end_date,table_names = []){
+    if (size(table_names) == 0){
+        // 1min
+        appendStock1minK(token, start_date, end_date)
+        // 5min
+        appendStock5minK(token, start_date, end_date)
+        // 15min
+        appendStock15minK(token, start_date, end_date)
+        // 30min
+        appendStock30minK(token, start_date, end_date)
+        // 60min
+        appendStock60minK(token, start_date, end_date)
+    } else {
+        for (table_name in table_names){ // table_name = "stock_1min_k"
+            if (table_name == 'stock_1min_k'){
+                appendStock1minK(token, start_date, end_date)
+            } else if (table_name == 'stock_5min_k'){
+                appendStock5minK(token, start_date, end_date)
+            } else if (table_name == 'stock_15min_k'){
+                appendStock15minK(token, start_date, end_date)
+            } else if (table_name == 'stock_30min_k'){
+                appendStock30minK(token, start_date, end_date)
+            } else if (table_name == 'stock_60min_k'){
+                appendStock60minK(token, start_date, end_date)
+            }
+        }
+    }
+}
+
+/*
+*  @FunctionName: appendStockFuquan
+*  @Brief: 股票复权行情数据导入函数
+*  @Param: token, start_date, end_date
+*  @Return: None
+*  @SampleUsage: appendStockFuquan(token,start_date,end_date)
+*/
+def appendStockFuquan(token,start_date,end_date,table_names = []){
+    if (size(table_names) == 0){
+        // 日线复权行情
+        appendStockDailyPrev(token, start_date, end_date)
+        // 日线复权后行情
+        appendStockDailyBack(token, start_date, end_date)
+        // 周线复权行情
+        appendStockWeeklyPrev(token, start_date, end_date)
+        // 周线复权后行情
+        appendStockWeeklyBack(token, start_date, end_date)
+        // 月线复权行情
+        appendStockMonthlyPrev(token, start_date, end_date)
+        // 月线复权后行情
+        appendStockMonthlyBack(token, start_date, end_date)
+    } else {
+        for (table_name in table_names){ 
+            if (table_name == 'stock_daily_prev'){
+                print("开始导入日线复权行情")
+                // appendStockDailyPrev(token, start_date, end_date)
+            } else if (table_name == 'stock_daily_back') {
+                print("开始导入日线复权后行情")
+                appendStockDailyBack(token, start_date, end_date)
+            } else if (table_name == 'stock_weekly_prev'){
+                print("开始导入周线复权行情")
+                appendStockWeeklyPrev(token, start_date, end_date)
+            } else if (table_name == 'stock_weekly_back') {
+                print("开始导入周线复权后行情")
+                appendStockWeeklyBack(token, start_date, end_date)
+            } else if (table_name == 'stock_monthly_prev'){
+                print("开始导入月线复权行情")
+                appendStockMonthlyPrev(token, start_date, end_date)
+            } else if (table_name == 'stock_monthly_back') {
+                print("开始导入月线复权后行情")
+                appendStockMonthlyBack(token, start_date, end_date)
+            }
+        }
+    }
+}
+
+/*
+*  @FunctionName: stockHistoryDataLoad
+*  @Brief: 股票历史数据导入函数
+*  @Param: token, start_date, end_date
+*  @Return: None
+*  @SampleUsage: stockHistoryDataLoad(token,start_date,end_date)
+*/
+def stockHistoryDataLoad(token,start_date,end_date,table_names=[]) { 
+    // 使用submitJob提交所有数据更新任务，并行执行以提高效率
+    // 数据起始日期（tushare接口可以返回的最早的数据日期）
+    erlist_dates = dict(STRING,DATE)
+    erlist_dates["stock_hsgt"] = 2025.08.12
+    erlist_dates["bak_basic"] = 2016.01.01
+    erlist_dates["cyq_perf"] = 2018.01.01
+    erlist_dates["cyq_chips"] = 2018.01.01
+    erlist_dates["report_rc"] = 2010.01.01
+    erlist_dates["stk_ah_comparison"] = 2015.08.12
+    erlist_dates["dc_daily"] = 2020.01.01
+    erlist_dates["hm_detail"] = 2022.08.01
+    erlist_dates["limit_list_d"] = 2020.01.01
+    erlist_dates["limit_list_ths"] = 2023.11.01
+    erlist_dates["top_list"] = 2005.01.01
+    erlist_dates["stock_1min_k"] = 2009.01.01
+    erlist_dates["stock_5min_k"] = 2009.01.01
+    erlist_dates["stock_15min_k"] = 2009.01.01
+    erlist_dates["stock_30min_k"] = 2009.01.01
+    erlist_dates["stock_60min_k"] = 2009.01.01
+    erlist_dates["moneyflow_dc_daily"] = 2023.09.11
+    erlist_dates["dc_hot"] = 2024.03.20
+    erlist_dates["kpl_list"] = 2018.01.02
+
+    mink_tb_names = []
+    fuquan_tb_names = []
+    // 本次需要导入的所有表名
+    all_table_names = []
+    if (size(table_names) == 0){
+        all_table_names = stockGetAllTableNames()        
+    } else {
+        all_table_names = table_names
+    }
+    for (table_name in all_table_names){ // table_name = "stock_basic"
+            
+        if (table_name in ["stock_1min_k","stock_5min_k","stock_15min_k","stock_30min_k","stock_60min_k"]){
+            mink_tb_names.append!(table_name)
+        } else if (table_name in ["stock_daily_prev","stock_daily_back","stock_weekly_prev","stock_weekly_back","stock_monthly_prev","stock_monthly_back"]){
+            fuquan_tb_names.append!(table_name)
+        } else {
+            get_start_date = erlist_dates[table_name]
+            if (get_start_date==NULL) {
+                get_start_date = start_date
+            }
+            submitJob("append_" + table_name, "append_" + table_name, funcByName("EasyTushare::stock::StockLoadData::append" + snakeToUpperCamel(table_name)), token, max(get_start_date,start_date), end_date)
+        }
+    }
+    // 分钟K数据
+    if (mink_tb_names.size() > 0){
+        mink_start_date = max(2009.01.01,start_date)
+        submitJob("appendStockMink", "appendStockMink", appendStockMink, token, mink_start_date, end_date, mink_tb_names)
+    }
+    // 复权行情数据
+    if (fuquan_tb_names.size() > 0){
+        submitJob("appendStockFuquan", "appendStockFuquan", appendStockFuquan, token, start_date, end_date, fuquan_tb_names)
+    }
+}

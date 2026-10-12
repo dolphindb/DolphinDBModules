@@ -1,0 +1,17 @@
+#include "setup/settings.txt"
+
+use alphalens
+go
+
+testData = loadText(DATA_DIR+"/testData.csv")
+prices = select close from testData pivot by tradeDate as Date, securityId
+factor = select tradeDate as Date, securityId as asset, vwap as factor from testData
+groupData = select tradeDate as Date, securityId as asset, rand(3, count(testData)) as Group from testData
+factor_data = get_clean_factor_and_forward_returns(factor, prices, groupby=groupData)
+
+@testing: case = "test_alphalens_function_plot_quantile_statistics_table"
+res = plot_quantile_statistics_table(factor_data)
+assert 1, count(res)!=0
+assert 2, res.columnNames()==['factor_quantile', 'min', 'max', 'mean', 'std', 'count', 'count_']
+assert 3, all(res.count>0)==true
+assert 4, all(res.count_<100)==true

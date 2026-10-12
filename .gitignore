@@ -1,0 +1,25 @@
+# 压缩包：测试数据和发布产物
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+*.rar
+
+# 测试和辅助目录中的 CSV 数据
+**/test/**/*.csv
+**/testing/**/*.csv
+**/helper/**/*.csv
+
+# Python 缓存和虚拟环境
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# 编辑器和系统文件
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db`

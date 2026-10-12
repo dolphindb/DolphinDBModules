@@ -1,0 +1,207 @@
+#include "setup/settings.txt"
+
+@testing:case = "prepare_data"
+num = split(getHomeDir(), "/").size()
+plugin_dir = concat(split(getHomeDir(), "/")[0:(num-3)], "/") + "/plugins/zip/PluginZip.txt"
+try{loadPlugin(plugin_dir)}catch(ex){print ex}
+go
+logdir = concat(split(getHomeDir(), "/")[0:(num-2)], "/") + "/log"
+
+file_log = files(logdir)
+if(file_log.size() < 30){
+	filenames = zip::unzip(DATA_DIR+"/cluster_log.zip", logdir)
+}
+
+file_access = files(getHomeDir() + "/resource")
+if(file_access.size() < 3){
+	nodes = exec name from rpc(getControllerAlias(), getClusterPerf) where mode in [0, 4]
+	for(eachnode in nodes){
+		// eachnode = nodes[0]
+		logdir_access = rpc(eachnode, getHomeDir) + "/resource"
+		filenames_access = zip::unzip(DATA_DIR+"/cluster_access.zip", logdir_access)
+		print(filenames_access)
+	}
+}
+
+@testing:case = "prepare"
+use LogSearcher
+go
+
+def LoadSaveLog(relog, eachpath){
+	if(eachpath like "%job.log"){
+		// job
+		size_num = split(eachpath, "/").size()
+		filename = split(eachpath, "/")[size_num-1]
+		excontent = select content from relog where logType = "job" and like(logFile, "%/"+filename+"%")
+		eachcontent = loadText(eachpath, delimiter = "\\n", containHeader = false)
+	}else if(eachpath like "%hardware.log"){
+		// hardware
+		size_num = split(eachpath, "/").size()
+		filename = split(eachpath, "/")[size_num-1]
+		datanodeinfile = split(filename, "_")[0]
+		excontent = select content from relog where logType = "hardware" and node = datanodeinfile
+		eachcontent = loadText(eachpath, delimiter = "\\n", containHeader = false)
+	}else if(eachpath like "%aclAudit.log"){
+		// aclAudit
+		size_num = split(eachpath, "/").size()
+		filename = split(eachpath, "/")[size_num-1]
+		excontent = select content from relog where logType = "aclAudit" and like(logFile, "%/"+filename+"%")
+		eachcontent = loadText(eachpath, delimiter = "\\n", containHeader = false)
+	}else if(eachpath like "%query.log"){
+		// query
+		size_num = split(eachpath, "/").size()
+		filename = split(eachpath, "/")[size_num-1]
+		excontent = select content from relog where logType = "query" and like(logFile, "%/"+filename+"%")
+		eachcontent = loadText(eachpath, delimiter = "\\n", containHeader = false)
+	}else if(eachpath like "%audit.log"){
+		// audit
+		size_num = split(eachpath, "/").size()
+		filename = split(eachpath, "/")[size_num-1]
+		excontent = select content from relog where logType = "audit" and like(logFile, "%/"+filename+"%")
+		eachcontent = loadText(eachpath, delimiter = "\\n", containHeader = false)
+	}else if(regexFind(eachpath, "datanode[0-9].log") != -1 or regexFind(eachpath, "computenode[0-9].log") != -1 or regexFind(eachpath, "controller.log") != -1){
+		// running
+		size_num = split(eachpath, "/").size()
+		filename = split(eachpath, "/")[size_num-1]
+		excontent = select content from relog where logType = "running" and like(logFile, "%/"+filename+"%")
+		eachcontent = loadText(eachpath, delimiter = "\\n", containHeader = false)
+	}else if(eachpath like "%access.log"){
+		// access
+		size_num = split(eachpath, "/").size()
+		filename = split(eachpath, "/")[size_num-1]
+		datanodeinfile = split(filename, "_")[1]
+		excontent = select content from relog where logType = "access" and node = datanodeinfile
+		eachcontent = loadText(eachpath, delimiter = "\\n", containHeader = false)
+	}else if(eachpath like "%dmesg.log"){
+		// access
+		excontent = select content from relog where logType = "dmesg"
+		eachcontent = loadText(eachpath, delimiter = "\\n", containHeader = false)
+	}else if(eachpath like "%core%"){
+		// coredump
+		size_num = split(eachpath, "/").size()
+		filename = split(eachpath, "/")[size_num-1]
+		size_num2 = split(filename, ".").size()
+		filename2 = concat(split(filename, ".")[0:(size_num2-2)], ".")
+		excontent = select content from relog where logType = "coredump" and like(logFile, "%"+filename2+"%")
+		fin = file(eachpath, "r")
+		eachcontent = ""
+		eachcontent = readLines(fin)
+		fin.close()
+		eachcontent = table(concat(eachcontent, "\n") as col0)
+	}else{
+		throw "no this type log"
+	}
+	return excontent, eachcontent
+}
+
+@testing:case = "test_function_saveLog_para_default"
+tnow = now()
+tstart = temporalAdd(tnow, -1, "d")
+re = LogSearcher::searchLog({"dolphindbPath":dolphindbPath})
+assert 1, re.size() > 0
+logpath = LogSearcher::saveLog(re)
+hostname = exec host from rpc(getControllerAlias(), getClusterPerf{true})
+allpath = logpath + "/"+ hostname[0]+"/" +files(logpath + "/"+ hostname[0]).filename
+for(eachpath in allpath){
+	excontent, eachcontent = LoadSaveLog(re, eachpath)
+	assert 2, each(eqObj, excontent.values(), eachcontent.values())
+}
+// clear
+try{
+	rmdir(logpath, true)
+}catch(exp){print(exp)}
+
+@testing:case = "test_function_saveLog_re_empty"
+tnow = now()
+para = {"startTime":tnow, "endTime":tnow, "dolphindbPath":dolphindbPath}
+re = LogSearcher::searchLog(para)
+assert 1, re.size() == 0
+logpath = LogSearcher::saveLog(re)
+allfile = files(logpath)
+assert 2, allfile.size() == 0
+// clear
+try{
+	rmdir(logpath, true)
+}catch(exp){print(exp)}
+
+@testing:case = "test_function_saveLog_single_log"
+tnow = now()
+tstart = temporalAdd(tnow, -1, "d")
+para = {"mode":"ilike", "pattern":["%this is a write debug log", "%this is a write info log", "%THIS is a write warning log"], "logType":["running", "job", "hardware", "query", "audit", "aclAudit", "access", "hardware"], "startTime":tstart, "endTime":tnow, "dolphindbPath":dolphindbPath}
+re = LogSearcher::searchLog(para)
+assert 1, re.size() > 0
+logpath = LogSearcher::saveLog(re)
+hostname = exec host from rpc(getControllerAlias(), getClusterPerf{true})
+allpath = logpath + "/"+ hostname[0]+"/" +files(logpath + "/"+ hostname[0]).filename
+for(eachpath in allpath){
+	excontent, eachcontent = LoadSaveLog(re, eachpath)
+	assert 2, each(eqObj, excontent.values(), eachcontent.values())
+}
+// clear
+try{
+	rmdir(logpath, true)
+}catch(exp){print(exp)}
+
+
+@testing:case = "test_function_saveLog_multilog"
+tnow = now()
+tstart = 2025.06.09 00:00:00.000
+tend = temporalAdd(tnow, 1, "d")
+para = dict(STRING, ANY)
+para["pattern"] = ["%ERROR%", "%WARNING%", "%dfs:%", "%DFS%"]
+para["startTime"] = tstart
+para["endTime"] = tend
+para["logType"] = ["running", "job", "query", "audit", "aclAudit", "access", "hardware", "dmesg", "coredump"]
+para["mode"] = "ilike"
+para["cacheSize"] = -1
+para["adminPassword"] = "123456"
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+assert 1, re.size() > 0
+logpath = LogSearcher::saveLog(re)
+hostname = exec host from rpc(getControllerAlias(), getClusterPerf{true})
+allpath = logpath + "/"+ hostname[0]+"/" +files(logpath + "/"+ hostname[0]).filename
+for(eachpath in allpath){
+	excontent, eachcontent = LoadSaveLog(re, eachpath)
+	assert 2, each(eqObj, excontent.values(), eachcontent.values())
+}
+// clear
+try{
+	rmdir(logpath, true)
+}catch(exp){print(exp)}
+
+
+@testing:case = "test_function_saveLog_set_para"
+tnow = now()
+tstart = 2025.06.09 00:00:00.000
+tend = temporalAdd(tnow, 1, "d")
+para = dict(STRING, ANY)
+para["pattern"] = ["%ERROR%", "%WARNING%", "%dfs:%"]
+para["startTime"] = tstart
+para["endTime"] = tend
+para["logType"] = ["running", "job", "query", "audit", "aclAudit", "access", "hardware", "dmesg", "coredump"]
+nodes = exec name from rpc(getControllerAlias(), getClusterPerf{true}) where mode != 1
+para["node"] = nodes
+para["mode"] = "ilike"
+para["cacheSize"] = -1
+para["adminPassword"] = "123456"
+para["saveDir"] = WORK_DIR
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+assert 1, re.size() > 0
+logpath = LogSearcher::saveLog(re, para)
+hostname = exec host from rpc(getControllerAlias(), getClusterPerf{true})
+allpath = logpath + "/"+ hostname[0]+"/" +files(logpath + "/"+ hostname[0]).filename
+for(eachpath in allpath){
+	excontent, eachcontent = LoadSaveLog(re, eachpath)
+	assert 2, each(eqObj, excontent.values(), eachcontent.values())
+}
+// clear
+try{
+	rmdir(logpath, true)
+}catch(exp){print(exp)}
+
+
+
+
+

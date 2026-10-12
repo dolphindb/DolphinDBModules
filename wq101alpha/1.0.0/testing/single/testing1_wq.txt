@@ -1,0 +1,3 @@
+@testing:case="test_module_wq101alpha"
+
+use wq101alpha

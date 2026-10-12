@@ -1,0 +1,2 @@
+@testing:case="test_module_ops"
+use ops

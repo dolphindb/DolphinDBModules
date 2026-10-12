@@ -1,0 +1,136 @@
+module EasyTushare::spot::SpotCreateTable
+/* 
+*  @Brief: 现货数据表创建函数模块
+*  @Author: DolphinDB
+*  @Last modification time: 2026.03.31
+*  @DolphinDB server version: 3.00.5 2026.02.06 LINUX x86_64
+*/
+
+/*
+*  @FunctionName: module_info
+*  @Brief: 模块信息,一个相同模块dir下的每个dos都需要有module_info函数,且是相同的
+*  @Param: None
+*  @Return: dict
+*  @SampleUsage: module_info()
+*/
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "EasyTushare"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+
+// ===== BEGIN: create_spot_basic.dos =====
+def createSgeBasic(){
+    dbName = "dfs://tushare_basic_db"
+    tbName = "sge_basic"
+    if(existsDatabase(dbName)){
+        if(existsTable(dbName, tbName)){
+            print("Table of " + tbName + " already exists!")
+            return
+        }
+        db = database(dbName)
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,                  // 品种代码
+            array(STRING, 0) as ts_name,               // 品种名称
+            array(SYMBOL, 0) as trade_type,            // 交易类型
+            array(DOUBLE, 0) as t_unit,                // 交易单位
+            array(DOUBLE, 0) as p_unit,                // 报价单位
+            array(DOUBLE, 0) as min_change,            // 最小变动价位
+            array(DOUBLE, 0) as price_limit,           // 每日价格最大波动限制
+            array(INT, 0) as min_vol,                  // 最小单笔报价量
+            array(INT, 0) as max_vol,                  // 最大单笔报价量
+            array(SYMBOL, 0) as trade_mode,            // 交易期限
+            array(DOUBLE, 0) as margin_rate,           // 保证金比例
+            array(DOUBLE, 0) as liq_rate,              // 违约金比例
+            array(STRING, 0) as trade_time,            // 交易时间
+            array(DATE, 0) as list_date,               // 上市日期
+            array(TIMESTAMP, 0) as update_time         // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "list_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "品种代码"
+        columnComments["ts_name"] = "品种名称"
+        columnComments["trade_type"] = "交易类型"
+        columnComments["t_unit"] = "交易单位"
+        columnComments["p_unit"] = "报价单位"
+        columnComments["min_change"] = "最小变动价位"
+        columnComments["price_limit"] = "每日价格最大波动限制"
+        columnComments["min_vol"] = "最小单笔报价量"
+        columnComments["max_vol"] = "最大单笔报价量"
+        columnComments["trade_mode"] = "交易期限"
+        columnComments["margin_rate"] = "保证金比例"
+        columnComments["liq_rate"] = "违约金比例"
+        columnComments["trade_time"] = "交易时间"
+        columnComments["list_date"] = "上市日期"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+// ===== END: create_spot_basic.dos =====
+
+// ===== BEGIN: create_spot_daily.dos =====
+def createSgeDaily(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "sge_daily"
+    if(existsDatabase(dbName)){
+        if(existsTable(dbName, tbName)){
+            print("Table of " + tbName + " already exists!")
+            return
+        }
+        db = database(dbName)
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,                  // 现货合约代码
+            array(DATE, 0) as trade_date,              // 交易日期
+            array(DOUBLE, 0) as close,                 // 收盘点位
+            array(DOUBLE, 0) as open,                  // 开盘点位
+            array(DOUBLE, 0) as high,                  // 最高点位
+            array(DOUBLE, 0) as low,                   // 最低点位
+            array(DOUBLE, 0) as price_avg,             // 加权平均价
+            array(DOUBLE, 0) as change,                // 涨跌点位
+            array(DOUBLE, 0) as pct_change,            // 涨跌幅
+            array(DOUBLE, 0) as vol,                   // 成交量
+            array(DOUBLE, 0) as amount,                // 成交额
+            array(DOUBLE, 0) as oi,                    // 市场持仓
+            array(DOUBLE, 0) as settle_vol,            // 交收量
+            array(SYMBOL, 0) as settle_dire,           // 持仓方向
+            array(TIMESTAMP, 0) as update_time         // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "现货合约代码"
+        columnComments["trade_date"] = "交易日期"
+        columnComments["close"] = "收盘点位"
+        columnComments["open"] = "开盘点位"
+        columnComments["high"] = "最高点位"
+        columnComments["low"] = "最低点位"
+        columnComments["price_avg"] = "加权平均价"
+        columnComments["change"] = "涨跌点位"
+        columnComments["pct_change"] = "涨跌幅"
+        columnComments["vol"] = "成交量"
+        columnComments["amount"] = "成交额"
+        columnComments["oi"] = "市场持仓"
+        columnComments["settle_vol"] = "交收量"
+        columnComments["settle_dire"] = "持仓方向"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}

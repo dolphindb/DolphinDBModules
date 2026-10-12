@@ -1,0 +1,570 @@
+module EasyTushare::etf::EtfLoadData
+use EasyTushare::TsInit
+
+/*
+*  @FunctionName: module_info
+*  @Brief: 模块信息,一个相同模块dir下的每个dos都需要有module_info函数,且是相同的
+*  @Param: None
+*  @Return: dict
+*  @SampleUsage: module_info()
+*/
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "EasyTushare"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+
+/*
+*  @FunctionName: appendEtfBasic
+*  @Brief: 追加ETF基础信息数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendEtfBasic("your_token", 2025.01.01, 2025.02.01)
+*/
+//  start_date = 2000.01.01
+//  end_date = 2026.03.24   
+def appendEtfBasic(token, start_date1, end_date1){
+    dbPath = "dfs://tushare_basic_db"
+    tableName = "etf_basic"
+    api = "etf_basic"
+    cols = ["ts_code","csname","extname","cname","index_code","index_name","setup_date","list_date","list_status","exchange","mgr_name","custod_name","mgt_fee","etf_type"]
+    out = loadTable(dbPath, tableName)
+    
+    p = {}
+    res = getApiData(token, api, p, cols)
+
+    if (!res.isVoid() and res.count() !=0){
+        
+        update res set update_time = now()
+
+        replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+        replaceColumn!(res, "csname", string(res.csname))
+        replaceColumn!(res, "extname", string(res.extname))
+        replaceColumn!(res, "cname", string(res.cname))
+        replaceColumn!(res, "index_code", symbol(string(res.index_code)))
+        replaceColumn!(res, "index_name", string(res.index_name))
+        replaceColumn!(res, "setup_date", temporalParse(string(res.setup_date), "yyyyMMdd"))
+        replaceColumn!(res, "list_date", temporalParse(string(res.list_date), "yyyyMMdd"))
+        replaceColumn!(res, "list_status", symbol(string(res.list_status)))
+        replaceColumn!(res, "exchange", symbol(string(res.exchange)))
+        replaceColumn!(res, "mgr_name", string(res.mgr_name))
+        replaceColumn!(res, "custod_name", string(res.custod_name))
+        replaceColumn!(res, "mgt_fee", double(res.mgt_fee))
+        replaceColumn!(res, "etf_type", symbol(string(res.etf_type)))
+        replaceColumn!(res, "update_time", timestamp(res.update_time))
+        
+        // 重命名 ts_code 为 code
+        // renameColumn!(res, "ts_code", "code")
+        delete from out
+        out.append!(res)
+        print("Success append data for Table " + api)
+    } else {
+        print("no data for Table " + api)
+    }     
+}
+/*
+*  @FunctionName: appendEtfIndex
+*  @Brief: 追加ETF基准指数列表数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendEtfIndex("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendEtfIndex(token, start_date1, end_date1){
+    dbPath = "dfs://tushare_basic_db"
+    tableName = "etf_index"
+    api = "etf_index"
+    cols = ["ts_code","indx_name","indx_csname","pub_party_name","pub_date","base_date","bp","adj_circle"]
+    out = loadTable(dbPath, tableName)
+    
+    p = {}
+    res = getApiData(token, api, p, cols)
+
+    if (!res.isVoid() and res.count() !=0){
+        
+        update res set update_time = now()
+
+        replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+        replaceColumn!(res, "indx_name", string(res.indx_name))
+        replaceColumn!(res, "indx_csname", string(res.indx_csname))
+        replaceColumn!(res, "pub_party_name", string(res.pub_party_name))
+        replaceColumn!(res, "pub_date", temporalParse(string(res.pub_date), "yyyyMMdd"))
+        replaceColumn!(res, "base_date", temporalParse(string(res.base_date), "yyyyMMdd"))
+        replaceColumn!(res, "bp", double(res.bp))
+        replaceColumn!(res, "adj_circle", string(res.adj_circle))
+        replaceColumn!(res, "update_time", timestamp(res.update_time))
+        
+        // 重命名 ts_code 为 code
+        // renameColumn!(res, "ts_code", "code")
+        delete from out
+        out.append!(res)
+        print("Success append data for Table " + api)
+    } else {
+        print("no data for Table " + api)
+    }     
+}
+
+/*
+*  @FunctionName: appendEtfShareSize
+*  @Brief: 追加ETF份额规模数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendEtfShareSize("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendEtfShareSize(token, start_date1, end_date1){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "etf_share_size"
+    api = "etf_share_size"
+    cols = ["trade_date","ts_code","etf_name","total_share","total_size","nav","close","exchange"]
+    out = loadTable(dbPath, tableName)
+    dts = getMarketCalendar("SSE", start_date1, end_date1)
+    delete from out where trade_date >= start_date1 and trade_date <= end_date1
+    for(oneDate in dts){
+        dateStr = temporalFormat(oneDate, "yyyyMMdd")
+        p = {"trade_date":dateStr}
+        res = getApiData(token, api, p, cols)
+
+        if (!res.isVoid() and res.count() !=0){
+            
+            update res set update_time = now()
+
+            replaceColumn!(res, "trade_date", temporalParse(string(res.trade_date), "yyyyMMdd"))
+            replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+            replaceColumn!(res, "etf_name", string(res.etf_name))
+            replaceColumn!(res, "total_share", double(res.total_share))
+            replaceColumn!(res, "total_size", double(res.total_size))
+            replaceColumn!(res, "nav", double(res.nav))
+            replaceColumn!(res, "close", double(res.close))
+            replaceColumn!(res, "exchange", symbol(string(res.exchange)))
+            replaceColumn!(res, "update_time", timestamp(res.update_time))
+            
+            // 重命名 ts_code 为 code
+            // renameColumn!(res, "ts_code", "code")
+            
+            out.append!(res)
+            print("Success append data for Table " + api + " for date: " + dateStr)
+        } else {
+            print("no data for Table " + api + " for date: " + dateStr)
+        }     
+    }
+    print("Success append data for Table " + api)
+}
+/*
+*  @FunctionName: appendFundAdj
+*  @Brief: 追加基金复权因子数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendFundAdj("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendFundAdj(token, start_date1, end_date1){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "fund_adj"
+    api = "fund_adj"
+    cols = ["ts_code","trade_date","adj_factor"]
+    out = loadTable(dbPath, tableName)
+    
+    // 示例基金代码，实际使用时可能需要循环处理多个代码
+    p = {"list_status":"L"}
+    api1 = "etf_basic"
+    fundCodes = exec ts_code from getApiData(token, api1, p, cols)
+    delete from out where trade_date >= start_date1 and trade_date <= end_date1
+    for(ts_code in fundCodes){
+        start_str = temporalFormat(start_date1, "yyyyMMdd")
+        end_str = temporalFormat(end_date1, "yyyyMMdd")
+        
+        p = {"ts_code":ts_code, "start_date":start_str, "end_date":end_str}
+        res = getApiData(token, api, p, cols)
+
+        if (!res.isVoid() and res.count() !=0){
+            
+            update res set update_time = now()
+
+            replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+            replaceColumn!(res, "trade_date", temporalParse(string(res.trade_date), "yyyyMMdd"))
+            replaceColumn!(res, "adj_factor", double(res.adj_factor))
+            replaceColumn!(res, "update_time", timestamp(res.update_time))
+            out.append!(res)
+            print("Success append data for Table " + api + " for code: " + ts_code)
+        } else {
+            print("no data for Table " + api + " for code: " + ts_code)
+        }     
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+*  @FunctionName: appendEtfDaily
+*  @Brief: 追加ETF日线行情数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendEtfDaily("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendEtfDaily(token, start_date1, end_date1){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "fund_daily"
+    api = "fund_daily"
+    cols = ["ts_code","trade_date","open","high","low","close","pre_close","change","pct_chg","vol","amount"]
+    out = loadTable(dbPath, tableName)
+    
+    // 示例ETF代码，实际使用时可能需要循环处理多个代码
+    p = {"list_status":"L"}
+    api1 = "etf_basic"
+    etfCodes = exec ts_code from getApiData(token, api1, p, cols)
+    delete from out where trade_date >= start_date1 and trade_date <= end_date1
+    for(ts_code in etfCodes){
+        // ts_code = etfCodes[0]
+        start_str = temporalFormat(start_date1, "yyyyMMdd")
+        end_str = temporalFormat(end_date1, "yyyyMMdd")
+        
+        p = {"ts_code":ts_code, "start_date":start_str, "end_date":end_str}
+        res = getApiData(token, api, p, cols)
+
+        if (!res.isVoid() and res.count() !=0){
+            
+            update res set update_time = now()
+            replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+            replaceColumn!(res, "trade_date", temporalParse(string(res.trade_date), "yyyyMMdd"))
+            replaceColumn!(res, "open", double(res.open))
+            replaceColumn!(res, "high", double(res.high))
+            replaceColumn!(res, "low", double(res.low))
+            replaceColumn!(res, "close", double(res.close))
+            replaceColumn!(res, "pre_close", double(res.pre_close))
+            replaceColumn!(res, "change", double(res.change))
+            replaceColumn!(res, "pct_chg", double(res.pct_chg))
+            replaceColumn!(res, "vol", double(res.vol))
+            replaceColumn!(res, "amount", double(res.amount))
+            replaceColumn!(res, "update_time", timestamp(res.update_time))
+            out.append!(res)
+            print("Success append data for Table " + api + " for code: " + ts_code)
+        } else {
+            print("no data for Table " + api + " for code: " + ts_code)
+        }     
+    }
+}
+
+/*
+*  @FunctionName: appendEtfStk1Mins
+*  @Brief: 追加ETF历史1分钟行情数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendEtfStk1Mins("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendEtfStk1Mins(token, start_date1, end_date1){
+    dbPath = "dfs://tushare_minute_db"
+    tableName = "stk_1_mins"
+    api = "etf_mins"
+    cols = ["ts_code","trade_time","open","close","high","low","vol","amount"]
+    out = loadTable(dbPath, tableName)
+    
+    // 示例ETF代码，实际使用时可能需要循环处理多个代码
+    p = {"list_status":"L"}
+    api1 = "etf_basic"
+    etfCodes = exec ts_code from getApiData(token, api1, p, cols)
+    freq = "1min"
+
+    // 处理时间范围，每个股票一个月读取一次
+    days = getMarketCalendar("XSHG",start_date1, end_date1)
+    delete from out where date(trade_time) >= start_date1 and date(trade_time) <= end_date1
+    for (one_day in days) { // i=0
+        start_day = temporalFormat(one_day, "yyyy-MM-dd")
+        end_day = temporalFormat(one_day, "yyyy-MM-dd")
+        start_time = start_day + " 09:00:00"
+        end_time = end_day + " 19:00:00"
+
+        codes_batchs = etfCodes.cut(29)
+        for (one_batch in codes_batchs) { // code = "000001.SZ,000002.SZ"
+            // one_batch = codes_batchs[0]
+            codebath_str = one_batch.concat(",")
+            p = {"ts_code":codebath_str, "freq":freq, "start_date":start_time, "end_date":end_time}
+            res = getApiData(token, api, p, cols)
+
+            if (!res.isVoid() and res.count() !=0){
+            
+                update res set update_time = now()
+
+                replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+                replaceColumn!(res, "trade_time", timestamp(res.trade_time))
+                replaceColumn!(res, "open", double(res.open))
+                replaceColumn!(res, "close", double(res.close))
+                replaceColumn!(res, "high", double(res.high))
+                replaceColumn!(res, "low", double(res.low))
+                replaceColumn!(res, "vol", int(res.vol))
+                replaceColumn!(res, "amount", double(res.amount))
+                replaceColumn!(res, "update_time", timestamp(res.update_time))
+                
+                // 重命名 ts_code 为 code
+                // renameColumn!(res, "ts_code", "code")
+                
+                out.append!(res)
+                print("Success append data for Table " + api + " for code: " + codebath_str + " for count:" + res.count())
+            } 
+            sleep(200)   
+        }
+    }
+    
+    
+    print("Success append data for Table " + api)
+}
+/*
+*  @FunctionName: appendEtfStk5Mins
+*  @Brief: 追加ETF历史5分钟行情数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendEtfStk5Mins("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendEtfStk5Mins(token, start_date1, end_date1){
+    dbPath = "dfs://tushare_minute_db"
+    tableName = "stk_5_mins"
+    api = "etf_mins"
+    cols = ["ts_code","trade_time","open","close","high","low","vol","amount"]
+    out = loadTable(dbPath, tableName)
+    
+    // 示例ETF代码，实际使用时可能需要循环处理多个代码
+    p = {"list_status":"L"}
+    api1 = "etf_basic"
+    etfCodes = exec ts_code from getApiData(token, api1, p, cols)
+    
+    freq = "5min"
+
+    // 处理时间范围，每个股票一个月读取一次
+    days = getMarketCalendar("XSHG",start_date1, end_date1)
+    delete from out where date(trade_time) >= start_date1 and date(trade_time) <= end_date1
+    for (one_day in days) { // i=0
+        start_day = temporalFormat(one_day, "yyyy-MM-dd")
+        end_day = temporalFormat(one_day, "yyyy-MM-dd")
+        start_time = start_day + " 09:00:00"
+        end_time = end_day + " 19:00:00"
+
+        codes_batchs = etfCodes.cut(50)
+        for (one_batch in codes_batchs) { // code = "000001.SZ,000002.SZ"
+            // one_batch = codes_batchs[0]
+            codebath_str = one_batch.concat(",")
+            p = {"ts_code":codebath_str, "freq":freq, "start_date":start_time, "end_date":end_time}
+            res = getApiData(token, api, p, cols)
+
+            if (!res.isVoid() and res.count() !=0){
+
+                update res set update_time = now()
+
+                replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+                replaceColumn!(res, "trade_time", timestamp(res.trade_time))
+                replaceColumn!(res, "open", double(res.open))
+                replaceColumn!(res, "close", double(res.close))
+                replaceColumn!(res, "high", double(res.high))
+                replaceColumn!(res, "low", double(res.low))
+                replaceColumn!(res, "vol", int(res.vol))
+                replaceColumn!(res, "amount", double(res.amount))
+                replaceColumn!(res, "update_time", timestamp(res.update_time))
+
+                // 重命名 ts_code 为 code
+                // renameColumn!(res, "ts_code", "code")
+
+                out.append!(res)
+                print("Success append data for Table " + api + " for code: " + codebath_str + " for count:" + res.count())
+            }
+             sleep(200)     
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+*  @FunctionName: appendEtfStk15Mins
+*  @Brief: 追加ETF历史15分钟行情数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendEtfStk15Mins("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendEtfStk15Mins(token, start_date1, end_date1){
+    dbPath = "dfs://tushare_minute_db"
+    tableName = "stk_15_mins"
+    api = "etf_mins"
+    cols = ["ts_code","trade_time","open","close","high","low","vol","amount"]
+    out = loadTable(dbPath, tableName)
+    
+    // 示例ETF代码，实际使用时可能需要循环处理多个代码
+    p = {"list_status":"L"}
+    api1 = "etf_basic"
+    etfCodes = exec ts_code from getApiData(token, api1, p, cols)
+    
+    freq = "15min"
+    // 处理时间范围，每个股票一个月读取一次
+    // start_date1 = 2026.07.24
+    // end_date1 = 2026.07.24
+    days = getMarketCalendar("XSHG",start_date1, end_date1)
+    delete from out where date(trade_time) >= start_date1 and date(trade_time) <= end_date1
+    for (one_day in days) { // one_day = 2026.07.24
+        start_day = temporalFormat(one_day, "yyyy-MM-dd")
+        end_day = temporalFormat(one_day, "yyyy-MM-dd")
+        start_time = start_day + " 09:00:00"
+        end_time = end_day + " 19:00:00"
+
+        codes_batchs = etfCodes.cut(100)
+        for (one_batch in codes_batchs) { // code = "000001.SZ,000002.SZ"
+            // one_batch = codes_batchs[0]
+            codebath_str = one_batch.concat(",")
+            p = {"ts_code":codebath_str, "freq":freq, "start_date":start_time, "end_date":end_time}
+            res = getApiData(token, api, p, cols)
+
+            if (!res.isVoid() and res.count() !=0){
+                
+                update res set update_time = now()
+
+                replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+                replaceColumn!(res, "trade_time", timestamp(res.trade_time))
+                replaceColumn!(res, "open", double(res.open))
+                replaceColumn!(res, "close", double(res.close))
+                replaceColumn!(res, "high", double(res.high))
+                replaceColumn!(res, "low", double(res.low))
+                replaceColumn!(res, "vol", int(res.vol))
+                replaceColumn!(res, "amount", double(res.amount))
+                replaceColumn!(res, "update_time", timestamp(res.update_time))
+                
+                out.append!(res)
+                print("Success append data for Table " + api + " for code: " + codebath_str + " for count:" + res.count())
+            }   
+            sleep(200)  
+        }
+    }
+    print("Success append data for Table " + api)
+}
+/*
+*  @FunctionName: append_etf_30_stk_mins
+*  @Brief: 追加ETF历史30分钟行情数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendEtfStk30Mins("your_token", 2025.01.01, 2025.02.01)   
+*/
+def appendEtfStk30Mins(token, start_date1, end_date1){
+    dbPath = "dfs://tushare_minute_db"
+    tableName = "stk_30_mins"
+    api = "etf_mins"
+    cols = ["ts_code","trade_time","open","close","high","low","vol","amount"]
+    out = loadTable(dbPath, tableName)
+    
+    // 示例ETF代码，实际使用时可能需要循环处理多个代码
+    p = {"list_status":"L"}
+    api1 = "etf_basic"
+    etfCodes = exec ts_code from getApiData(token, api1, p, cols)
+    
+    freq = "30min"
+
+    // 处理时间范围，每个股票一个月读取一次
+    days = getMarketCalendar("XSHG",start_date1, end_date1)
+    delete from out where date(trade_time) >= start_date1 and date(trade_time) <= end_date1
+    for (one_day in days) { // i=0
+        start_day = temporalFormat(one_day, "yyyy-MM-dd")
+        end_day = temporalFormat(one_day, "yyyy-MM-dd")
+        start_time = start_day + " 09:00:00"
+        end_time = end_day + " 19:00:00"
+
+        codes_batchs = etfCodes.cut(100)
+        for (one_batch in codes_batchs) { // code = "000001.SZ,000002.SZ"
+            // one_batch = codes_batchs[0]
+            codebath_str = one_batch.concat(",")
+            p = {"ts_code":codebath_str, "freq":freq, "start_date":start_time, "end_date":end_time}
+            res = getApiData(token, api, p, cols)
+
+            if (!res.isVoid() and res.count() !=0){
+
+                update res set update_time = now()
+
+                replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+                replaceColumn!(res, "trade_time", timestamp(res.trade_time))
+                replaceColumn!(res, "open", double(res.open))
+                replaceColumn!(res, "close", double(res.close))
+                replaceColumn!(res, "high", double(res.high))
+                replaceColumn!(res, "low", double(res.low))
+                replaceColumn!(res, "vol", int(res.vol))
+                replaceColumn!(res, "amount", double(res.amount))
+                replaceColumn!(res, "update_time", timestamp(res.update_time))
+
+                // 重命名 ts_code 为 code
+                // renameColumn!(res, "ts_code", "code")
+
+                out.append!(res)
+                print("Success append data for Table " + api + " for code: " + codebath_str + " for count:" + res.count())
+            }    
+        }
+    }
+    print("Success append data for Table " + api)
+}
+/*
+*  @FunctionName: appendEtfStk60Mins
+*  @Brief: 追加ETF历史60分钟行情数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendEtfStk60Mins("your_token", 2025.01.01, 2025.02.01)   
+*/
+def appendEtfStk60Mins(token, start_date1, end_date1){
+    dbPath = "dfs://tushare_minute_db"
+    tableName = "stk_60_mins"
+    api = "etf_mins"
+    cols = ["ts_code","trade_time","open","close","high","low","vol","amount"]
+    out = loadTable(dbPath, tableName)
+    
+    // 示例ETF代码，实际使用时可能需要循环处理多个代码
+    p = {"list_status":"L"}
+    api1 = "etf_basic"
+    etfCodes = exec ts_code from getApiData(token, api1, p, cols)
+    
+    freq = "60min"
+    // 处理时间范围，每个股票一个月读取一次
+    days = getMarketCalendar("XSHG",start_date1, end_date1)
+    delete from out where date(trade_time) >= start_date1 and date(trade_time) <= end_date1
+    for (one_day in days) { // i=0
+        start_day = temporalFormat(one_day, "yyyy-MM-dd")
+        end_day = temporalFormat(one_day, "yyyy-MM-dd")
+        start_time = start_day + " 09:00:00"
+        end_time = end_day + " 19:00:00"
+
+        codes_batchs = etfCodes.cut(100)
+        for (one_batch in codes_batchs) { // code = "000001.SZ,000002.SZ"
+            // one_batch = codes_batchs[0]
+            codebath_str = one_batch.concat(",")
+            p = {"ts_code":codebath_str, "freq":freq, "start_date":start_time, "end_date":end_time}
+            res = getApiData(token, api, p, cols)
+
+            if (!res.isVoid() and res.count() !=0){
+
+                update res set update_time = now()
+
+                replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+                replaceColumn!(res, "trade_time", timestamp(res.trade_time))
+                replaceColumn!(res, "open", double(res.open))
+                replaceColumn!(res, "close", double(res.close))
+                replaceColumn!(res, "high", double(res.high))
+                replaceColumn!(res, "low", double(res.low))
+                replaceColumn!(res, "vol", int(res.vol))
+                replaceColumn!(res, "amount", double(res.amount))
+                replaceColumn!(res, "update_time", timestamp(res.update_time))
+
+                out.append!(res)
+                print("Success append data for Table " + api + " for code: " + codebath_str + " for count:" + res.count())
+            }    
+        }
+    }
+    print("Success append data for Table " + api)
+}
+

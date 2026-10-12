@@ -1,0 +1,42 @@
+#include "setup/settings.txt"
+use MockData
+
+@testing:case="test_MockData_function_futuresSnapshot_syntax"
+re = syntax(futuresSnapshot)
+ex = "futuresSnapshot(tradeDate,instrumentNumber)"
+assert 1, eqObj(re, ex)
+
+@testing:case="test_MockData_function_futuresSnapshot_normal"
+t = futuresSnapshot(tradeDate=2020.06.01, instrumentNumber=10)
+assert 1, form(t)==6
+assert 2, t.rows()==20000
+assert 3, t.cols()==33
+assert 4, eqObj(t.schema().colDefs[0].name, "TradingDay")
+assert 5, eqObj(t.schema().colDefs[0].typeInt, 6)
+
+@testing:case="test_MockData_function_futuresSnapshot_default_instrumentNumber"
+t = futuresSnapshot(tradeDate=2020.06.01)
+assert 1, form(t)==6
+assert 2, t.cols()==33
+
+@testing:case="test_MockData_function_futuresSnapshot_instrumentNumber_1"
+t = futuresSnapshot(tradeDate=2020.06.01, instrumentNumber=1)
+assert 1, t.rows()==2000
+assert 2, t.cols()==33
+
+@testing:case="test_MockData_function_futuresSnapshot_non_trading_day"
+t = futuresSnapshot(tradeDate=2020.06.07, instrumentNumber=10)
+assert 1, t.rows()==0
+assert 2, t.cols()==33
+
+@testing:case="test_MockData_function_futuresSnapshot_invalid_tradeDate_int", exception=1
+futuresSnapshot(tradeDate=1, instrumentNumber=10)
+
+@testing:case="test_MockData_function_futuresSnapshot_invalid_tradeDate_string", exception=1
+futuresSnapshot(tradeDate="2020.06.01", instrumentNumber=10)
+
+@testing:case="test_MockData_function_futuresSnapshot_invalid_instrumentNumber_string", exception=1
+futuresSnapshot(tradeDate=2020.06.01, instrumentNumber="10")
+
+@testing:case="test_MockData_function_futuresSnapshot_invalid_instrumentNumber_double", exception=1
+futuresSnapshot(tradeDate=2020.06.01, instrumentNumber=1.1)

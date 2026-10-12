@@ -1,0 +1,124 @@
+module EasyTushare::spot::SpotLoadData
+/* 
+*  @Brief: 现货数据单个表导入函数模块
+*  @Author: DolphinDB
+*  @Last modification time: 2026.03.31
+*  @DolphinDB server version: 3.00.5 2026.02.06 LINUX x86_64
+*/
+
+use EasyTushare::TsInit
+
+/*
+*  @FunctionName: module_info
+*  @Brief: 模块信息,一个相同模块dir下的每个dos都需要有module_info函数,且是相同的
+*  @Param: None
+*  @Return: dict
+*  @SampleUsage: module_info()
+*/
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "EasyTushare"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+
+def appendSgeBasic(token, start_date, end_date){
+    dbPath = "dfs://tushare_basic_db"
+    tableName = "sge_basic"
+    api = "sge_basic"
+    cols = [
+        "ts_code",
+        "ts_name",
+        "trade_type",
+        "t_unit",
+        "p_unit",
+        "min_change",
+        "price_limit",
+        "min_vol",
+        "max_vol",
+        "trade_mode",
+        "margin_rate",
+        "liq_rate",
+        "trade_time",
+        "list_date"
+    ]
+    // 清空表, 重新导入数据
+    truncate(dbPath, tableName)
+    res = getApiData(token, api, {}, cols)
+    if (!res.isVoid() and res.count()>0) {
+        update res set update_time = now()
+        replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+        replaceColumn!(res, "ts_name", string(res.ts_name))
+        replaceColumn!(res, "trade_type", symbol(string(res.trade_type)))
+        replaceColumn!(res, "t_unit", double(res.t_unit))
+        replaceColumn!(res, "p_unit", double(res.p_unit))
+        replaceColumn!(res, "min_change", double(res.min_change))
+        replaceColumn!(res, "price_limit", double(res.price_limit))
+        replaceColumn!(res, "min_vol", int(res.min_vol))
+        replaceColumn!(res, "max_vol", int(res.max_vol))
+        replaceColumn!(res, "trade_mode", symbol(string(res.trade_mode)))
+        replaceColumn!(res, "margin_rate", double(res.margin_rate))
+        replaceColumn!(res, "liq_rate", double(res.liq_rate))
+        replaceColumn!(res, "trade_time", string(res.trade_time))
+        replaceColumn!(res, "list_date", temporalParse(string(res.list_date), "yyyyMMdd"))
+        replaceColumn!(res, "update_time", timestamp(res.update_time))
+        loadTable(dbPath, tableName).append!(res)
+        print("Append " + tableName + " successfully!")
+    } else {
+        print("Append " + tableName + " failed!")
+    }
+}
+
+
+def appendSgeDaily(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "sge_daily"
+    api = "sge_daily"
+    cols = [
+        "ts_code",
+        "trade_date",
+        "close",
+        "open",
+        "high",
+        "low",
+        "price_avg",
+        "change",
+        "pct_change",
+        "vol",
+        "amount",
+        "oi",
+        "settle_vol",
+        "settle_dire"
+    ]
+    delete from loadTable(dbPath, tableName) where trade_date >= start_date and trade_date <= end_date
+    for (oneDate in start_date..end_date) { // oneDate = 2022.03.11
+        oneDate_str = temporalFormat(oneDate, "yyyyMMdd")
+        p = {"trade_date":oneDate_str}
+        res = getApiData(token, api, p, cols)
+        if (!res.isVoid() and res.count()>0) {
+            update res set update_time = now()
+            replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+            replaceColumn!(res, "trade_date", temporalParse(string(res.trade_date), "yyyyMMdd"))
+            replaceColumn!(res, "close", double(res.close))
+            replaceColumn!(res, "open", double(res.open))
+            replaceColumn!(res, "high", double(res.high))
+            replaceColumn!(res, "low", double(res.low))
+            replaceColumn!(res, "price_avg", double(res.price_avg))
+            replaceColumn!(res, "change", double(res.change))
+            replaceColumn!(res, "pct_change", double(res.pct_change))
+            replaceColumn!(res, "vol", double(res.vol))
+            replaceColumn!(res, "amount", double(res.amount))
+            replaceColumn!(res, "oi", double(res.oi))
+            replaceColumn!(res, "settle_vol", double(res.settle_vol))
+            replaceColumn!(res, "settle_dire", symbol(string(res.settle_dire)))
+            replaceColumn!(res, "update_time", timestamp(res.update_time))
+            loadTable(dbPath, tableName).append!(res)
+            print("Append " + tableName + " successfully for " + oneDate_str + " for count:" + res.count())
+        } else {
+            print(tableName + " no data for " + oneDate_str)
+        }
+        sleep(1000)
+    }
+    print("Append " + tableName + " done!")
+}

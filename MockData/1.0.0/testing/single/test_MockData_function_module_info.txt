@@ -1,0 +1,8 @@
+#include "setup/settings.txt"
+use MockData
+
+@testing:case="test_MockData_function_module_info"
+re = module_info()
+assert 1, re["moduleName"] == "MockData"
+assert 2, re["moduleVersion"] == "1.0.0"
+assert 3, re["isFree"] == true

@@ -1,0 +1,43 @@
+module PayCatalogDos::PayFile::loadTLData
+
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "PayCatalogDos"
+    res["moduleVersion"] = "2.1.0"
+    res["isFree"] = false
+    return res
+}
+
+/*
+ * @FunctionName: printFunc
+ * @Brief: print module name
+ * @Param: no return
+ * @Return: no return
+ */
+def printFunc(){
+	print("loadTLData module")
+}
+
+/*
+ * @FunctionName: getTLJobStatus
+ * @Brief: Retrieves the status of a specific job.
+ * @Param: jobid: The unique identifier of the job whose status is to be retrieved.
+ * @Return: A table containing the status information for the specified job.
+ */
+def getTLJobStatus(jobid){
+	temp = string(jobid)
+	return select * from getRecentJobs() where jobDesc=temp
+}
+
+/*
+ * @FunctionName: getTLJobDetails
+ * @Brief: Retrieves detailed information about a specific job.
+ * @Param: jobid: The unique identifier of the job whose details are to be retrieved.
+ * @Return: A concatenated string containing detailed messages about the specified job
+ */
+def getTLJobDetails(jobid){
+	jobStatus = getTLJobStatus(jobid)
+	jobMessage = each(getJobMessage, jobStatus.jobId)
+	jobMessage = concat(jobMessage, "\n////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////\n")
+	return jobMessage
+}

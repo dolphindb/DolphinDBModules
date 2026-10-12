@@ -1,0 +1,129 @@
+module EasyTushare::index::IndexInit
+use EasyTushare::TsInit
+
+/* 
+*  @Brief: 指数数据历史数据导入函数模块
+*  @Author: DolphinDB
+*  @Last modification time: 2026.03.31
+*  @DolphinDB server version: 3.00.5 2026.02.06 LINUX x86_64
+*/
+
+use EasyTushare::index::IndexCreateTable
+
+/*
+*  @FunctionName: module_info
+*  @Brief: 模块信息,一个相同模块dir下的每个dos都需要有module_info函数,且是相同的
+*  @Param: None
+*  @Return: dict
+*  @SampleUsage: module_info()
+*/
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "EasyTushare"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+
+/*
+*  @FunctionName: indexInitTables
+*  @Brief: 初始化数据库表
+*  @Param: table_names
+*  @Return: None
+*  @SampleUsage: indexInitTables(["index_basic"])
+*/
+def indexInitTables(table_names = []){
+    if (size(table_names) == 0){
+       ts_create_tables = exec name from defs() where name like "EasyTushare::index::IndexCreateTable%"
+        for(table in ts_create_tables){
+            // table = 'EasyTushare::index::IndexCreateTable::createTopList'
+            funcByName(table)()
+        }
+    } else {
+        for (table_name in table_names){ 
+            funcByName("EasyTushare::index::IndexCreateTable::createTable" + snakeToUpperCamel(table_name))()
+        }
+    }
+}
+
+use EasyTushare::index::IndexLoadData
+
+/*
+*  @FunctionName: indexGetAllTableNames
+*  @Brief: 获取所有指数数据表名
+*  @Param: None
+*  @Return: list
+*  @SampleUsage: indexGetAllTableNames()
+ */
+def indexGetAllTableNames(){
+    ts_create_tables = exec name from defs() where name like "EasyTushare::index::IndexLoadData::append%"
+    return each(upperCamelToSnake, ts_create_tables.split("::")[3].substr(6))
+}
+
+/*
+*  @FunctionName: appendIdxMink
+*  @Brief: 指数分钟数据导入函数
+*  @Param: token, start_date, end_date
+*  @Return: None
+*  @SampleUsage: appendIdxMink(token, start_date, end_date)
+ */
+def appendIdxMink(token, start_date, end_date,table_names = []) {
+    if (size(table_names) == 0){
+        // 1min
+        appendIdx1minK(token, start_date, end_date)
+        // 5min
+        appendIdx5minK(token, start_date, end_date)
+        // 15min
+        appendIdx15minK(token, start_date, end_date)
+        // 30min
+        appendIdx30minK(token, start_date, end_date)
+        // 60min
+        appendIdx60minK(token, start_date, end_date)
+    } else {
+        for (table_name in table_names){ 
+            if (table_name == "idx_1min_k") {
+                appendIdx1minK(token, start_date, end_date)
+            } else if (table_name == "idx_5min_k") {
+                appendIdx5minK(token, start_date, end_date)
+            } else if (table_name == "idx_15min_k") {
+                appendIdx15minK(token, start_date, end_date)
+            } else if (table_name == "idx_30min_k") {
+                appendIdx30minK(token, start_date, end_date)
+            } else if (table_name == "idx_60min_k") {
+                appendIdx60minK(token, start_date, end_date)
+            }
+        }
+    } 
+}
+
+/*
+*  @FunctionName: indexHistoryDataLoad
+*  @Brief: 指数数据历史数据导入函数
+*  @Param: token, start_date, end_date
+*  @Return: None
+*  @SampleUsage: indexHistoryDataLoad(token,start_date,end_date)
+*/
+def indexHistoryDataLoad(token,start_date,end_date, table_names = []) {
+    mink_tb_names = []
+    // 本次需要导入的所有表名
+    all_table_names = []
+    if (size(table_names) == 0){
+        all_table_names = indexGetAllTableNames()        
+    } else {
+        all_table_names = table_names
+    }
+    for (table_name in all_table_names){ // table_name = "index_basic"
+            
+        if (table_name in ["idx_1min_k","idx_5min_k","idx_15min_k","idx_30min_k","idx_60min_k"]){
+            mink_tb_names.append!(table_name)
+        }  else {
+            submitJob("append_" + table_name, "append_" + table_name, funcByName("EasyTushare::index::IndexLoadData::append" + snakeToUpperCamel(table_name)), token, start_date, end_date)
+        }
+    }
+    // 分钟K数据
+    if (mink_tb_names.size() > 0){
+        mink_start_date = max(2009.01.01,start_date)
+        submitJob("appendIdxMink", "appendIdxMink", appendIdxMink, token, mink_start_date, end_date, mink_tb_names)
+    }
+}
+

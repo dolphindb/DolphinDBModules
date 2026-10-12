@@ -1,0 +1,1497 @@
+module EasyTushare::index::IndexLoadData
+
+use EasyTushare::TsInit
+/* 
+*  @Brief: 指数数据单个表导入函数模块
+*  @Author: DolphinDB
+*  @Last modification time: 2026.03.31
+*  @DolphinDB server version: 3.00.5 2026.02.06 LINUX x86_64
+*/
+
+/*
+*  @FunctionName: module_info
+*  @Brief: 模块信息,一个相同模块dir下的每个dos都需要有module_info函数,且是相同的
+*  @Param: None
+*  @Return: dict
+*  @SampleUsage: module_info()
+*/
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "EasyTushare"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+
+// 判断指定日期 d 是否为本周最后一个交易日（A股用 XSHG / XSHE）
+def isLastTradingDayOfWeek(d, market="XSHG") {
+    // 本周周日（weekEnd 默认 weekday=6 即周日）
+    sunday = weekEnd(d)
+    monday = sunday - 6
+    // 取本周一~周日之间的所有交易日
+    cal = getMarketCalendar(market, monday, sunday)
+    if (cal.size() == 0) return false
+    lastTd = cal[cal.size()-1]   // 本周最后一个交易日
+    return d == lastTd
+}
+
+def isLastTradingDayOfMonth(d, market="XSHG") {
+    mStart = monthStart(d)          // 当月 1 号
+    mEnd   = monthEnd(d)            // 当月最后一天（自然日）
+    cal    = getMarketCalendar(market, mStart, mEnd)
+    if (cal.size() == 0) return false
+    return d == cal.last()
+}
+
+def getIndexCodes(token){
+    markets = ["MSCI","CSI","SSE","SZSE","CICC","SW","OTH"]
+    tmp = table(1:0,["ts_code","name","market"],[SYMBOL,STRING,SYMBOL])
+    for(market_ in markets){
+        offset_ = 0
+        prev_count_=0
+        curr_count = 0
+        do {
+            api = "index_basic"
+            cols = ["ts_code","name"]
+            p = {"market":market_,"offset":offset_}
+            index_info = getApiData(token, api, p, cols)
+            res = getApiData(token, api, p, cols)
+            if(!res.isVoid() and res.count() != 0){
+                update res set market = market_
+                tmp.append!(res)
+                curr_count = res.count()
+                prev_count_ = prev_count_ + curr_count
+                offset_ = prev_count_ + 1
+            }
+        } while(res.count()!=0)
+    }
+    return tmp
+}
+
+def appendIndexWeight(token, start_date,end_date){ // start_date = 2026.08.13 end_date = 2026.08.13
+    // 指数权重 月度数据
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "index_weight"
+    api = "index_weight"
+    cols = ["index_code", "con_code", "trade_date", "weight"]
+
+    days = start_date..end_date
+    monthBeginDays = monthBegin(days).distinct().sort!()
+
+    index_info = getIndexCodes(token)
+    count_ = 0
+    len = index_info.count()
+
+    for (oneDay in monthBeginDays) { // oneDay = 2026.08.01
+        startDay = min(oneDay, start_date)
+        end_day = min(monthEnd(oneDay), end_date)
+        //  不是月末 直接退出
+        if (!isLastTradingDayOfMonth(oneDay, "XSHG")){
+            continue 
+        }
+        start_day_str = temporalFormat(startDay, "yyyyMMdd")
+        end_day_str = temporalFormat(end_day, "yyyyMMdd")
+        delete from loadTable(dbPath, tableName) where trade_date between startDay and end_day
+
+        for (i in 0..(len-1) ){ // i=1
+            index_code_ = index_info[i]["ts_code"]
+            market_ = index_info[i]["market"]
+            index_name_ = index_info[i]["name"]
+            offset_ = 0
+            prev_count_=0
+            curr_count = 0
+            do {
+                api = "index_weight"
+                cols = ["index_code", "con_code", "trade_date", "weight"]
+                p = {"index_code":index_code_,"start_date":start_day_str, "end_date":end_day_str,"offset":offset_}
+                res = getApiData(token, api, p, cols)
+                if(!res.isVoid() and res.count() != 0){
+                    update res set update_time = now()
+                    // update res set index_name = index_name_
+                    replaceColumn!(res, "index_code", symbol(string(res.index_code)))
+                    replaceColumn!(res, "con_code", symbol(string(res.con_code)))
+                    replaceColumn!(res, "trade_date", temporalParse(string(res.trade_date), "yyyyMMdd"))
+                    replaceColumn!(res, "weight", double(res.weight))
+                    replaceColumn!(res, "update_time", timestamp(res.update_time))
+
+                    res.reorderColumns!(["index_code","con_code","trade_date","weight","update_time"])
+                    loadTable(dbPath, tableName).append!(res)
+                    print( market_ + ":" + index_name_+ "("+i+"/"+len+")" + "(" + start_day_str + " to " + end_day_str + ") appended successfully, for count:" + res.count())  
+                    count_ = count_ + res.count()
+                    curr_count = res.count()
+                    prev_count_ = prev_count_ + curr_count
+                    offset_ = prev_count_ + 1
+                }
+            } while(res.count()!=0)            
+        } 
+    }
+}
+
+/**
+ *  @FunctionName: appendIndexClassify
+ *  @Brief: Append a DFS table for Index Classify
+ *  @Param: None
+ *  @Return: None
+ *  @SampleUsage: appendIndexClassify(token, p)
+ */
+def appendIndexClassify(token, start_date, end_date){
+    // 维度数据，每次导入前，先清空
+    truncate("dfs://tushare_basic_db", "index_classify")
+    
+    api = "index_classify"
+    cols = ["index_code", "industry_name", "parent_code", "level", "industry_code", "is_pub", "src"]
+    
+    levels = ["L1","L2","L3"]
+    for (level_ in levels) { // level_ = "L3"
+        p = {"level":level_, "src":"SW2021"}
+        res = getApiData(token, api, p, cols)
+        
+        if (!res.isVoid() and res.count() > 0) {
+            // 字段类型转换
+            replaceColumn!(res, "index_code", symbol(string(res.index_code)))
+            replaceColumn!(res, "industry_name", string(res.industry_name))
+            replaceColumn!(res, "parent_code", symbol(string(res.parent_code)))
+            replaceColumn!(res, "level", symbol(string(res.level))) 
+            replaceColumn!(res, "industry_code", symbol(string(res.industry_code)))
+            replaceColumn!(res, "is_pub", symbol(string(res.is_pub)))
+            replaceColumn!(res, "src", symbol(string(res.src)))
+            // 添加更新时间
+            res[`update_time] = now()
+            // 写入表
+            loadTable("dfs://tushare_basic_db", "index_classify").append!(res)
+            
+            print( level_ + ":"+ "appended successfully!")  
+        }else {
+            print( level_ + ":"+ "no data!")  
+        }
+    }
+}
+
+/**
+ *  @FunctionName: appendIndexMemberAll
+ *  @Brief: Append a DFS table for Index Member All
+ *  @Param: None
+ *  @Return: None
+ *  @SampleUsage: appendIndexMemberAll(token, start_date, end_date)
+ */
+def appendIndexMemberAll(token, start_date, end_date){
+    // 维度数据，每次导入前，先清空
+    truncate("dfs://tushare_basic_db", "index_member_all")
+
+    // 先获取所有L1指数代码
+    api_level1 = "index_classify"
+    p_level1 = {"level":"L1", "src":"SW2021"}
+    res_level1 = getApiData(token, api_level1, p_level1, ["index_code"])
+
+    api = "index_member_all"
+    cols = ["l1_code", "l1_name", "l2_code", "l2_name", "l3_code", "l3_name", "ts_code", "name", "in_date", "out_date", "is_new"]
+    for (index_code_ in res_level1.index_code) { // index_code_ = "801980.SI"
+        p = {"l1_code":index_code_}
+        res = getApiData(token, api, p, cols)
+        if (!res.isVoid() and res.count() > 0) {  
+            // 字段类型转换
+            replaceColumn!(res, "l1_code", symbol(string(res.l1_code)))
+            replaceColumn!(res, "l1_name", string(res.l1_name))
+            replaceColumn!(res, "l2_code", symbol(string(res.l2_code)))
+            replaceColumn!(res, "l2_name", string(res.l2_name))
+            replaceColumn!(res, "l3_code", symbol(string(res.l3_code)))
+            replaceColumn!(res, "l3_name", string(res.l3_name))
+            replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+            replaceColumn!(res, "name", string(res.name))
+            replaceColumn!(res, "in_date", temporalParse(res.in_date, "yyyyMMdd"))
+            replaceColumn!(res, "out_date", temporalParse(res.out_date, "yyyyMMdd"))
+            replaceColumn!(res, "is_new", symbol(string(res.is_new)))
+            // 添加更新时间
+            res[`update_time] = now()
+            // 写入表
+            loadTable("dfs://tushare_basic_db", "index_member_all").append!(res)
+            
+            print( index_code_ + ":"+ "appended successfully!")  
+        }else {
+            print( index_code_ + ":"+ "no data!")  
+        }
+    }
+}
+
+/*
+ * @Description: 指数日线行情数据导入
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-24 10:52:57
+ * @dev: 
+ * @Author: 
+ */
+def appendIndexDaily(token, start_date, end_date){ 
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "index_daily"
+    api = "index_daily"
+    cols = ["ts_code","trade_date","close","open","high","low","pre_close","change","pct_chg","vol","amount"]
+    out = loadTable(dbPath, tableName)
+    delete from loadTable(dbPath, tableName) where trade_date between start_date and end_date
+
+    start_day = temporalFormat(start_date, "yyyyMMdd")
+    end_day = temporalFormat(end_date, "yyyyMMdd")
+
+    if (start_date == end_date and !(start_date in getMarketCalendar("XSHG",start_date,end_date))){
+        return 
+    }
+
+    index_info = getIndexCodes(token)
+    len = index_info.count()
+    for (i in 0..(len-1) ){ // i = 0
+        // print(0)
+        index_code_ = index_info[i]["ts_code"] // index_code_ = '000300.SH'
+        index_name_ = index_info[i]["name"]
+        market_ = index_info[i]["market"]
+        p = {"ts_code":index_code_, "start_date":start_day, "end_date":end_day}
+        res = getApiData(token, api, p, cols)
+        if (!res.isVoid() and res.count() !=0){
+            update res set update_time = now()
+            replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+            replaceColumn!(res, "trade_date", temporalParse(string(res.trade_date), "yyyyMMdd"))
+            replaceColumn!(res, "close", double(res.close))
+            replaceColumn!(res, "open", double(res.open))
+            replaceColumn!(res, "high", double(res.high))
+            replaceColumn!(res, "low", double(res.low))
+            replaceColumn!(res, "pre_close", double(res.pre_close))
+            replaceColumn!(res, "change", double(res.change))
+            replaceColumn!(res, "pct_chg", double(res.pct_chg))
+            replaceColumn!(res, "vol", double(res.vol))
+            replaceColumn!(res, "amount", double(res.amount))
+            replaceColumn!(res, "update_time", timestamp(res.update_time))
+            out.append!(res)
+            // 
+            print( market_ + ":" + index_name_+ "("+i+"/"+len+")" + "(" + start_day + " to " + end_day + ") appended successfully!") 
+        } else {
+            print( market_ + ":" + index_name_+ "("+i+"/"+len+")" + "(" + start_day + " to " + end_day + ") no data!")
+        } 
+        sleep(50)  
+    }  
+    print("Success append data for Table " + api)
+}
+/*
+ * @Description: 股票历史分钟行情数据导入
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-24 10:52:57
+ * @dev: 
+ * @Author: 
+ */
+def appendIdx1minK(token, start_date, end_date){ 
+    // 应该是只有沪深有数据
+    // markets = ["SSE","SZSE"]
+    // 1min_k 数据导入
+    dbPath = "dfs://tushare_minute_db"
+    tableName = "idx_1min_k"
+    api = "idx_mins"
+    cols = ["ts_code","trade_time","open","close","high","low","vol","amount"]
+    out = loadTable(dbPath, tableName)
+    delete from loadTable(dbPath, tableName) where date(trade_time) between start_date and end_date
+
+    index_info = select * from getIndexCodes(token) where market in ["SSE","SZSE"]
+    for (one_date in getMarketCalendar("XSHG",start_date,end_date)) {
+        index_code_ = index_info.ts_code
+        codes_bantch = index_code_.cut(29)
+
+        for (one_batch in codes_bantch) {
+            // one_batch = codes_bantch[0]
+            start_time = temporalFormat(one_date,"yyyy-MM-dd") + " 09:00:00"
+            end_time = temporalFormat(one_date,"yyyy-MM-dd") + " 19:00:00"
+            
+            one_batch_str = concat(one_batch,",")
+            p = {ts_code:one_batch_str, freq:"1min", start_date:start_time, end_date:end_time}
+            res = getApiData(token, api, p, cols)
+            if (!res.isVoid() and res.count() !=0){
+    
+                update res set update_time = now()
+                replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+                replaceColumn!(res, "trade_time", timestamp(res.trade_time))
+                replaceColumn!(res, "open", double(res.open))
+                replaceColumn!(res, "close", double(res.close))
+                replaceColumn!(res, "high", double(res.high))
+                replaceColumn!(res, "low", double(res.low))
+                replaceColumn!(res, "vol", int(res.vol))
+                replaceColumn!(res, "amount", double(res.amount))
+                replaceColumn!(res, "update_time", timestamp(res.update_time))
+                out.append!(res)
+            }
+        }
+    }
+    print("Success append data for Table " + tableName)
+}
+
+
+/*
+ * @Description: 股票历史分钟行情数据导入
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-24 10:52:57
+ * @dev: 
+ * @Author: 
+ */
+def appendIdx5minK(token, start_date, end_date){ // start_date = 2023.08.25,end_date = 2023.08.25
+
+    // 先获取指数信息
+    api_basic_inex = "index_basic"
+    // markets = ["CSI","SSE","SZSE","CICC","SW","OTH"]
+    // 应该是只有沪深有数据
+    markets = ["SSE","SZSE"]
+
+    // 1min_k 数据导入
+    dbPath = "dfs://tushare_minute_db"
+    tableName = "idx_5min_k"
+    api = "idx_mins"
+    cols = ["ts_code","trade_time","open","close","high","low","vol","amount"]
+    out = loadTable(dbPath, tableName)
+    delete from loadTable(dbPath, tableName) where date(trade_time) between start_date and end_date
+    
+    index_info = select * from getIndexCodes(token) where market in ["SSE","SZSE"]
+    for (one_date in getMarketCalendar("XSHG",start_date,end_date)) {
+        index_code_ = index_info.ts_code
+        codes_bantch = index_code_.cut(50)
+
+        for (one_batch in codes_bantch) {
+            start_time = temporalFormat(one_date,"yyyy-MM-dd") + " 09:00:00"
+            end_time = temporalFormat(one_date,"yyyy-MM-dd") + " 19:00:00"
+            
+            one_batch_str = concat(one_batch,",")
+            p = {ts_code:one_batch_str, freq:"5min", start_date:start_time, end_date:end_time}
+            res = getApiData(token, api, p, cols)
+            if (!res.isVoid() and res.count() !=0){
+    
+                update res set update_time = now()
+                replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+                replaceColumn!(res, "trade_time", timestamp(res.trade_time))
+                replaceColumn!(res, "open", double(res.open))
+                replaceColumn!(res, "close", double(res.close))
+                replaceColumn!(res, "high", double(res.high))
+                replaceColumn!(res, "low", double(res.low))
+                replaceColumn!(res, "vol", int(res.vol))
+                replaceColumn!(res, "amount", double(res.amount))
+                replaceColumn!(res, "update_time", timestamp(res.update_time))
+                out.append!(res)
+            }
+        }
+    }
+    print("Success append data for Table " + tableName)
+}
+
+
+/*
+ * @Description: 股票历史分钟行情数据导入
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-24 10:52:57
+ * @dev: 
+ * @Author: 
+ */
+def appendIdx15minK(token, start_date, end_date){ // start_date = 2023.08.25,end_date = 2023.08.25
+
+    // 先获取指数信息
+    api_basic_inex = "index_basic"
+    // markets = ["CSI","SSE","SZSE","CICC","SW","OTH"]
+    // 应该是只有沪深有数据
+    markets = ["SSE","SZSE"]
+
+    // 1min_k 数据导入
+    dbPath = "dfs://tushare_minute_db"
+    tableName = "idx_15min_k"
+    api = "idx_mins"
+    cols = ["ts_code","trade_time","open","close","high","low","vol","amount"]
+    out = loadTable(dbPath, tableName)
+    delete from loadTable(dbPath, tableName) where date(trade_time) between start_date and end_date
+        
+    index_info = select * from getIndexCodes(token) where market in ["SSE","SZSE"]
+    for (one_date in getMarketCalendar("XSHG",start_date,end_date)) { // one_date = 2026.08.17
+        index_code_ = index_info.ts_code
+        codes_bantch = index_code_.cut(50)
+
+        for (one_batch in codes_bantch) { // one_batch = codes_bantch[0]
+            start_time = temporalFormat(one_date,"yyyy-MM-dd") + " 09:00:00"
+            end_time = temporalFormat(one_date,"yyyy-MM-dd") + " 19:00:00"
+            
+            one_batch_str = concat(one_batch,",")
+            p = {ts_code:one_batch_str, freq:"15min", start_date:start_time, end_date:end_time}
+            res = getApiData(token, api, p, cols)
+            if (!res.isVoid() and res.count() !=0){
+    
+                update res set update_time = now()
+                replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+                replaceColumn!(res, "trade_time", timestamp(res.trade_time))
+                replaceColumn!(res, "open", double(res.open))
+                replaceColumn!(res, "close", double(res.close))
+                replaceColumn!(res, "high", double(res.high))
+                replaceColumn!(res, "low", double(res.low))
+                replaceColumn!(res, "vol", int(res.vol))
+                replaceColumn!(res, "amount", double(res.amount))
+                replaceColumn!(res, "update_time", timestamp(res.update_time))
+                out.append!(res)
+            }
+        }
+    }
+    print("Success append data for Table " + tableName)
+}
+
+
+/*
+ * @Description: 股票历史分钟行情数据导入
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-24 10:52:57
+ * @dev: 
+ * @Author: 
+ */
+def appendIdx30minK(token, start_date, end_date){ // start_date = 2023.08.25,end_date = 2023.08.25
+
+    // 先获取指数信息
+    api_basic_inex = "index_basic"
+    // markets = ["CSI","SSE","SZSE","CICC","SW","OTH"]
+    // 应该是只有沪深有数据
+    markets = ["SSE","SZSE"]
+
+    // 1min_k 数据导入
+    dbPath = "dfs://tushare_minute_db"
+    tableName = "idx_30min_k"
+    api = "idx_mins"
+    cols = ["ts_code","trade_time","open","close","high","low","vol","amount"]
+    out = loadTable(dbPath, tableName)
+    delete from loadTable(dbPath, tableName) where date(trade_time) between start_date and end_date
+    
+    index_info = select * from getIndexCodes(token) where market in ["SSE","SZSE"] 
+    for (one_date in getMarketCalendar("XSHG",start_date,end_date)) {
+        index_code_ = index_info.ts_code
+        codes_bantch = index_code_.cut(50)
+
+        for (one_batch in codes_bantch) {
+            start_time = temporalFormat(one_date,"yyyy-MM-dd") + " 09:00:00"
+            end_time = temporalFormat(one_date,"yyyy-MM-dd") + " 19:00:00"
+            
+            one_batch_str = concat(one_batch,",")
+            p = {ts_code:one_batch_str, freq:"30min", start_date:start_time, end_date:end_time}
+            res = getApiData(token, api, p, cols)
+            if (!res.isVoid() and res.count() !=0){
+    
+                update res set update_time = now()
+                replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+                replaceColumn!(res, "trade_time", timestamp(res.trade_time))
+                replaceColumn!(res, "open", double(res.open))
+                replaceColumn!(res, "close", double(res.close))
+                replaceColumn!(res, "high", double(res.high))
+                replaceColumn!(res, "low", double(res.low))
+                replaceColumn!(res, "vol", int(res.vol))
+                replaceColumn!(res, "amount", double(res.amount))
+                replaceColumn!(res, "update_time", timestamp(res.update_time))
+                out.append!(res)
+            }
+        }  
+    }
+    print("Success append data for Table " + tableName)
+}
+
+
+/*
+ * @Description: 股票历史分钟行情数据导入
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-24 10:52:57
+ * @dev: 
+ * @Author: 
+ */
+def appendIdx60minK(token, start_date, end_date){ // start_date = 2023.08.25,end_date = 2023.08.25
+
+    // 先获取指数信息
+    api_basic_inex = "index_basic"
+    // markets = ["CSI","SSE","SZSE","CICC","SW","OTH"]
+    // 应该是只有沪深有数据
+    markets = ["SSE","SZSE"]
+
+    // 1min_k 数据导入
+    dbPath = "dfs://tushare_minute_db"
+    tableName = "idx_60min_k"
+    api = "idx_mins"
+    cols = ["ts_code","trade_time","open","close","high","low","vol","amount"]
+    out = loadTable(dbPath, tableName)
+    delete from loadTable(dbPath, tableName) where date(trade_time) between start_date and end_date
+    
+    index_info = select * from getIndexCodes(token) where market in ["SSE","SZSE"]
+    for (one_date in getMarketCalendar("XSHG",start_date,end_date)) {
+        index_code_ = index_info.ts_code
+        codes_bantch = index_code_.cut(50)
+
+        for (one_batch in codes_bantch) {
+            start_time = temporalFormat(one_date,"yyyy-MM-dd") + " 09:00:00"
+            end_time = temporalFormat(one_date,"yyyy-MM-dd") + " 19:00:00"
+            
+            one_batch_str = concat(one_batch,",")
+            p = {ts_code:one_batch_str, freq:"60min", start_date:start_time, end_date:end_time}
+            res = getApiData(token, api, p, cols)
+            if (!res.isVoid() and res.count() !=0){
+    
+                update res set update_time = now()
+                replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+                replaceColumn!(res, "trade_time", timestamp(res.trade_time))
+                replaceColumn!(res, "open", double(res.open))
+                replaceColumn!(res, "close", double(res.close))
+                replaceColumn!(res, "high", double(res.high))
+                replaceColumn!(res, "low", double(res.low))
+                replaceColumn!(res, "vol", int(res.vol))
+                replaceColumn!(res, "amount", double(res.amount))
+                replaceColumn!(res, "update_time", timestamp(res.update_time))
+                out.append!(res)
+            }
+        }
+    }
+    print("Success append data for Table " + tableName)
+}
+
+/*
+ * @Description: append data for index_basic
+ * @DolphinDB server version:
+ * @Last modification time: 2026-04-03 17:37:52
+ * @dev:
+ * @Author: codex
+ */
+def appendIndexBasic(token, start_date, end_date){
+    dbPath = "dfs://tushare_basic_db"
+    tableName = "index_basic"
+    api = "index_basic"
+    cols = [
+        "ts_code",
+        "name",
+        "fullname",
+        "market",
+        "publisher",
+        "index_type",
+        "category",
+        "base_date",
+        "base_point",
+        "list_date",
+        "weight_rule",
+        "desc",
+        "exp_date"
+    ]
+    out = loadTable(dbPath, tableName)
+    // 先truncate
+    truncate(dbPath, tableName)
+
+    // 导入数据
+    market_list = ["MSCI","CSI","SSE","SZSE","CICC","SW","OTH"]
+    for(market_ in market_list){
+        // market_ = "CSI"
+        offset_ = 0
+        prev_count_=0
+        curr_count = 0
+        do {
+            p = {"market":market_,"offset":offset_}
+            index_info = getApiData(token, api, p, cols)
+            res = getApiData(token, api, p, cols)
+            if(!res.isVoid() and res.count() != 0){
+                update res set update_time = now()
+                replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+                replaceColumn!(res, "name", string(res.name))
+                replaceColumn!(res, "fullname", string(res.fullname))
+                replaceColumn!(res, "market", symbol(string(res.market)))
+                replaceColumn!(res, "publisher", symbol(string(res.publisher)))
+                replaceColumn!(res, "index_type", symbol(string(res.index_type)))
+                replaceColumn!(res, "category", symbol(string(res.category)))
+                replaceColumn!(res, "base_date", temporalParse(string(res.base_date), "yyyyMMdd"))
+                replaceColumn!(res, "base_point", double(res.base_point))
+                replaceColumn!(res, "list_date", temporalParse(string(res.list_date), "yyyyMMdd"))
+                replaceColumn!(res, "weight_rule", symbol(string(res.weight_rule)))
+                replaceColumn!(res, "desc", string(res.desc))
+                replaceColumn!(res, "exp_date", temporalParse(string(res.exp_date), "yyyyMMdd"))
+                replaceColumn!(res, "update_time", timestamp(res.update_time))
+                out.append!(res)
+                curr_count = res.count()
+                prev_count_ = prev_count_ + curr_count
+                offset_ = prev_count_ + 1
+            }
+        } while(res.count()!=0)
+    }
+    print("Success append data for Table " + api )
+}
+
+/*
+ * @Description: append data for index_weekly
+ * @DolphinDB server version:
+ * @Last modification time: 2026-04-03 17:37:52
+ * @dev:
+ * @Author: codex
+ */
+def appendIndexWeekly(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "index_weekly"
+    api = "index_weekly"
+    cols = [
+        "ts_code",
+        "trade_date",
+        "close",
+        "open",
+        "high",
+        "low",
+        "pre_close",
+        "change",
+        "pct_chg",
+        "vol",
+        "amount"
+    ]
+    out = loadTable(dbPath, tableName)
+    // 先删除这段日期的数据
+    delete from out where trade_date between start_date and end_date 
+    days = start_date..end_date
+    if (size(days) == 1 and !(isLastTradingDayOfWeek(days[0], "XSHG"))) {
+        return 
+    }
+    yearBegindays = yearBegin(days).distinct().sort!()
+    for (oneYear in yearBegindays) { // oneYear = 2020.01.01
+        startDate = temporalFormat(max(start_date, oneYear), "yyyyMMdd")
+        endDate = temporalFormat(min(yearEnd(oneYear), end_date), "yyyyMMdd")
+        for (market in ["SSE","SZSE","SW"]) { // market = "SSE"
+            codes_info = getApiData(token, "index_basic", {"market": market}, ["ts_code"])
+            codes = codes_info.ts_code
+            len = size(codes)-1
+            for (i in 0..len) { // code = "000001.SH"
+                code = codes[i]
+                p = {"ts_code":code,"start_date":startDate,"end_date":endDate}
+                res = getApiData(token, api, p, cols)
+                if(!res.isVoid() and res.count() != 0){
+                    update res set update_time = now()
+                    replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+                    replaceColumn!(res, "trade_date", temporalParse(string(res.trade_date), "yyyyMMdd"))
+                    replaceColumn!(res, "close", double(res.close))
+                    replaceColumn!(res, "open", double(res.open))
+                    replaceColumn!(res, "high", double(res.high))
+                    replaceColumn!(res, "low", double(res.low))
+                    replaceColumn!(res, "pre_close", double(res.pre_close))
+                    replaceColumn!(res, "change", double(res.change))
+                    replaceColumn!(res, "pct_chg", double(res.pct_chg))
+                    replaceColumn!(res, "vol", double(res.vol))
+                    replaceColumn!(res, "amount", double(res.amount))
+                    replaceColumn!(res, "update_time", timestamp(res.update_time))
+                    out.append!(res)
+                    print("sucessfuly append data for Table " + api + "for " + code + "(" + market+"," + i + "/" + len + ")" + " startDate = " + startDate + " endDate = " + endDate)
+                } else {
+                    print("no data for Table " + api + "for " + code + "(" + market+"," + i + "/" + len + ")" + " startDate = " + startDate + " endDate = " + endDate)
+                }
+            }
+        }
+    }
+    print("Success append data for Table " + api )
+}
+
+/*
+ * @Description: append data for index_monthly
+ * @DolphinDB server version:
+ * @Last modification time: 2026-04-03 17:37:52
+ * @dev:
+ * @Author: codex
+ */
+def appendIndexMonthly(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "index_monthly"
+    api = "index_monthly"
+    cols = [
+        "ts_code",
+        "trade_date",
+        "close",
+        "open",
+        "high",
+        "low",
+        "pre_close",
+        "change",
+        "pct_chg",
+        "vol",
+        "amount"
+    ]
+    out = loadTable(dbPath, tableName)
+    delete from out where trade_date between start_date and end_date 
+    days = start_date..end_date
+    if (size(days) == 1 and !(isLastTradingDayOfMonth(days[0], "XSHG"))) {
+        return 
+    }
+    yearBegindays = yearBegin(days).distinct().sort!()
+    for (oneYear in yearBegindays) { // oneYear = 2020.01.01
+        startDate = temporalFormat(max(start_date, oneYear), "yyyyMMdd")
+        endDate = temporalFormat(min(yearEnd(oneYear), end_date), "yyyyMMdd")
+        for (market in ["SSE","SZSE","SW"]) { // market = "SSE"
+            codes_info = getApiData(token, "index_basic", {"market": market}, ["ts_code"])
+            codes = codes_info.ts_code
+            len = size(codes)-1
+            for (i in 0..len) { // code = "000001.SH"
+                code = codes[i]
+                p = {"ts_code":code,"start_date":startDate,"end_date":endDate}
+                res = getApiData(token, api, p, cols)
+                if(!res.isVoid() and res.count() != 0){
+                    update res set update_time = now()
+                    replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+                    replaceColumn!(res, "trade_date", temporalParse(string(res.trade_date), "yyyyMMdd"))
+                    replaceColumn!(res, "close", double(res.close))
+                    replaceColumn!(res, "open", double(res.open))
+                    replaceColumn!(res, "high", double(res.high))
+                    replaceColumn!(res, "low", double(res.low))
+                    replaceColumn!(res, "pre_close", double(res.pre_close))
+                    replaceColumn!(res, "change", double(res.change))
+                    replaceColumn!(res, "pct_chg", double(res.pct_chg))
+                    replaceColumn!(res, "vol", double(res.vol))
+                    replaceColumn!(res, "amount", double(res.amount))
+                    replaceColumn!(res, "update_time", timestamp(res.update_time))
+                    out.append!(res)
+                    print("Success append data for Table " + api + "for " + code + "(" + market+"," + i + "/" + len + ")" + " startDate = " + startDate + " endDate = " + endDate + "for count = " + res.count())
+                } else {
+                    print("no data for Table " + api + "for " + code + "(" + market+"," + i + "/" + len + ")" + " startDate = " + startDate + " endDate = " + endDate)
+                }
+            }
+        }
+    }
+}
+
+/*
+ * @Description: append data for index_dailybasic
+ * @DolphinDB server version:
+ * @Last modification time: 2026-04-03 17:37:52
+ * @dev:
+ * @Author: codex
+ */
+def appendIndexDailybasic(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "index_dailybasic"
+    api = "index_dailybasic"
+    cols = [
+        "ts_code",
+        "trade_date",
+        "total_mv",
+        "float_mv",
+        "total_share",
+        "float_share",
+        "free_share",
+        "turnover_rate",
+        "turnover_rate_f",
+        "pe",
+        "pe_ttm",
+        "pb"
+    ]
+    out = loadTable(dbPath, tableName)
+    delete from out where trade_date between start_date and end_date
+    days = getMarketCalendar("XSHG",start_date,end_date)
+    for (day in days) { // day = 2018.10.18
+        daystr = temporalFormat(day, "yyyyMMdd")
+        p = {"trade_date":daystr}
+        res = getApiData(token, api, p, cols)
+        if(!res.isVoid() and res.count() != 0){
+            update res set update_time = now()
+            replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+            replaceColumn!(res, "trade_date", temporalParse(string(res.trade_date), "yyyyMMdd"))
+            replaceColumn!(res, "total_mv", double(res.total_mv))
+            replaceColumn!(res, "float_mv", double(res.float_mv))
+            replaceColumn!(res, "total_share", double(res.total_share))
+            replaceColumn!(res, "float_share", double(res.float_share))
+            replaceColumn!(res, "free_share", double(res.free_share))
+            replaceColumn!(res, "turnover_rate", double(res.turnover_rate))
+            replaceColumn!(res, "turnover_rate_f", double(res.turnover_rate_f))
+            replaceColumn!(res, "pe", double(res.pe))
+            replaceColumn!(res, "pe_ttm", double(res.pe_ttm))
+            replaceColumn!(res, "pb", double(res.pb))
+            replaceColumn!(res, "update_time", timestamp(res.update_time))
+            out.append!(res)
+            print("Success append data for Table " + api + "for " + daystr + "for count = " + res.count())
+        } else {
+            print("no data for Table " + api + "for " + daystr)
+        }
+    }
+    print("Success append data for Table " + api )
+}
+
+/*
+ * @Description: append data for sw_daily
+ * @DolphinDB server version:
+ * @Last modification time: 2026-04-03 17:37:52
+ * @dev:
+ * @Author: codex
+ */
+def appendSwDaily(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "sw_daily"
+    api = "sw_daily"
+    cols = [
+        "ts_code",
+        "trade_date",
+        "name",
+        "open",
+        "low",
+        "high",
+        "close",
+        "change",
+        "pct_change",
+        "vol",
+        "amount",
+        "pe",
+        "pb",
+        "float_mv",
+        "total_mv"
+    ]
+    out = loadTable(dbPath, tableName)
+    delete from out where trade_date between start_date and end_date
+    days = getMarketCalendar("XSHG",start_date,end_date)
+    for (day in days) { // day = 2023.07.05
+        daystr = temporalFormat(day, "yyyyMMdd")
+        p = {"trade_date":daystr}
+        res = getApiData(token, api, p, cols)  
+        if(!res.isVoid() and res.count() != 0){
+            update res set update_time = now()
+            replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+            replaceColumn!(res, "trade_date", temporalParse(string(res.trade_date), "yyyyMMdd"))
+            replaceColumn!(res, "name", string(res.name))
+            replaceColumn!(res, "open", double(res.open))
+            replaceColumn!(res, "low", double(res.low))
+            replaceColumn!(res, "high", double(res.high))
+            replaceColumn!(res, "close", double(res.close))
+            replaceColumn!(res, "change", double(res.change))
+            replaceColumn!(res, "pct_change", double(res.pct_change))
+            replaceColumn!(res, "vol", double(res.vol))
+            replaceColumn!(res, "amount", double(res.amount))
+            replaceColumn!(res, "pe", double(res.pe))
+            replaceColumn!(res, "pb", double(res.pb))
+            replaceColumn!(res, "float_mv", double(res.float_mv))
+            replaceColumn!(res, "total_mv", double(res.total_mv))
+            replaceColumn!(res, "update_time", timestamp(res.update_time))
+            out.append!(res)
+            print("Success append data for Table " + api + "for " + daystr + "for count = " + res.count())
+        } else {
+            print("no data for Table " + api + "for " + daystr)
+        }
+    }
+    print("Success append data for Table " + api )
+}
+
+/*
+ * @Description: append data for ci_index_member
+ * @DolphinDB server version:
+ * @Last modification time: 2026-04-03 17:37:52
+ * @dev:
+ * @Author: codex
+ */
+def appendCiIndexMember(token, start_date, end_date){
+    dbPath = "dfs://tushare_basic_db"
+    tableName = "ci_index_member"
+    // 先truncate
+    truncate(dbPath, tableName)
+    api = "ci_index_member"
+    cols = [
+        "l1_code",
+        "l1_name",
+        "l2_code",
+        "l2_name",
+        "l3_code",
+        "l3_name",
+        "ts_code",
+        "name",
+        "in_date",
+        "out_date",
+        "is_new"
+    ]
+    out = loadTable(dbPath, tableName)
+    // 获取股票列表
+    code_info = getApiData(token, "stock_basic", {"list_status": "L,D"}, ["ts_code"])
+    codes = code_info.ts_code
+
+    len = size(codes)-1
+    for (i in 0..len) {
+        code = codes[i]
+        p = {"ts_code":code}
+        res = getApiData(token, api, p, cols)
+        if(!res.isVoid() and res.count() != 0){
+            update res set update_time = now()
+            replaceColumn!(res, "l1_code", symbol(string(res.l1_code)))
+            replaceColumn!(res, "l1_name", string(res.l1_name))
+            replaceColumn!(res, "l2_code", symbol(string(res.l2_code)))
+            replaceColumn!(res, "l2_name", string(res.l2_name))
+            replaceColumn!(res, "l3_code", symbol(string(res.l3_code)))
+            replaceColumn!(res, "l3_name", string(res.l3_name))
+            replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+            replaceColumn!(res, "name", string(res.name))
+            replaceColumn!(res, "in_date", temporalParse(string(res.in_date), "yyyyMMdd"))
+            replaceColumn!(res, "out_date", temporalParse(string(res.out_date), "yyyyMMdd"))
+            replaceColumn!(res, "is_new", symbol(string(res.is_new)))
+            replaceColumn!(res, "update_time", timestamp(res.update_time))
+            out.append!(res)
+            print("Success append data for Table " + api + "for " + code+ "("+ i + "/" + len + ", " + res.count() + ")")
+        } else {
+            print("no data for Table " + api + "for " + code+ "("+ i + "/" + len + ")")
+        }
+    }
+    print("Success append data for Table " + api )
+}
+
+/*
+ * @Description: append data for ci_daily
+ * @DolphinDB server version:
+ * @Last modification time: 2026-04-03 17:37:52
+ * @dev:
+ * @Author: codex
+ */
+def appendCiDaily(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "ci_daily"
+    api = "ci_daily"
+    cols = [
+        "ts_code",
+        "trade_date",
+        "open",
+        "low",
+        "high",
+        "close",
+        "pre_close",
+        "change",
+        "pct_change",
+        "vol",
+        "amount"
+    ]
+    out = loadTable(dbPath, tableName)
+    delete from out where trade_date between start_date and end_date
+    days = getMarketCalendar("XSHG",start_date,end_date)
+    for (day in days) { // day = 2023.07.05
+        daystr = temporalFormat(day, "yyyyMMdd")
+        p = {"trade_date":daystr}
+        res = getApiData(token, api, p, cols)
+        if(!res.isVoid() and res.count() != 0){
+            update res set update_time = now()
+            replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+            replaceColumn!(res, "trade_date", temporalParse(string(res.trade_date), "yyyyMMdd"))
+            replaceColumn!(res, "open", double(res.open))
+            replaceColumn!(res, "low", double(res.low))
+            replaceColumn!(res, "high", double(res.high))
+            replaceColumn!(res, "close", double(res.close))
+            replaceColumn!(res, "pre_close", double(res.pre_close))
+            replaceColumn!(res, "change", double(res.change))
+            replaceColumn!(res, "pct_change", double(res.pct_change))
+            replaceColumn!(res, "vol", double(res.vol))
+            replaceColumn!(res, "amount", double(res.amount))
+            replaceColumn!(res, "update_time", timestamp(res.update_time))
+            out.append!(res)
+            print("Success append data for Table " + api + "for " + daystr + "for count = " + res.count())
+        } else {
+            print("no data for Table " + api + "for " + daystr)
+        }
+    }
+    print("Success append data for Table " + api )
+}
+
+/*
+ * @Description: append data for index_global
+ * @DolphinDB server version:
+ * @Last modification time: 2026-04-03 17:37:52
+ * @dev:
+ * @Author: codex
+ */
+def appendIndexGlobal(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "index_global"
+    api = "index_global"
+    cols = [
+        "ts_code",
+        "trade_date",
+        "open",
+        "close",
+        "high",
+        "low",
+        "pre_close",
+        "change",
+        "pct_chg",
+        "swing",
+        "vol",
+        "amount"
+    ]
+    out = loadTable(dbPath, tableName)
+    delete from loadTable(dbPath, tableName) where trade_date between start_date and end_date
+
+    global_inedx_codes = ["XIN9","HSI","HKTECH","HKAH","DJI","SPX","IXIC","FTSE","FCHI","GDAXI","N225","KS11","AS51","SENSEX","IBOVESPA","RTS","TWII","CKLSE","SPTSX","CSX5P","RUT"]
+    days = start_date..end_date
+    len_days = size(days)
+    daysBatch = days.distinct().sort!().cut(min(len_days, 30))
+    for (oneBatch in daysBatch) { 
+        len = size(oneBatch)-1
+        // startDate = "20200201"
+        // endDate = "20200228"
+        startDate = temporalFormat(oneBatch[0], "yyyyMMdd")
+        endDate = temporalFormat(oneBatch[len], "yyyyMMdd")
+        for (code in global_inedx_codes) { // code = "XIN9"
+            p = {"ts_code":code,"start_date":startDate, "end_date":endDate}
+            res = getApiData(token, api, p, cols)
+            if(!res.isVoid() and res.count() != 0){
+                if (res.count() == 4000) {throw "count is 4000, exceded max limit, please check"}
+                update res set update_time = now()
+                replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+                replaceColumn!(res, "trade_date", temporalParse(string(res.trade_date), "yyyyMMdd"))
+                replaceColumn!(res, "open", double(res.open))
+                replaceColumn!(res, "close", double(res.close))
+                replaceColumn!(res, "high", double(res.high))
+                replaceColumn!(res, "low", double(res.low))
+                replaceColumn!(res, "pre_close", double(res.pre_close))
+                replaceColumn!(res, "change", double(res.change))
+                replaceColumn!(res, "pct_chg", double(res.pct_chg))
+                replaceColumn!(res, "swing", double(res.swing))
+                replaceColumn!(res, "vol", double(res.vol))
+                replaceColumn!(res, "amount", double(res.amount))
+                replaceColumn!(res, "update_time", timestamp(res.update_time))
+                out.append!(res)
+                sleep(300)
+                print("Success append data for Table " + api + "for " + code + "for startDate = " + startDate + "for endDate = " + endDate + "for count = " + res.count())
+            } else {
+                print("no data for Table " + api + "for " + code)
+            }
+        }
+    }
+    print("Success append data for Table " + api )  
+}
+
+/*
+ * @Description: append data for idx_factor_pro
+ * @DolphinDB server version:
+ * @Last modification time: 2026-04-03 17:37:52
+ * @dev:
+ * @Author: codex
+ */
+def appendIdxFactorPro(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "idx_factor_pro"
+    api = "idx_factor_pro"
+    cols = [
+        "ts_code",
+        "trade_date",
+        "open",
+        "high",
+        "low",
+        "close",
+        "pre_close",
+        "change",
+        "pct_change",
+        "vol",
+        "amount",
+        "asi_bfq",
+        "asit_bfq",
+        "atr_bfq",
+        "bbi_bfq",
+        "bias1_bfq",
+        "bias2_bfq",
+        "bias3_bfq",
+        "boll_lower_bfq",
+        "boll_mid_bfq",
+        "boll_upper_bfq",
+        "brar_ar_bfq",
+        "brar_br_bfq",
+        "cci_bfq",
+        "cr_bfq",
+        "dfma_dif_bfq",
+        "dfma_difma_bfq",
+        "dmi_adx_bfq",
+        "dmi_adxr_bfq",
+        "dmi_mdi_bfq",
+        "dmi_pdi_bfq",
+        "downdays",
+        "updays",
+        "dpo_bfq",
+        "madpo_bfq",
+        "ema_bfq_10",
+        "ema_bfq_20",
+        "ema_bfq_250",
+        "ema_bfq_30",
+        "ema_bfq_5",
+        "ema_bfq_60",
+        "ema_bfq_90",
+        "emv_bfq",
+        "maemv_bfq",
+        "expma_12_bfq",
+        "expma_50_bfq",
+        "kdj_bfq",
+        "kdj_d_bfq",
+        "kdj_k_bfq",
+        "ktn_down_bfq",
+        "ktn_mid_bfq",
+        "ktn_upper_bfq",
+        "lowdays",
+        "topdays",
+        "ma_bfq_10",
+        "ma_bfq_20",
+        "ma_bfq_250",
+        "ma_bfq_30",
+        "ma_bfq_5",
+        "ma_bfq_60",
+        "ma_bfq_90",
+        "macd_bfq",
+        "macd_dea_bfq",
+        "macd_dif_bfq",
+        "mass_bfq",
+        "ma_mass_bfq",
+        "mfi_bfq",
+        "mtm_bfq",
+        "mtmma_bfq",
+        "obv_bfq",
+        "psy_bfq",
+        "psyma_bfq",
+        "roc_bfq",
+        "maroc_bfq",
+        "rsi_bfq_12",
+        "rsi_bfq_24",
+        "rsi_bfq_6",
+        "taq_down_bfq",
+        "taq_mid_bfq",
+        "taq_up_bfq",
+        "trix_bfq",
+        "trma_bfq",
+        "vr_bfq",
+        "wr_bfq",
+        "wr1_bfq",
+        "xsii_td1_bfq",
+        "xsii_td2_bfq",
+        "xsii_td3_bfq",
+        "xsii_td4_bfq"
+    ]
+    out = loadTable(dbPath, tableName)
+    delete from loadTable(dbPath, tableName) where trade_date between start_date and end_date
+
+    for(dt in start_date..end_date){
+        // dt = 2025.01.10
+        trade_date = temporalFormat(dt, "yyyyMMdd")
+        p = {trade_date:trade_date}
+        res = getApiData(token, api, p, cols)
+        if(res.count()==8000){
+            throw "接口返回数据过多，请缩小日期范围，当前日期：" + trade_date
+        }
+        if(!res.isVoid() and res.count() != 0){
+        res = select
+                ts_code as code,
+                trade_date,
+                open,
+                high,
+                low,
+                close,
+                pre_close,
+                change,
+                pct_change,
+                vol,
+                amount,
+                asi_bfq,
+                asit_bfq,
+                atr_bfq,
+                bbi_bfq,
+                bias1_bfq,
+                bias2_bfq,
+                bias3_bfq,
+                boll_lower_bfq,
+                boll_mid_bfq,
+                boll_upper_bfq,
+                brar_ar_bfq,
+                brar_br_bfq,
+                cci_bfq,
+                cr_bfq,
+                dfma_dif_bfq,
+                dfma_difma_bfq,
+                dmi_adx_bfq,
+                dmi_adxr_bfq,
+                dmi_mdi_bfq,
+                dmi_pdi_bfq,
+                downdays,
+                updays,
+                dpo_bfq,
+                madpo_bfq,
+                ema_bfq_10,
+                ema_bfq_20,
+                ema_bfq_250,
+                ema_bfq_30,
+                ema_bfq_5,
+                ema_bfq_60,
+                ema_bfq_90,
+                emv_bfq,
+                maemv_bfq,
+                expma_12_bfq,
+                expma_50_bfq,
+                kdj_bfq,
+                kdj_d_bfq,
+                kdj_k_bfq,
+                ktn_down_bfq,
+                ktn_mid_bfq,
+                ktn_upper_bfq,
+                lowdays,
+                topdays,
+                ma_bfq_10,
+                ma_bfq_20,
+                ma_bfq_250,
+                ma_bfq_30,
+                ma_bfq_5,
+                ma_bfq_60,
+                ma_bfq_90,
+                macd_bfq,
+                macd_dea_bfq,
+                macd_dif_bfq,
+                mass_bfq,
+                ma_mass_bfq,
+                mfi_bfq,
+                mtm_bfq,
+                mtmma_bfq,
+                obv_bfq,
+                psy_bfq,
+                psyma_bfq,
+                roc_bfq,
+                maroc_bfq,
+                rsi_bfq_12,
+                rsi_bfq_24,
+                rsi_bfq_6,
+                taq_down_bfq,
+                taq_mid_bfq,
+                taq_up_bfq,
+                trix_bfq,
+                trma_bfq,
+                vr_bfq,
+                wr_bfq,
+                wr1_bfq,
+                xsii_td1_bfq,
+                xsii_td2_bfq,
+                xsii_td3_bfq,
+                xsii_td4_bfq,
+                now() as update_time
+        from res
+        replaceColumn!(res, "code", symbol(string(res.code)))
+        replaceColumn!(res, "trade_date", temporalParse(string(res.trade_date), "yyyyMMdd"))
+        replaceColumn!(res, "open", double(res.open))
+        replaceColumn!(res, "high", double(res.high))
+        replaceColumn!(res, "low", double(res.low))
+        replaceColumn!(res, "close", double(res.close))
+        replaceColumn!(res, "pre_close", double(res.pre_close))
+        replaceColumn!(res, "change", double(res.change))
+        replaceColumn!(res, "pct_change", double(res.pct_change))
+        replaceColumn!(res, "vol", double(res.vol))
+        replaceColumn!(res, "amount", double(res.amount))
+        replaceColumn!(res, "asi_bfq", double(res.asi_bfq))
+        replaceColumn!(res, "asit_bfq", double(res.asit_bfq))
+        replaceColumn!(res, "atr_bfq", double(res.atr_bfq))
+        replaceColumn!(res, "bbi_bfq", double(res.bbi_bfq))
+        replaceColumn!(res, "bias1_bfq", double(res.bias1_bfq))
+        replaceColumn!(res, "bias2_bfq", double(res.bias2_bfq))
+        replaceColumn!(res, "bias3_bfq", double(res.bias3_bfq))
+        replaceColumn!(res, "boll_lower_bfq", double(res.boll_lower_bfq))
+        replaceColumn!(res, "boll_mid_bfq", double(res.boll_mid_bfq))
+        replaceColumn!(res, "boll_upper_bfq", double(res.boll_upper_bfq))
+        replaceColumn!(res, "brar_ar_bfq", double(res.brar_ar_bfq))
+        replaceColumn!(res, "brar_br_bfq", double(res.brar_br_bfq))
+        replaceColumn!(res, "cci_bfq", double(res.cci_bfq))
+        replaceColumn!(res, "cr_bfq", double(res.cr_bfq))
+        replaceColumn!(res, "dfma_dif_bfq", double(res.dfma_dif_bfq))
+        replaceColumn!(res, "dfma_difma_bfq", double(res.dfma_difma_bfq))
+        replaceColumn!(res, "dmi_adx_bfq", double(res.dmi_adx_bfq))
+        replaceColumn!(res, "dmi_adxr_bfq", double(res.dmi_adxr_bfq))
+        replaceColumn!(res, "dmi_mdi_bfq", double(res.dmi_mdi_bfq))
+        replaceColumn!(res, "dmi_pdi_bfq", double(res.dmi_pdi_bfq))
+        replaceColumn!(res, "downdays", double(res.downdays))
+        replaceColumn!(res, "updays", double(res.updays))
+        replaceColumn!(res, "dpo_bfq", double(res.dpo_bfq))
+        replaceColumn!(res, "madpo_bfq", double(res.madpo_bfq))
+        replaceColumn!(res, "ema_bfq_10", double(res.ema_bfq_10))
+        replaceColumn!(res, "ema_bfq_20", double(res.ema_bfq_20))
+        replaceColumn!(res, "ema_bfq_250", double(res.ema_bfq_250))
+        replaceColumn!(res, "ema_bfq_30", double(res.ema_bfq_30))
+        replaceColumn!(res, "ema_bfq_5", double(res.ema_bfq_5))
+        replaceColumn!(res, "ema_bfq_60", double(res.ema_bfq_60))
+        replaceColumn!(res, "ema_bfq_90", double(res.ema_bfq_90))
+        replaceColumn!(res, "emv_bfq", double(res.emv_bfq))
+        replaceColumn!(res, "maemv_bfq", double(res.maemv_bfq))
+        replaceColumn!(res, "expma_12_bfq", double(res.expma_12_bfq))
+        replaceColumn!(res, "expma_50_bfq", double(res.expma_50_bfq))
+        replaceColumn!(res, "kdj_bfq", double(res.kdj_bfq))
+        replaceColumn!(res, "kdj_d_bfq", double(res.kdj_d_bfq))
+        replaceColumn!(res, "kdj_k_bfq", double(res.kdj_k_bfq))
+        replaceColumn!(res, "ktn_down_bfq", double(res.ktn_down_bfq))
+        replaceColumn!(res, "ktn_mid_bfq", double(res.ktn_mid_bfq))
+        replaceColumn!(res, "ktn_upper_bfq", double(res.ktn_upper_bfq))
+        replaceColumn!(res, "lowdays", double(res.lowdays))
+        replaceColumn!(res, "topdays", double(res.topdays))
+        replaceColumn!(res, "ma_bfq_10", double(res.ma_bfq_10))
+        replaceColumn!(res, "ma_bfq_20", double(res.ma_bfq_20))
+        replaceColumn!(res, "ma_bfq_250", double(res.ma_bfq_250))
+        replaceColumn!(res, "ma_bfq_30", double(res.ma_bfq_30))
+        replaceColumn!(res, "ma_bfq_5", double(res.ma_bfq_5))
+        replaceColumn!(res, "ma_bfq_60", double(res.ma_bfq_60))
+        replaceColumn!(res, "ma_bfq_90", double(res.ma_bfq_90))
+        replaceColumn!(res, "macd_bfq", double(res.macd_bfq))
+        replaceColumn!(res, "macd_dea_bfq", double(res.macd_dea_bfq))
+        replaceColumn!(res, "macd_dif_bfq", double(res.macd_dif_bfq))
+        replaceColumn!(res, "mass_bfq", double(res.mass_bfq))
+        replaceColumn!(res, "ma_mass_bfq", double(res.ma_mass_bfq))
+        replaceColumn!(res, "mfi_bfq", double(res.mfi_bfq))
+        replaceColumn!(res, "mtm_bfq", double(res.mtm_bfq))
+        replaceColumn!(res, "mtmma_bfq", double(res.mtmma_bfq))
+        replaceColumn!(res, "obv_bfq", double(res.obv_bfq))
+        replaceColumn!(res, "psy_bfq", double(res.psy_bfq))
+        replaceColumn!(res, "psyma_bfq", double(res.psyma_bfq))
+        replaceColumn!(res, "roc_bfq", double(res.roc_bfq))
+        replaceColumn!(res, "maroc_bfq", double(res.maroc_bfq))
+        replaceColumn!(res, "rsi_bfq_12", double(res.rsi_bfq_12))
+        replaceColumn!(res, "rsi_bfq_24", double(res.rsi_bfq_24))
+        replaceColumn!(res, "rsi_bfq_6", double(res.rsi_bfq_6))
+        replaceColumn!(res, "taq_down_bfq", double(res.taq_down_bfq))
+        replaceColumn!(res, "taq_mid_bfq", double(res.taq_mid_bfq))
+        replaceColumn!(res, "taq_up_bfq", double(res.taq_up_bfq))
+        replaceColumn!(res, "trix_bfq", double(res.trix_bfq))
+        replaceColumn!(res, "trma_bfq", double(res.trma_bfq))
+        replaceColumn!(res, "vr_bfq", double(res.vr_bfq))
+        replaceColumn!(res, "wr_bfq", double(res.wr_bfq))
+        replaceColumn!(res, "wr1_bfq", double(res.wr1_bfq))
+        replaceColumn!(res, "xsii_td1_bfq", double(res.xsii_td1_bfq))
+        replaceColumn!(res, "xsii_td2_bfq", double(res.xsii_td2_bfq))
+        replaceColumn!(res, "xsii_td3_bfq", double(res.xsii_td3_bfq))
+        replaceColumn!(res, "xsii_td4_bfq", double(res.xsii_td4_bfq))
+        replaceColumn!(res, "update_time", timestamp(res.update_time))
+        out.append!(res)
+        print("Success append data for Table " + api)
+        } else {
+            print("no data for Table " + api)
+        }
+    }
+}
+
+/*
+ * @Description: append data for daily_info
+ * @DolphinDB server version:
+ * @Last modification time: 2026-04-03 17:37:52
+ * @dev:
+ * @Author: codex
+ */
+def appendDailyInfo(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "daily_info"
+    api = "daily_info"
+    cols = [
+        "trade_date",
+        "ts_code",
+        "ts_name",
+        "com_count",
+        "total_share",
+        "float_share",
+        "total_mv",
+        "float_mv",
+        "amount",
+        "vol",
+        "trans_count",
+        "pe",
+        "tr",
+        "exchange"
+    ]
+    out = loadTable(dbPath, tableName)
+    delete from loadTable(dbPath, tableName) where trade_date between start_date and end_date
+
+    days = start_date..end_date
+    yearBeginDays = yearBegin(days).distinct().sort!()
+    for (oneDate in yearBeginDays){  
+        startDateStr =  temporalFormat(max(oneDate, start_date), "yyyyMMdd")
+        endDateStr = temporalFormat(min(yearEnd(oneDate), end_date), "yyyyMMdd")
+        p = {start_date:startDateStr, end_date:endDateStr}
+        logRange = startDateStr + " -> " + endDateStr
+        
+        res = getApiData(token, api, p, cols)
+        if(res.count()==4000){
+            print("Warning: data count for Table " + api + " in date range " + logRange + " reaches the limit 2000, some data may be missing. Consider narrowing the date range.")
+        }
+        if(!res.isVoid() and res.count() != 0){
+        res = select
+                trade_date,
+                ts_code as code,
+                ts_name,
+                com_count,
+                total_share,
+                float_share,
+                total_mv,
+                float_mv,
+                amount,
+                vol,
+                trans_count,
+                pe,
+                tr,
+                exchange,
+                now() as update_time
+        from res
+        replaceColumn!(res, "trade_date", temporalParse(string(res.trade_date), "yyyyMMdd"))
+        replaceColumn!(res, "code", symbol(string(res.code)))
+        replaceColumn!(res, "ts_name", string(res.ts_name))
+        replaceColumn!(res, "com_count", int(res.com_count))
+        replaceColumn!(res, "total_share", double(res.total_share))
+        replaceColumn!(res, "float_share", double(res.float_share))
+        replaceColumn!(res, "total_mv", double(res.total_mv))
+        replaceColumn!(res, "float_mv", double(res.float_mv))
+        replaceColumn!(res, "amount", double(res.amount))
+        replaceColumn!(res, "vol", double(res.vol))
+        replaceColumn!(res, "trans_count", int(res.trans_count))
+        replaceColumn!(res, "pe", double(res.pe))
+        replaceColumn!(res, "tr", double(res.tr))
+        replaceColumn!(res, "exchange", symbol(string(res.exchange)))
+        replaceColumn!(res, "update_time", timestamp(res.update_time))
+        out.append!(res)
+        print("Success append data for Table " + api)
+        } else {
+            print("no data for Table " + api)
+        }
+    }
+}
+
+/*
+ * @Description: append data for sz_daily_info
+ * @DolphinDB server version:
+ * @Last modification time: 2026-04-03 17:37:52
+ * @dev:
+ * @Author: codex
+ */
+def appendSzDailyInfo(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "sz_daily_info"
+    api = "sz_daily_info"
+    cols = [
+        "trade_date",
+        "ts_code",
+        "count",
+        "amount",
+        "vol",
+        "total_share",
+        "total_mv",
+        "float_share",
+        "float_mv"
+    ]
+
+    out = loadTable(dbPath, tableName)
+    delete from loadTable(dbPath, tableName) where trade_date between start_date and end_date
+
+    days = start_date..end_date
+    yearBeginDays = yearBegin(days).distinct().sort!()
+    for (oneDate in yearBeginDays){  
+        // startDateStr = "20260901"
+        // endDateStr = "20260901"
+        startDateStr =  temporalFormat(max(oneDate, start_date), "yyyyMMdd")
+        endDateStr = temporalFormat(min(yearEnd(oneDate), end_date), "yyyyMMdd")
+        p = {start_date:startDateStr, end_date:endDateStr}
+        logRange = startDateStr + " -> " + endDateStr
+        
+        res = getApiData(token, api, p, cols)
+        if(res.count()==2000){
+            print("Warning: data count for Table " + api + " in date range " + logRange + " reaches the limit 2000, some data may be missing. Consider narrowing the date range.")
+        }
+        if(!res.isVoid() and res.count() != 0){
+        res = select
+                trade_date,
+                ts_code as code,
+                count,
+                amount,
+                vol,
+                total_share,
+                total_mv,
+                float_share,
+                float_mv,
+                now() as update_time
+        from res
+        replaceColumn!(res, "trade_date", temporalParse(string(res.trade_date), "yyyyMMdd"))
+        replaceColumn!(res, "code", symbol(string(res.code)))
+        replaceColumn!(res, "count", int(res.count))
+        replaceColumn!(res, "amount", double(res.amount))
+        replaceColumn!(res, "vol", double(res.vol))
+        replaceColumn!(res, "total_share", double(res.total_share))
+        replaceColumn!(res, "total_mv", double(res.total_mv))
+        replaceColumn!(res, "float_share", double(res.float_share))
+        replaceColumn!(res, "float_mv", double(res.float_mv))
+        replaceColumn!(res, "update_time", timestamp(res.update_time))
+        out.append!(res)
+        print("Success append data for Table " + api)
+        } else {
+            print("no data for Table " + api)
+        }
+    }
+}

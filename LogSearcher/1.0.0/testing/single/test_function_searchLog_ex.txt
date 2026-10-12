@@ -1,0 +1,267 @@
+#include "setup/settings.txt"
+
+@testing:case = "prepare_data"
+plugin_dir = getHomeDir() + "/plugins/zip/PluginZip.txt"
+try{loadPlugin(plugin_dir)}catch(ex){print ex}
+go
+logdir = getHomeDir()
+
+file_log = select * from files(logdir) where filename like "%.log"
+if(file_log.size() < 7){
+	filenames = zip::unzip(DATA_DIR+"/single_log.zip", logdir)
+}
+
+file_access = files(getHomeDir() + "/resource")
+if(file_access.size() < 3){
+	logdir_access = getHomeDir() + "/resource"
+	filenames_access = zip::unzip(DATA_DIR+"/single_access.zip", logdir_access)
+	print(filenames_access)
+}
+
+@testing:case = "prepare"
+use LogSearcher
+go
+
+@testing:case = "test_function_searchLog_more_para", syntaxError = 1
+LogSearcher::searchLog(dict(STRING, ANY), 1)
+
+@testing:case = "test_function_searchLog_params_key_not_string", exception = 1
+LogSearcher::searchLog(dict([1], [1]))
+
+@testing:case = "test_function_searchLog_params_key_not_string", exception = 1
+LogSearcher::searchLog(dict([1], [1]))
+
+@testing:case = "test_function_searchLog_params_vector", exception = 1
+LogSearcher::searchLog(1..6)
+
+@testing:case = "test_function_searchLog_params_matrix", exception = 1
+LogSearcher::searchLog(1..6$2:3)
+
+@testing:case = "test_function_generateDefaultParams_more_para", syntaxError = 1
+LogSearcher::generateDefaultParams(dict(STRING, ANY), 1)
+
+@testing:case = "test_function_getSearchHistory_more_para", syntaxError = 1
+LogSearcher::getSearchHistory(dict(STRING, ANY), 1)
+
+@testing:case = "test_function_saveLog_log_int", exception = 1
+LogSearcher::saveLog(1)
+
+@testing:case = "test_function_saveLog_log_vector", exception = 1
+LogSearcher::saveLog(1..6)
+
+@testing:case = "test_function_saveLog_log_matrix", exception = 1
+LogSearcher::saveLog(1..6$2:3)
+
+@testing:case = "test_function_saveLog_log_table_not_exist_col"//, exception = 1
+LogSearcher::saveLog(table(1..6 as id, 1..6 as value))
+
+@testing:case = "test_function_saveLog_log_error_type_ex1"//, exception = 1
+LogSearcher::saveLog(table(string(1..6) as node, 1..6 as logType, string(1..6) as logFile))
+
+@testing:case = "test_function_saveLog_log_error_type_ex2"//, exception = 1
+LogSearcher::saveLog(table(1..6 as node, 1..6 as logType, string(1..6) as logFile))
+
+@testing:case = "test_function_saveLog_log_error_type_ex3"//, exception = 1
+LogSearcher::saveLog(table(1..6 as node, 1..6 as logType, 1..6 as logFile))
+
+@testing:case = "test_function_saveLog_more_para", syntaxError = 1
+temp = table(1:0, `timestamp`logLevel`node`logType`logFile`content, [NANOTIMESTAMP, SYMBOL, SYMBOL, SYMBOL, STRING, STRING])
+LogSearcher::saveLog(temp, dict(STRING, ANY), 1)
+
+@testing:case = "test_function_saveLog_para_saveDir_int", exception = 1
+temp = table(1:0, `timestamp`logLevel`node`logType`logFile`content, [NANOTIMESTAMP, SYMBOL, SYMBOL, SYMBOL, STRING, STRING])
+para = {"saveDir":1}
+LogSearcher::saveLog(temp, para)
+
+@testing:case = "test_function_searchLog_para_null", exception = 1
+para = {"pattern":string()}
+para["dolphindbPath"] = dolphindbPath
+LogSearcher::searchLog(para)
+
+@testing:case = "test_function_searchLog_para_int", exception = 1
+para = {"pattern":1}
+para["dolphindbPath"] = dolphindbPath
+LogSearcher::searchLog(para)
+
+@testing:case = "test_function_searchLog_para_logLevel_error", exception = 1
+para = {"logLevel":"check"}
+para["dolphindbPath"] = dolphindbPath
+LogSearcher::searchLog(para)
+
+@testing:case = "test_function_searchLog_para_logLevel_int", exception = 1
+para = {"logLevel":1}
+para["dolphindbPath"] = dolphindbPath
+LogSearcher::searchLog(para)
+
+@testing:case = "test_function_searchLog_para_logType_error", exception = 1
+para = {"logType":"check"}
+para["dolphindbPath"] = dolphindbPath
+LogSearcher::searchLog(para)
+
+@testing:case = "test_function_searchLog_para_logType_int", exception = 1
+para = {"logType":1}
+para["dolphindbPath"] = dolphindbPath
+LogSearcher::searchLog(para)
+
+@testing:case = "test_function_searchLog_para_node_not_exist", exception = 1
+para = {"node":"datanode14"}
+para["dolphindbPath"] = dolphindbPath
+LogSearcher::searchLog(para)
+
+@testing:case = "test_function_searchLog_para_node_int", exception = 1
+para = {"node":1}
+para["dolphindbPath"] = dolphindbPath
+LogSearcher::searchLog(para)
+
+@testing:case = "test_function_searchLog_para_node_empty", exception = 1
+para = {"node":string()}
+para["dolphindbPath"] = dolphindbPath
+LogSearcher::searchLog(para)
+
+@testing:case = "test_function_searchLog_para_node_int", exception = 1
+para = {"node":[1, 1.3]}
+para["dolphindbPath"] = dolphindbPath
+LogSearcher::searchLog(para)
+
+@testing:case = "test_function_searchLog_para_mode_error", exception = 1
+para = {"mode":"datanode14"}
+para["dolphindbPath"] = dolphindbPath
+LogSearcher::searchLog(para)
+
+@testing:case = "test_function_searchLog_para_mode_vector", exception = 1
+para = {"mode":["like", "strpos"], "dolphindbPath":dolphindbPath}
+re = LogSearcher::searchLog(para)
+
+@testing:case = "test_function_searchLog_para_mode_int", exception = 1
+para = {"mode":1, "dolphindbPath":dolphindbPath}
+re = LogSearcher::searchLog(para)
+
+@testing:case = "test_function_searchLog_para_mode_empty", exception = 1
+para = {"mode":string(), "dolphindbPath":dolphindbPath}
+re = LogSearcher::searchLog(para)
+
+@testing:case = "test_function_searchLog_para_cacheSize_double", exception = 1
+para = {"cacheSize":0.1, "dolphindbPath":dolphindbPath}
+LogSearcher::searchLog(para)
+
+@testing:case = "test_function_searchLog_para_cacheSize_double", exception = 1
+para = {"cacheSize":`1, "dolphindbPath":dolphindbPath}
+LogSearcher::searchLog(para)
+
+@testing:case = "test_function_searchLog_para_cacheSize_<-1", exception = 1
+para = {"cacheSize":-10, "dolphindbPath":dolphindbPath}
+LogSearcher::searchLog(para)
+
+@testing:case = "test_function_searchLog_para_cacheSize_int()", exception = 1
+para = {"cacheSize":int(), "dolphindbPath":dolphindbPath}
+LogSearcher::searchLog(para)
+
+@testing:case = "test_function_searchLog_para_adminPassword_error"//, exception = 1
+para = {"adminPassword":"123456adfsw", "dolphindbPath":dolphindbPath}
+re = LogSearcher::searchLog(para)
+assert 1, re.size() > 0
+
+@testing:case = "test_function_searchLog_para_adminPassword_int", exception = 1
+para = {"adminPassword":1, "dolphindbPath":dolphindbPath}
+LogSearcher::searchLog(para)
+
+@testing:case = "test_function_searchLog_para_dolphindbPath_error", exception = 1
+para = {"dolphindbPath":"/12345/12435"}
+LogSearcher::searchLog(para)
+
+@testing:case = "test_function_searchLog_para_dolphindbPath_empty", exception = 1
+para = {"dolphindbPath":string()}
+LogSearcher::searchLog(para)
+
+@testing:case = "test_function_searchLog_para_dolphindbPath_int", exception = 1
+para = {"dolphindbPath":1}
+LogSearcher::searchLog(para)
+
+@testing:case = "test_function_searchLog_para_saveDir_int", exception = 1
+para = {"saveDir":1, "dolphindbPath":dolphindbPath}
+re = LogSearcher::searchLog(para)
+LogSearcher::saveLog(re, para)
+
+@testing:case = "test_function_searchLog_para_saveDir_error", exception = 1
+para = {"saveDir":"/12345/12435", "dolphindbPath":dolphindbPath}
+LogSearcher::searchLog(para)
+
+@testing:case = "test_function_searchLog_para_saveDir_string()", exception = 1
+para = {"saveDir":string(), "dolphindbPath":dolphindbPath}
+LogSearcher::searchLog(para)
+
+@testing:case = "test_function_searchLog_para_starttime>endtime", exception = 1
+para = {"startTime":2012.01.01 12:00:00.000, "endTime":2012.01.01 11:00:00.000, "dolphindbPath":dolphindbPath}
+LogSearcher::searchLog(para)
+
+@testing:case = "test_function_searchLog_para_starttime_string", exception = 1
+para = {"startTime":"2012.01.01 12:00:00.000", "dolphindbPath":dolphindbPath}
+LogSearcher::searchLog(para)
+
+@testing:case = "test_function_searchLog_para_starttime_vector", exception = 1
+para = {"startTime":[2012.01.01 12:00:00.000], "dolphindbPath":dolphindbPath}
+LogSearcher::searchLog(para)
+
+@testing:case = "test_function_searchLog_para_starttime_timestamp()", exception = 1
+para = {"startTime":timestamp(), "dolphindbPath":dolphindbPath}
+LogSearcher::searchLog(para)
+
+@testing:case = "test_function_searchLog_para_endtime_string", exception = 1
+para = {"endTime":"2012.01.01 12:00:00.000", "dolphindbPath":dolphindbPath}
+LogSearcher::searchLog(para)
+
+@testing:case = "test_function_searchLog_para_endtime_vector", exception = 1
+para = {"endTime":[2012.01.01 12:00:00.000], "dolphindbPath":dolphindbPath}
+LogSearcher::searchLog(para)
+
+@testing:case = "test_function_searchLog_para_endtime_timestamp()", exception = 1
+para = {"endTime":timestamp(), "dolphindbPath":dolphindbPath}
+LogSearcher::searchLog(para)
+
+
+// https://dolphindb1.atlassian.net/browse/DLPHNDBMDL-159
+@testing:case = "test_function_searchLog_guest", exception = 1
+logout("admin")
+LogSearcher::searchLog({"dolphindbPath":dolphindbPath})
+
+@testing:case = "test_function_getSearchHistory_guest", exception = 1
+LogSearcher::getSearchHistory()
+
+@testing:case = "test_function_saveLog_guest", exception = 1
+login("admin", "123456")
+go
+re = LogSearcher::searchLog({"dolphindbPath":dolphindbPath})
+logout("admin")
+go
+LogSearcher::saveLog(re)
+
+@testing:case = "test_function_generateDefaultParams_guest", exception = 1
+LogSearcher::generateDefaultParams({"dolphindbPath":dolphindbPath})
+
+@testing:case = "test_function_searchLog_not_admin_prepare"
+login("admin", "123456")
+go
+re = LogSearcher::searchLog({"dolphindbPath":dolphindbPath})
+try{deleteUser("testA")}catch(exp){print(exp)}
+createUser("testA", "123456")
+go
+login("testA", "123456")
+go
+
+@testing:case = "test_function_searchLog_not_admin", exception = 1
+LogSearcher::searchLog({"dolphindbPath":dolphindbPath})
+
+@testing:case = "test_function_getSearchHistory_not_admin", exception = 1
+LogSearcher::getSearchHistory()
+
+@testing:case = "test_function_saveLog_not_admin", exception = 1
+LogSearcher::saveLog(re)
+
+@testing:case = "test_function_generateDefaultParams_guest", exception = 1
+LogSearcher::generateDefaultParams({"dolphindbPath":dolphindbPath})
+
+@testing:case = "test_function_searchLog_not_admin_clear"
+login("admin", "123456")
+go
+try{deleteUser("testA")}catch(exp){print(exp)}
+

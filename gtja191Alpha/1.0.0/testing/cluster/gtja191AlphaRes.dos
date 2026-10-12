@@ -1,0 +1,59 @@
+/* *
+*  @ brief  
+*  This script is to show the implementation of gtja 191 alpha in DolphinDB.
+*  @ Author: DolphinDB
+*  @ Last modification time: 2022.12.15
+*  @ DolphinDB server version: 2.00.9
+*  @ FileName: gtja191AlphaRes.dos
+*  Don't forget to change your directory.
+*/
+
+idList = "sz"+lpad(string(000001..00010), 6, `0)
+data = select * from loadText("/YOURDIR/datatest.csv") where securityid in idList 
+
+use gtja191Alpha
+use gtja191Prepare
+
+startTime = timestamp(2010.01.01)
+endTime = timestamp(2010.12.31)
+resTable = select tradetime from data where securityid = "sz000001"
+resTableCal = select tradetime from data where securityid = "sz000001"
+input = panel(data.tradetime, data.securityid, [data.open, data.close, data.high, data.low, data.vol, data.vwap, data.index_open, data.index_close])
+open, close, high, low, vol, vwap, index_open, index_close = panel(data.tradetime, data.securityid, [data.open, data.close, data.high, data.low, data.vol, data.vwap, data.index_open, data.index_close])
+
+//The No. 30 factor involves the Fama French Three-factor. When calculating, you need to obtain the MKT, SMB, and HML corresponding to the timestamp, and input these three values ​​as vectors into parameters.
+//The No. 21, No. 116, No. 147 factors are not finished yet.
+passList = [21,30,116,147]
+
+//calculte the gtja 191 alpha by using module gtja191Alpha
+for (i in 1:192){		
+	if (i in passList) continue
+	else{
+		print("start gtjaAlpha"+i)
+		alphaName = exec name from defs() where name = "gtja191Alpha::gtjaAlpha"+string(i)
+		alphaSyntax = exec syntax from defs() where name = "gtja191Alpha::gtjaAlpha"+string(i)
+		function = alphaName + alphaSyntax
+		t1 = time(now())
+		res = parseExpr(function[0]).eval()
+		resTmp = table(res[0] as `sz000001).rename!( 'Alpha' + string(i))
+		resTable = resTable join resTmp
+	}
+}
+
+//calculte the gtja 191 alpha by using module gtja191Prepare
+for (i in 1:192){		
+	if (i in passList) continue
+	else{
+		print("start gtjaCalAlpha"+i)
+		alphaName = exec name from defs() where name = "gtja191Prepare::gtjaCalAlpha"+string(i)
+		alphaSyntax = exec syntax from defs() where name = "gtja191Prepare::gtjaCalAlpha"+string(i)
+		function = alphaName + alphaSyntax
+		t1 = time(now())
+		res = parseExpr(function[0]).eval()
+		resTmp = table(res[0] as `sz000001).rename!( 'Alpha' + string(i))
+		resTableCal = resTableCal join resTmp
+	}
+}
+
+login(`admin,`123456)
+saveText(resTable,"/YOUR_DIR/ddbVerifyRes.csv")

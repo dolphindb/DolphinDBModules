@@ -1,0 +1,64 @@
+#include "setup/settings.txt"
+
+use alphalens
+go
+
+testData = loadText(DATA_DIR+"/testData.csv")
+prices = select close from testData pivot by tradeDate as Date, securityId
+factor = select tradeDate as Date, securityId as asset, vwap as factor from testData
+groupData = select tradeDate as Date, securityId as asset, rand(3, count(testData)) as Group from testData
+factor_data = get_clean_factor_and_forward_returns(factor, prices, groupby=groupData)
+
+def checkAllTables(res) {
+    try {
+        assert count(res['plot_turnover_tear_sheet']['Mean_Factor_Rank_Autocorrelation'])!=0
+        assert count(res['plot_turnover_tear_sheet']['Mean_Turnover'])!=0
+        assert count(res['plot_turnover_tear_sheet']['autocorrelation'])!=0
+        assert count(res['plot_turnover_tear_sheet']['quantile_turnover'])!=0
+        assert count(res['plot_information_tear_sheet']['ic_ts'])!=0
+        assert count(res['plot_information_tear_sheet']['Information_Analysis'])!=0
+        assert count(res['plot_information_tear_sheet']['ic'])!=0
+        assert count(res['plot_returns_tear_sheet']['plot_cumulative_returns_1'])!=0
+        assert count(res['plot_returns_tear_sheet']['cumulative_factor_data'])!=0
+        assert count(res['plot_returns_tear_sheet']['cum_ret'])!=0
+        assert count(res['plot_returns_tear_sheet']['std_spread_quant'])!=0
+        assert count(res['plot_returns_tear_sheet']['returns_analysis'])!=0
+        assert count(res['plot_returns_tear_sheet']['mean_ret_spread_quant'])!=0
+        assert count(res['plot_returns_tear_sheet']['mean_quant_rateret_bydate'])!=0
+        assert count(res['plot_returns_tear_sheet']['mean_quant_ret_bydate'])!=0
+        assert count(res['plot_returns_tear_sheet']['factor_returns_'])!=0
+        assert count(res['plot_returns_tear_sheet']['mean_quant_rateret'])!=0
+        assert count(res['quantile_stats'])!=0
+    } catch(ex) {
+        return false
+    }
+    return true
+}
+
+@testing: case = "test_alphalens_function_plot_create_full_tear_sheet"
+res = plot_create_full_tear_sheet(factor_data)
+assert 1, form(res)==5
+assert 2, res.keys() in `plot_turnover_tear_sheet`plot_information_tear_sheet`plot_returns_tear_sheet`quantile_stats
+assert 3, res['plot_turnover_tear_sheet'].keys() in `Mean_Factor_Rank_Autocorrelation`Mean_Turnover`autocorrelation`quantile_turnover
+assert 4, res['plot_information_tear_sheet'].keys() in `mean_monthly_ic`ic_ts`Information_Analysis`ic
+assert 5, res['plot_returns_tear_sheet'].keys() in `plot_cumulative_returns_1`cumulative_factor_data`cum_ret`std_spread_quant`returns_analysis`mean_ret_spread_quant`mean_quant_rateret_bydate`mean_quant_ret_bydate`factor_returns_`mean_quant_rateret
+assert 6, checkAllTables(res)==true
+assert 7, count(res['plot_information_tear_sheet']['mean_monthly_ic'])!=0
+
+@testing: case = "test_alphalens_function_plot_create_full_tear_sheet_long_short"
+res = plot_create_full_tear_sheet(factor_data, long_short=true)
+assert 1, checkAllTables(res)==true
+res = plot_create_full_tear_sheet(factor_data, long_short=false)
+assert 2, checkAllTables(res)==true
+
+@testing: case = "test_alphalens_function_plot_create_full_tear_sheet_group_neutral"
+res = plot_create_full_tear_sheet(factor_data, group_neutral=true)
+assert 1, checkAllTables(res)==true
+res = plot_create_full_tear_sheet(factor_data, group_neutral=false)
+assert 2, checkAllTables(res)==true
+
+@testing: case = "test_alphalens_function_plot_create_full_tear_sheet_by_group"
+res = plot_create_full_tear_sheet(factor_data, by_group=false)
+assert 1, checkAllTables(res)==true
+res = plot_create_full_tear_sheet(factor_data, by_group=true)
+assert 2, checkAllTables(res)==true

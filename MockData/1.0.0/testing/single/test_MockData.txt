@@ -1,0 +1,404 @@
+#include "setup/settings.txt"
+use MockData
+
+
+// validateDateAndScalarParam(funcName, param)
+@testing:case = "test_validateDateAndScalarParam_normal"
+re = validateDateAndScalarParam("test", 2020.01.06)
+assert 0, re == 2020.01.06
+
+@testing:case = "test_validateDateAndScalarParam_string", exception=1
+validateDateAndScalarParam("test", "2020.01.06")
+
+@testing:case = "test_validateDateAndScalarParam_int", exception=1
+validateDateAndScalarParam("test", 20200106)
+
+@testing:case = "test_validateDateAndScalarParam_double", exception=1
+validateDateAndScalarParam("test", 2020.5)
+
+@testing:case = "test_validateDateAndScalarParam_bool", exception=1
+validateDateAndScalarParam("test", true)
+
+@testing:case = "test_validateDateAndScalarParam_dateVector", exception=1
+validateDateAndScalarParam("test", [2020.01.06, 2020.01.07])
+
+@testing:case = "test_validateDateAndScalarParam_null", exception=1
+validateDateAndScalarParam("test", NULL)
+
+
+
+// validateIntAndScalarParam(funcName, param)
+@testing:case = "test_validateIntAndScalarParam_normal"
+re = validateIntAndScalarParam("test", 10)
+assert 0, re == 10
+
+@testing:case = "test_validateIntAndScalarParam_string", exception=1
+validateIntAndScalarParam("test", "10")
+
+@testing:case = "test_validateIntAndScalarParam_double", exception=1
+validateIntAndScalarParam("test", 10.5)
+
+@testing:case = "test_validateIntAndScalarParam_bool", exception=1
+validateIntAndScalarParam("test", true)
+
+@testing:case = "test_validateIntAndScalarParam_date", exception=1
+validateIntAndScalarParam("test", 2020.01.06)
+
+@testing:case = "test_validateIntAndScalarParam_intVector", exception=1
+validateIntAndScalarParam("test", [1, 2, 3])
+
+@testing:case = "test_validateIntAndScalarParam_null", exception=1
+validateIntAndScalarParam("test", NULL)
+
+
+
+// validateStringAndScalarParam(funcName, param)
+@testing:case = "test_validateStringAndScalarParam_normal"
+re = validateStringAndScalarParam("test", "dfs://a")
+assert 0, re == "dfs://a"
+
+@testing:case = "test_validateStringAndScalarParam_int", exception=1
+validateStringAndScalarParam("test", 123)
+
+@testing:case = "test_validateStringAndScalarParam_double", exception=1
+validateStringAndScalarParam("test", 1.5)
+
+@testing:case = "test_validateStringAndScalarParam_bool", exception=1
+validateStringAndScalarParam("test", true)
+
+@testing:case = "test_validateStringAndScalarParam_date", exception=1
+validateStringAndScalarParam("test", 2020.01.06)
+
+@testing:case = "test_validateStringAndScalarParam_stringVector", exception=1
+validateStringAndScalarParam("test", ["a", "b"])
+
+@testing:case = "test_validateStringAndScalarParam_null", exception=1
+validateStringAndScalarParam("test", NULL)
+
+
+
+
+// 区间跨交易日 + 非交易日：只生成交易日数据
+// ---------- 股票 ----------
+@testing:case = "test_crossNonTradingDay_stockMinuteKLine"
+days = size(getMarketCalendar("XSHG", 2020.01.03, 2020.01.06))
+singleDay = size(stockMinuteKLine(startDate=2020.01.06, endDate=2020.01.06, securityNumber=1))
+t = stockMinuteKLine(startDate=2020.01.03, endDate=2020.01.06, securityNumber=1)
+assert 0, days == 2
+assert 1, size(t) == days * singleDay
+
+@testing:case = "test_crossNonTradingDay_stockDailyKLine"
+days = size(getMarketCalendar("XSHG", 2020.01.03, 2020.01.06))
+singleDay = size(stockDailyKLine(startDate=2020.01.06, endDate=2020.01.06, securityNumber=1))
+t = stockDailyKLine(startDate=2020.01.03, endDate=2020.01.06, securityNumber=1)
+assert 0, days == 2
+assert 1, size(t) == days * singleDay
+
+// ---------- 因子类 ----------
+@testing:case = "test_crossNonTradingDay_dailyFactor"
+days = size(getMarketCalendar("XSHG", 2020.01.03, 2020.01.06))
+t = dailyFactor(startDate=2020.01.03, endDate=2020.01.06, securityNumber=1, factorNumber=1)
+assert 0, days == 2
+assert 1, size(t) == days * 1 * 1 * 1
+
+@testing:case = "test_crossNonTradingDay_halfHourFactor"
+days = size(getMarketCalendar("XSHG", 2020.01.03, 2020.01.06))
+singleDay = size(halfHourFactor(startDate=2020.01.06, endDate=2020.01.06, securityNumber=1, factorNumber=1))
+t = halfHourFactor(startDate=2020.01.03, endDate=2020.01.06, securityNumber=1, factorNumber=1)
+assert 0, days == 2
+assert 1, size(t) == days * singleDay
+
+@testing:case = "test_crossNonTradingDay_tenMinutesFactor"
+days = size(getMarketCalendar("XSHG", 2020.01.03, 2020.01.06))
+singleDay = size(tenMinutesFactor(startDate=2020.01.06, endDate=2020.01.06, securityNumber=1, factorNumber=1))
+t = tenMinutesFactor(startDate=2020.01.03, endDate=2020.01.06, securityNumber=1, factorNumber=1)
+assert 0, days == 2
+assert 1, size(t) == days * singleDay
+
+@testing:case = "test_crossNonTradingDay_minuteFactor"
+days = size(getMarketCalendar("XSHG", 2020.01.03, 2020.01.06))
+singleDay = size(minuteFactor(startDate=2020.01.06, endDate=2020.01.06, securityNumber=1, factorNumber=1))
+t = minuteFactor(startDate=2020.01.03, endDate=2020.01.06, securityNumber=1, factorNumber=1)
+assert 0, days == 2
+assert 1, size(t) == days * singleDay
+
+@testing:case = "test_crossNonTradingDay_secondFactor"
+days = size(getMarketCalendar("XSHG", 2020.01.03, 2020.01.06))
+singleDay = size(secondFactor(startDate=2020.01.06, endDate=2020.01.06, securityNumber=1, factorNumber=1))
+t = secondFactor(startDate=2020.01.03, endDate=2020.01.06, securityNumber=1, factorNumber=1)
+assert 0, days == 2
+assert 1, size(t) == days * singleDay
+
+@testing:case = "test_crossNonTradingDay_level2Factor"
+days = size(getMarketCalendar("XSHG", 2020.01.03, 2020.01.06))
+singleDay = size(level2Factor(startDate=2020.01.06, endDate=2020.01.06, securityNumber=1, factorNumber=1))
+t = level2Factor(startDate=2020.01.03, endDate=2020.01.06, securityNumber=1, factorNumber=1)
+assert 0, days == 2
+assert 1, size(t) == days * singleDay
+
+@testing:case = "test_crossNonTradingDay_tickFactor"
+days = size(getMarketCalendar("XSHG", 2020.01.03, 2020.01.06))
+singleDay = size(tickFactor(startDate=2020.01.06, endDate=2020.01.06, securityNumber=1, factorNumber=1))
+t = tickFactor(startDate=2020.01.03, endDate=2020.01.06, securityNumber=1, factorNumber=1)
+assert 0, days == 2
+assert 1, size(t) == days * singleDay
+
+@testing:case = "test_crossNonTradingDay_futuresFactor"
+days = size(getMarketCalendar("XSHG", 2020.01.03, 2020.01.06))
+singleDay = size(futuresFactor(startDate=2020.01.06, endDate=2020.01.06, securityNumber=1, factorNumber=1))
+t = futuresFactor(startDate=2020.01.03, endDate=2020.01.06, securityNumber=1, factorNumber=1)
+assert 0, days == 2
+assert 1, size(t) == days * singleDay
+
+
+
+
+
+// 建库建表函数
+// ---------- stockSnapShotPT ----------
+
+@testing:case = "test_function_stockSnapShotPT_normal"
+if(existsDatabase("dfs://test_snap")) dropDatabase("dfs://test_snap")
+t = stockSnapShotPT("dfs://test_snap", "snap_tb")
+assert 0, existsDatabase("dfs://test_snap")
+data = stockSnapshot(tradeDate=2020.06.01, securityNumber=10)
+assert 1, size(data) == 48020
+t.append!(data)
+re = select count(*) as cnt from t
+assert 3, re.cnt[0] == 48020
+dropDatabase("dfs://test_snap")
+
+
+// ---------- stockEntrustPT ----------
+
+@testing:case = "test_function_stockEntrustPT_normal"
+if(existsDatabase("dfs://test_ent")) dropDatabase("dfs://test_ent")
+t = stockEntrustPT("dfs://test_ent", "ent_tb")
+assert 0, existsDatabase("dfs://test_ent")
+data = stockEntrust(tradeDate=2020.06.01, securityNumber=10)
+assert 1, size(data) == 288020
+t.append!(data)
+re = select count(*) as cnt from t
+assert 2, re.cnt[0] == 288020
+dropDatabase("dfs://test_ent")
+
+// ---------- stockTradePT ----------
+
+@testing:case = "test_function_stockTradePT_normal"
+if(existsDatabase("dfs://test_trd")) dropDatabase("dfs://test_trd")
+t = stockTradePT("dfs://test_trd", "trd_tb")
+assert 0, existsDatabase("dfs://test_trd")
+data = stockTrade(tradeDate=2020.06.01, securityNumber=10)
+assert 1, size(data) == 288020
+t.append!(data)
+re = select count(*) as cnt from t
+assert 2, re.cnt[0] == 288020
+dropDatabase("dfs://test_trd")
+
+// ---------- stockMinuteKLinePT ----------
+
+@testing:case = "test_function_stockMinuteKLinePT_normal"
+if(existsDatabase("dfs://test_mk")) dropDatabase("dfs://test_mk")
+t = stockMinuteKLinePT("dfs://test_mk", "mk_tb")
+assert 0, existsDatabase("dfs://test_mk")
+data = stockMinuteKLine(startDate=2020.06.01, endDate=2020.06.01, securityNumber=10)
+assert 1, size(data) == 2420
+t.append!(data)
+re = select count(*) as cnt from t
+assert 2, re.cnt[0] == 2420
+dropDatabase("dfs://test_mk")
+
+// ---------- stockDailyKLinePT ----------
+
+@testing:case = "test_function_stockDailyKLinePT_normal"
+if(existsDatabase("dfs://test_dk")) dropDatabase("dfs://test_dk")
+t = stockDailyKLinePT("dfs://test_dk", "dk_tb")
+assert 0, existsDatabase("dfs://test_dk")
+data = stockDailyKLine(startDate=2020.06.01, endDate=2020.06.01, securityNumber=10)
+assert 1, size(data) == 10
+t.append!(data)
+re = select count(*) as cnt from t
+assert 2, re.cnt[0] == 10
+dropDatabase("dfs://test_dk")
+
+// ---------- optionsPT ----------
+
+@testing:case = "test_function_optionsPT_normal"
+if(existsDatabase("dfs://test_opt")) dropDatabase("dfs://test_opt")
+t = optionsPT("dfs://test_opt", "opt_tb")
+assert 0, existsDatabase("dfs://test_opt")
+data = optionsSnapshot(tradeDate=2020.06.01, instrumentNumber=10)
+assert 1, size(data) == 9000
+t.append!(data)
+re = select count(*) as cnt from t
+assert 2, re.cnt[0] == 9000
+dropDatabase("dfs://test_opt")
+
+// ---------- futuresPT ----------
+
+@testing:case = "test_function_futuresPT_normal"
+if(existsDatabase("dfs://test_fut")) dropDatabase("dfs://test_fut")
+t = futuresPT("dfs://test_fut", "fut_tb")
+assert 0, existsDatabase("dfs://test_fut")
+data = futuresSnapshot(tradeDate=2020.06.01, instrumentNumber=10)
+assert 1, size(data) == 20000
+t.append!(data)
+re = select count(*) as cnt from t
+assert 2, re.cnt[0] == 20000
+dropDatabase("dfs://test_fut")
+
+// ---------- ESPDepthPT ----------
+
+@testing:case = "test_function_ESPDepthPT_normal"
+if(existsDatabase("dfs://test_espd")) dropDatabase("dfs://test_espd")
+t = ESPDepthPT("dfs://test_espd", "espd_tb")
+assert 0, existsDatabase("dfs://test_espd")
+data = ESPDepth(tradeDate=2022.06.01, securityNumber=10)
+assert 1, size(data) == 800
+t.append!(data)
+re = select count(*) as cnt from t
+assert 2, re.cnt[0] == 800
+dropDatabase("dfs://test_espd")
+
+// ---------- ESPTradePT ----------
+
+@testing:case = "test_function_ESPTradePT_normal"
+if(existsDatabase("dfs://test_espt")) dropDatabase("dfs://test_espt")
+t = ESPTradePT("dfs://test_espt", "espt_tb")
+assert 0, existsDatabase("dfs://test_espt")
+data = ESPTrade(tradeDate=2022.06.01, securityNumber=10)
+assert 1, size(data) == 100
+t.append!(data)
+re = select count(*) as cnt from t
+assert 2, re.cnt[0] == 100
+dropDatabase("dfs://test_espt")
+
+// ---------- XBondDepthPT ----------
+
+@testing:case = "test_function_XBondDepthPT_normal"
+if(existsDatabase("dfs://test_xbd")) dropDatabase("dfs://test_xbd")
+t = XBondDepthPT("dfs://test_xbd", "xbd_tb")
+assert 0, existsDatabase("dfs://test_xbd")
+data = XBondDepth(tradeDate=2022.06.01, securityNumber=10)
+assert 1, size(data) == 10000
+t.append!(data)
+re = select count(*) as cnt from t
+assert 2, re.cnt[0] == 10000
+dropDatabase("dfs://test_xbd")
+
+// ---------- XBondTradePT ----------
+
+@testing:case = "test_function_XBondTradePT_normal"
+if(existsDatabase("dfs://test_xbt")) dropDatabase("dfs://test_xbt")
+t = XBondTradePT("dfs://test_xbt", "xbt_tb")
+assert 0, existsDatabase("dfs://test_xbt")
+data = XBondTrade(tradeDate=2022.06.01, securityNumber=10)
+assert 1, size(data) == 1200
+t.append!(data)
+re = select count(*) as cnt from t
+assert 2, re.cnt[0] == 1200
+dropDatabase("dfs://test_xbt")
+
+// ---------- dailyFactorPT ----------
+
+@testing:case = "test_function_dailyFactorPT_normal"
+if(existsDatabase("dfs://test_df")) dropDatabase("dfs://test_df")
+t = dailyFactorPT("dfs://test_df", "df_tb")
+assert 0, existsDatabase("dfs://test_df")
+data = dailyFactor(startDate=2020.06.01, endDate=2020.06.01, securityNumber=5, factorNumber=2)
+assert 1, size(data) == 10
+t.append!(data)
+re = select count(*) as cnt from t
+assert 2, re.cnt[0] == 10
+dropDatabase("dfs://test_df")
+
+// ---------- halfHourFactorPT ----------
+
+@testing:case = "test_function_halfHourFactorPT_normal"
+if(existsDatabase("dfs://test_hhf")) dropDatabase("dfs://test_hhf")
+t = halfHourFactorPT("dfs://test_hhf", "hhf_tb")
+assert 0, existsDatabase("dfs://test_hhf")
+data = halfHourFactor(startDate=2020.06.01, endDate=2020.06.01, securityNumber=5, factorNumber=2)
+assert 1, size(data) == 80
+t.append!(data)
+re = select count(*) as cnt from t
+assert 2, re.cnt[0] == 80
+dropDatabase("dfs://test_hhf")
+
+// ---------- tenMinutesFactorPT ----------
+
+@testing:case = "test_function_tenMinutesFactorPT_normal"
+if(existsDatabase("dfs://test_tmf")) dropDatabase("dfs://test_tmf")
+t = tenMinutesFactorPT("dfs://test_tmf", "tmf_tb")
+assert 0, existsDatabase("dfs://test_tmf")
+data = tenMinutesFactor(startDate=2021.01.06, endDate=2021.01.06, securityNumber=5, factorNumber=2)
+assert 1, size(data) == 240
+t.append!(data)
+re = select count(*) as cnt from t
+assert 2, re.cnt[0] == 240
+dropDatabase("dfs://test_tmf")
+
+// ---------- minuteFactorPT ----------
+
+@testing:case = "test_function_minuteFactorPT_normal"
+if(existsDatabase("dfs://test_mf")) dropDatabase("dfs://test_mf")
+t = minuteFactorPT("dfs://test_mf", "mf_tb")
+assert 0, existsDatabase("dfs://test_mf")
+data = minuteFactor(startDate=2021.12.01, endDate=2021.12.01, securityNumber=5, factorNumber=2)
+assert 1, size(data) == 2400
+t.append!(data)
+re = select count(*) as cnt from t
+assert 2, re.cnt[0] == 2400
+dropDatabase("dfs://test_mf")
+
+// ---------- secondFactorPT ----------
+
+@testing:case = "test_function_secondFactorPT_normal"
+if(existsDatabase("dfs://test_sf")) dropDatabase("dfs://test_sf")
+t = secondFactorPT("dfs://test_sf", "sf_tb")
+assert 0, existsDatabase("dfs://test_sf")
+data = secondFactor(startDate=2022.01.17, endDate=2022.01.17, securityNumber=2, factorNumber=2)
+assert 1, size(data) == 57600
+t.append!(data)
+re = select count(*) as cnt from t
+assert 2, re.cnt[0] == 57600
+dropDatabase("dfs://test_sf")
+
+// ---------- level2FactorPT ----------
+
+@testing:case = "test_function_level2FactorPT_normal"
+if(existsDatabase("dfs://test_l2f")) dropDatabase("dfs://test_l2f")
+t = level2FactorPT("dfs://test_l2f", "l2f_tb")
+assert 0, existsDatabase("dfs://test_l2f")
+data = level2Factor(startDate=2021.12.01, endDate=2021.12.01, securityNumber=5, factorNumber=2)
+assert 1, size(data) == 48000
+t.append!(data)
+re = select count(*) as cnt from t
+assert 2, re.cnt[0] == 48000
+dropDatabase("dfs://test_l2f")
+
+// ---------- tickFactorPT ----------
+
+@testing:case = "test_function_tickFactorPT_normal"
+if(existsDatabase("dfs://test_tf")) dropDatabase("dfs://test_tf")
+t = tickFactorPT("dfs://test_tf", "tf_tb")
+assert 0, existsDatabase("dfs://test_tf")
+data = tickFactor(startDate=2022.12.01, endDate=2022.12.01, securityNumber=2, factorNumber=2)
+assert 1, size(data) == 115200
+t.append!(data)
+re = select count(*) as cnt from t
+assert 2, re.cnt[0] == 115200
+dropDatabase("dfs://test_tf")
+
+// ---------- futuresFactorPT ----------
+
+@testing:case = "test_function_futuresFactorPT_normal"
+if(existsDatabase("dfs://test_ff")) dropDatabase("dfs://test_ff")
+t = futuresFactorPT("dfs://test_ff", "ff_tb")
+assert 0, existsDatabase("dfs://test_ff")
+data = futuresFactor(startDate=2021.12.01, endDate=2021.12.01, securityNumber=2, factorNumber=2)
+assert 1, size(data) == 266400
+t.append!(data)
+re = select count(*) as cnt from t
+assert 2, re.cnt[0] == 266400
+dropDatabase("dfs://test_ff")

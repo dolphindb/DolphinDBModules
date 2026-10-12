@@ -1,0 +1,591 @@
+#include "setup/settings.txt"
+
+@testing:case = "prepare_data"
+plugin_dir = getHomeDir() + "/plugins/zip/PluginZip.txt"
+try{loadPlugin(plugin_dir)}catch(ex){print ex}
+go
+logdir = getHomeDir()
+
+file_log = select * from files(logdir) where filename like "%.log"
+if(file_log.size() < 7){
+	filenames = zip::unzip(DATA_DIR+"/single_log.zip", logdir)
+	print(filenames)
+}
+
+file_access = files(getHomeDir() + "/resource")
+if(file_access.size() < 3){
+	logdir_access = getHomeDir() + "/resource"
+	filenames_access = zip::unzip(DATA_DIR+"/single_access.zip", logdir_access)
+	print(filenames_access)
+}
+
+@testing:case = "prepare"
+use LogSearcher
+go
+
+@testing:case = "test_function_generateDefaultParams_default"
+tnow = now()
+tstart = temporalAdd(tnow, -1, "d")
+re = LogSearcher::generateDefaultParams()
+ex = dict(STRING, ANY)
+ex["pattern"] = []$STRING
+ex["startTime"] = tstart
+ex["endTime"] = tnow
+ex["logLevel"] = ["INFO", "ERROR", "WARNING", "DEBUG"]
+ex["logType"] = ["running", "job", "query", "audit", "aclAudit", "access", "hardware", "dmesg", "coredump"]
+ex["node"] = [getNodeAlias()]
+ex["mode"] = "strpos"
+ex["cacheSize"] = 1024
+ex["adminPassword"] = string()
+ex["dolphindbPath"] = getHomeDir().substr(0, getHomeDir().strpos("server"))+"server/dolphindb"
+ex["saveDir"] = "."
+for(key in re.keys()){
+	print(key)
+	print(re[key])
+	if(key == "startTime" or key == "endTime"){
+		assert 1, abs(re[key]-ex[key]) < 2000
+	}else{
+		assert 1, eqObj(re[key], ex[key])
+	}
+}
+
+@testing:case = "test_function_generateDefaultParams_empty"
+para = dict(STRING, ANY)
+para["pattern"] = []$STRING
+para["logLevel"] = []$STRING
+para["logType"] = []$STRING
+para["node"] = []$STRING
+para["adminPassword"] = string()
+para["dolphindbPath"] = getHomeDir()
+tnow = now()
+tstart = temporalAdd(tnow, -1, "d")
+re = LogSearcher::generateDefaultParams(para)
+ex = dict(STRING, ANY)
+ex["pattern"] = []$STRING
+ex["startTime"] = tstart
+ex["endTime"] = tnow
+ex["logLevel"] = ["INFO", "ERROR", "WARNING", "DEBUG"]
+ex["logType"] = ["running", "job", "query", "audit", "aclAudit", "access", "hardware", "dmesg", "coredump"]
+ex["node"] = [getNodeAlias()]
+ex["mode"] = "strpos"
+ex["cacheSize"] = 1024
+ex["adminPassword"] = string()
+ex["dolphindbPath"] = getHomeDir()
+ex["saveDir"] = "."
+for(key in re.keys()){
+	if(key == "startTime" or key == "endTime"){
+		assert 1, abs(re[key]-ex[key]) < 2000
+	}else{
+		assert 1, eqObj(re[key], ex[key])
+	}
+}
+
+@testing:case = "test_function_generateDefaultParams_scalar"
+tnow = now()
+tstart = temporalAdd(tnow, -1, "d")
+para = dict(STRING, ANY)
+para["pattern"] = "INFO"
+para["startTime"] = tstart
+para["endTime"] = tnow
+para["logLevel"] = "INFO"
+para["logType"] = "running"
+para["node"] = getNodeAlias()
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::generateDefaultParams(para)
+ex = dict(STRING, ANY)
+ex["pattern"] = ["INFO"]
+ex["startTime"] = tstart
+ex["endTime"] = tnow
+ex["logLevel"] = ["INFO"]
+ex["logType"] = ["running"]
+ex["node"] = [getNodeAlias()]
+ex["mode"] = "strpos"
+ex["cacheSize"] = 1024
+ex["adminPassword"] = string()
+ex["dolphindbPath"] = dolphindbPath
+ex["saveDir"] = "."
+for(key in re.keys()){
+	if(key == "startTime" or key == "endTime"){
+		assert 1, abs(re[key]-ex[key]) < 2000
+	}else{
+		assert 1, eqObj(re[key], ex[key])
+	}
+}
+
+@testing:case = "test_function_searchLog_para_with_generate"
+re = LogSearcher::searchLog(LogSearcher::generateDefaultParams({"dolphindbPath":dolphindbPath}))
+assert 1, re.size() > 0
+
+@testing:case = "test_function_searchLog_para_default"
+tnow = now()
+tstart = temporalAdd(tnow, -1, "d")
+re = LogSearcher::searchLog({"dolphindbPath":dolphindbPath})
+assert 1, re.size() > 0
+assert 2, re.timestamp >= tstart
+assert 3, re.timestamp <= temporalAdd(tnow, 1, "m")
+assert 4, distinct(re.logType) in ["running", "job", "hardware", "query", "audit", "aclAudit", "access", "hardware", "dmesg", "coredump"]
+assert 5, distinct(re.logLevel) in ["ERROR", "DEBUG", "WARNING", "INFO"]
+
+@testing:case = "test_function_searchLog_para_pattern_scalar"
+tnow = now()
+tstart = temporalAdd(tnow, -1, "d")
+para = {"pattern":"OlapCacheEngine", "logType":["running", "job", "hardware", "query", "audit", "aclAudit", "access", "hardware"]}
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+assert 1, re.size() > 0
+assert 2, strFind(re.content, "OlapCacheEngine") != -1
+assert 3, re.timestamp >= tstart
+assert 4, re.timestamp <= temporalAdd(tnow, 1, "m")
+
+@testing:case = "test_function_searchLog_para_pattern_vector_only_in_one_content"
+tnow = now()
+tstart = temporalAdd(tnow, -1, "d")
+para = {"pattern":["clean", "OlapCacheEngine"], "logType":["running", "job", "hardware", "query", "audit", "aclAudit", "access", "hardware"]}
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+assert 1, re.size() > 0
+assert 2, iif(strFind(re.content, "OlapCacheEngine") == -1, strFind(re.content, "clean"), strFind(re.content, "OlapCacheEngine")) != -1
+assert 3, re.timestamp >= tstart
+assert 4, re.timestamp <= temporalAdd(tnow, 1, "m")
+
+@testing:case = "test_function_searchLog_para_pattern_vector_in_multi_content"
+tnow = now()
+tstart = temporalAdd(tnow, -1, "d")
+para = {"pattern":["clean", "transactions"], "logType":["running", "job", "hardware", "query", "audit", "aclAudit", "access", "hardware"]}
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+assert 1, re.size() > 0
+assert 2, iif(strFind(re.content, "transactions") == -1, strFind(re.content, "clean"), strFind(re.content, "transactions")) != -1
+assert 3, re.timestamp >= tstart
+assert 4, re.timestamp <= temporalAdd(tnow, 1, "m")
+
+@testing:case = "test_function_searchLog_para_logLevel_scalar"
+tnow = now()
+tstart = temporalAdd(tnow, -1, "d")
+para = {"logLevel":"INFO", "logType":["running", "job", "hardware", "query", "audit", "aclAudit", "access", "hardware"]}
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+assert 1, re.size() > 0
+assert 2, distinct(re.logLevel) == ["INFO"]
+assert 3, re.timestamp >= tstart
+assert 4, re.timestamp <= temporalAdd(tnow, 1, "m")
+
+@testing:case = "test_function_searchLog_para_logLevel_vector"
+tnow = now()
+tstart = temporalAdd(tnow, -1, "d")
+para = {"logLevel":["INFO", "DEBUG"], "logType":["running", "job", "hardware", "query", "audit", "aclAudit", "access", "hardware"]}
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+assert 1, re.size() > 0
+assert 2, distinct(re.logLevel).sort() == ["DEBUG", "INFO"].sort()
+assert 3, re.timestamp >= tstart
+assert 4, re.timestamp <= temporalAdd(tnow, 1, "m")
+
+@testing:case = "test_function_searchLog_para_logLevel_error"
+writeLogLevel(ERROR, "this is a write error log")
+sleep(1000)
+tnow = now()
+tstart = temporalAdd(tnow, -1, "d")
+para = {"logLevel":["ERROR"], "logType":["running", "job", "hardware", "query", "audit", "aclAudit", "access", "hardware"]}
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+assert 1, re.size() > 0
+assert 2, distinct(re.logLevel) == ["ERROR"]
+
+@testing:case = "test_function_searchLog_para_logLevel_debug"
+writeLogLevel(DEBUG, "this is a write debug log")
+sleep(1000)
+tnow = now()
+tstart = temporalAdd(tnow, -1, "d")
+para = {"logLevel":["DEBUG"], "logType":["running", "job", "hardware", "query", "audit", "aclAudit", "access", "hardware"]}
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+assert 1, re.size() > 0
+assert 2, distinct(re.logLevel) == ["DEBUG"]
+assert 3, re.timestamp >= tstart
+assert 4, re.timestamp <= temporalAdd(tnow, 1, "m")
+
+@testing:case = "test_function_searchLog_para_logLevel_warning"
+writeLogLevel(WARNING, "this is a write warning log")
+sleep(1000)
+tnow = now()
+tstart = temporalAdd(tnow, -1, "d")
+para = {"logLevel":["WARNING"], "logType":["running", "job", "hardware", "query", "audit", "aclAudit", "access", "hardware"]}
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+assert 1, re.size() > 0
+assert 2, distinct(re.logLevel) == ["WARNING"]
+assert 3, re.timestamp >= tstart
+assert 4, re.timestamp <= temporalAdd(tnow, 1, "m")
+
+@testing:case = "test_function_searchLog_para_logLevel_all"
+writeLogLevel(INFO, "this is a write info log")
+sleep(1000)
+tnow = now()
+tstart = temporalAdd(tnow, -1, "d")
+para = {"logLevel":["WARNING", "INFO", "DEBUG", "ERROR"], "pattern":"this is", "logType":["running", "job", "hardware", "query", "audit", "aclAudit", "access", "hardware"]}
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+assert 1, re.size() > 0
+assert 2, strFind(re.content, "this is") != -1
+assert 3, re.timestamp >= tstart
+assert 4, re.timestamp <= temporalAdd(tnow, 1, "m")
+
+@testing:case = "test_function_searchLog_para_logType_scalar"
+tnow = now()
+tstart = temporalAdd(tnow, -1, "d")
+para = {"logType":"running"}
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+assert 1, re.size() > 0
+assert 2, distinct(re.logType) == ["running"]
+assert 3, re.timestamp >= tstart
+assert 4, re.timestamp <= temporalAdd(tnow, 1, "m")
+
+@testing:case = "test_function_searchLog_para_logType_vector"
+tnow = now()
+tstart = temporalAdd(tnow, -1, "d")
+para = {"logType":["running", "hardware"]}
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+assert 1, re.size() > 0
+assert 2, distinct(re.logType).sort() == ["hardware", "running"].sort()
+assert 3, re.timestamp >= tstart
+assert 4, re.timestamp <= temporalAdd(tnow, 1, "m")
+
+@testing:case = "test_function_searchLog_para_node_scalar"
+tnow = now()
+tstart = temporalAdd(tnow, -1, "d")
+para = {"node":getNodeAlias(), "logType":["running", "job", "hardware", "query", "audit", "aclAudit", "access", "hardware"]}
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+assert 1, re.size() > 0
+assert 2, distinct(re.node) == [getNodeAlias()]
+assert 3, re.timestamp >= tstart
+assert 4, re.timestamp <= temporalAdd(tnow, 1, "m")
+
+@testing:case = "test_function_searchLog_para_node_vector"
+tnow = now()
+tstart = temporalAdd(tnow, -1, "d")
+para = {"node":[getNodeAlias()], "logType":["running", "job", "hardware", "query", "audit", "aclAudit", "access", "hardware"]}
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+assert 1, re.size() > 0
+assert 2, distinct(re.node) == [getNodeAlias()]
+assert 3, re.timestamp >= tstart
+assert 4, re.timestamp <= temporalAdd(tnow, 1, "m")
+
+@testing:case = "test_function_searchLog_para_mode_scalar"
+tnow = now()
+tstart = temporalAdd(tnow, -1, "d")
+para = {"mode":"like", "logType":["running", "job", "hardware", "query", "audit", "aclAudit", "access", "hardware"]}
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+assert 1, re.size() > 0
+assert 2, distinct(re.node) == [getNodeAlias()]
+assert 3, re.timestamp >= tstart
+assert 4, re.timestamp <= temporalAdd(tnow, 1, "m")
+
+@testing:case = "test_function_searchLog_para_mode_like_with_pattern"
+tnow = now()
+tstart = temporalAdd(tnow, -1, "d")
+para = {"mode":"like", "pattern":"%<INFO>%", "logType":["running", "job", "hardware", "query", "audit", "aclAudit", "access", "hardware"]}
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+assert 1, re.size() > 0
+assert 2, distinct(re.logLevel) == ["INFO"]
+assert 3, re.timestamp >= tstart
+assert 4, re.timestamp <= temporalAdd(tnow, 1, "m")
+
+tnow = now()
+tstart = temporalAdd(tnow, -1, "d")
+para = {"mode":"like", "pattern":["%this is a write debug log", "%this is a write info log", "%This is a write warning log"], "logType":["running", "job", "hardware", "query", "audit", "aclAudit", "access", "hardware"]}
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+assert 5, re.size() > 0
+assert 6, distinct(re.logLevel).sort() == ["INFO", "DEBUG"].sort()
+assert 7, re.timestamp >= tstart
+assert 9, re.timestamp <= temporalAdd(tnow, 1, "m")
+
+@testing:case = "test_function_searchLog_para_mode_ilike_with_pattern"
+tnow = now()
+tstart = temporalAdd(tnow, -1, "d")
+para = {"mode":"ilike", "pattern":"%<info>%", "logType":["running", "job", "hardware", "query", "audit", "aclAudit", "access", "hardware"]}
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+assert 1, re.size() > 0
+assert 2, distinct(re.logLevel) == ["INFO"]
+assert 3, re.timestamp >= tstart
+assert 4, re.timestamp <= temporalAdd(tnow, 1, "m")
+
+tnow = now()
+tstart = temporalAdd(tnow, -1, "d")
+para = {"mode":"ilike", "pattern":["%this is a write debug log", "%this is a write info log", "%THIS is a write warning log"], "logType":["running", "job", "hardware", "query", "audit", "aclAudit", "access", "hardware"]}
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+assert 5, re.size() > 0
+assert 6, distinct(re.logLevel).sort() == ["INFO", "WARNING", "DEBUG"].sort()
+assert 7, re.timestamp >= tstart
+assert 9, re.timestamp <= temporalAdd(tnow, 1, "m")
+
+@testing:case = "test_function_searchLog_para_mode_regexFind_with_pattern"
+tnow = now()
+tstart = temporalAdd(tnow, -1, "d")
+para = {"mode":"regexFind", "pattern":"<INFO>*", "logType":["running", "job", "hardware", "query", "audit", "aclAudit", "access", "hardware"]}
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+assert 1, re.size() > 0
+assert 2, distinct(re.logLevel) == ["INFO"]
+assert 3, re.timestamp >= tstart
+assert 4, re.timestamp <= temporalAdd(tnow, 1, "m")
+
+tnow = now()
+tstart = temporalAdd(tnow, -1, "d")
+para = {"mode":"regexFind", "pattern":["this", "job*"], "logType":["running", "job", "hardware", "query", "audit", "aclAudit", "access", "hardware"]}
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+assert 5, re.size() > 0
+assert 6, iif(strFind(re.content, "this") == -1, strFind(re.content, "job"), strFind(re.content, "this"))
+assert 7, re.timestamp >= tstart
+assert 9, re.timestamp <= temporalAdd(tnow, 1, "m")
+
+
+@testing:case = "test_function_searchLog_para_startTime_endTime_not_timestamp"
+tnow = now()
+tend = temporalAdd(tnow, 1, "d")
+para = {"startTime":date(tnow), "endTime":date(tend), "logType":["running", "job", "hardware", "query", "audit", "aclAudit", "access", "hardware"]}
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+assert 1, re.size() > 0
+assert 2, re.timestamp >= timestamp(date(tnow))
+assert 3, re.timestamp <= timestamp(date(tend))
+
+@testing:case = "test_function_searchLog_para_cacheSize_0"
+tnow = now()
+tstart = temporalAdd(tnow, -1, "d")
+para = {"cacheSize":0, "logType":["running", "job", "hardware", "query", "audit", "aclAudit", "access", "hardware"]}
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+re_cache = select * from getRecentJobs() where receivedTime >= tnow
+assert 1, re.size() > 0
+assert 2, re_cache.size() == 0
+assert 3, re.timestamp >= tstart
+assert 4, re.timestamp <= temporalAdd(tnow, 1, "m")
+
+@testing:case = "test_function_searchLog_para_cacheSize_-1"
+tnow = now()
+tstart = temporalAdd(tnow, -1, "d")
+para = {"cacheSize":-1, "logType":["running", "job", "hardware", "query", "audit", "aclAudit", "access", "hardware"]}
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+re_cache = select * from getRecentJobs() where receivedTime >= tnow
+assert 1, re.size() > 0
+assert 2, re_cache.size() > 0
+assert 3, re.timestamp >= tstart
+assert 4, re.timestamp <= temporalAdd(tnow, 1, "m")
+re2 = getJobReturn(re_cache.jobId[0], true)
+assert 5, each(eqObj, re.values(), re2.values())
+
+@testing:case = "test_function_searchLog_para_cacheSize_1"
+tnow = now()
+tstart = temporalAdd(tnow, -1, "d")
+tend = temporalAdd(tnow, 1, "d")
+para = {"cacheSize":1, "startTime":tnow, "endTime":tend, "logType":["running", "job", "hardware", "query", "audit", "aclAudit", "access", "hardware"]}
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+re_cache = select * from getRecentJobs() where receivedTime >= tnow
+assert 1, re.size() > 0
+assert 2, re_cache.size() > 0
+assert 3, re.timestamp >= tstart
+assert 4, re.timestamp <= tend
+re2 = getJobReturn(re_cache.jobId[0], true)
+assert 5, each(eqObj, re.values(), re2.values())
+re3 = exec bytes\1024\1024 from objs() where name = "re2"
+assert 6, re3 < 1
+
+@testing:case = "test_function_searchLog_para_cacheSize_1024"
+tnow = now()
+tstart = 2025.06.09 00:00:00.000
+tend = temporalAdd(tnow, 1, "d")
+para = {"cacheSize":1024, "startTime":tstart, "endTime":tend, "logType":["running", "job", "hardware", "query", "audit", "aclAudit", "access", "hardware"]}
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+re_cache = select * from getRecentJobs() where receivedTime >= tnow
+assert 1, re.size() > 0
+assert 2, re_cache.size() > 0
+assert 3, re.timestamp >= tstart
+assert 4, re.timestamp <= tend
+re2 = getJobReturn(re_cache.jobId[0], true)
+assert 5, each(eqObj, re.values(), re2.values())
+re3 = exec bytes\1024\1024 from objs() where name = "re2"
+assert 6, re3 < 1024
+
+@testing:case = "test_function_searchLog_para_adminPassword"
+tnow = now()
+tstart = 2025.06.09 00:00:00.000
+tend = temporalAdd(tnow, 1, "d")
+para = {"adminPassword":"123456", "startTime":tstart, "endTime":tend, "logType":["job"]}
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+assert 1, re.size() > 0
+assert 2, distinct(re.logType) == ["job"]
+assert 3, re.timestamp >= tstart
+assert 4, re.timestamp <= tend
+
+@testing:case = "test_function_searchLog_para_dolphindbPath_coredump"
+// 通过下面的case生成core文件
+// def x(){x()} x();
+tnow = now()
+tstart = 2025.06.09 00:00:00.000
+tend = temporalAdd(tnow, 1, "d")
+para = {"dolphindbPath":getHomeDir(), "startTime":tstart, "endTime":tend, "logType":["coredump"]}
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+print(re.logFile)
+assert 1, re.size() > 0
+assert 2, distinct(re.logType) == ["coredump"]
+assert 3, re.timestamp >= tstart
+assert 4, re.timestamp <= tend
+// 检查一下是不是有栈信息
+assert 5, strFind(re.content, "Core was generated") != -1
+
+@testing:case = "test_function_searchLog_para_logType_job"
+tnow = now()
+tstart = 2025.06.09 00:00:00.000
+tend = temporalAdd(tnow, 1, "d")
+para = {"cacheSize":1024, "startTime":tstart, "endTime":tend, "logType":["job"]}
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+assert 1, re.size() > 0
+assert 2, distinct(re.logType) == ["job"]
+assert 3, re.timestamp >= tstart
+assert 4, re.timestamp <= tend
+assert 5, strFind(re.logFile, "job") != -1
+
+@testing:case = "test_function_searchLog_para_logType_audit"
+tnow = now()
+tstart = 2025.06.09 00:00:00.000
+tend = temporalAdd(tnow, 1, "d")
+para = {"cacheSize":1024, "startTime":tstart, "endTime":tend, "logType":["audit"]}
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+assert 1, re.size() > 0
+assert 2, distinct(re.logType) == ["audit"]
+assert 3, re.timestamp >= tstart
+assert 4, re.timestamp <= tend
+assert 5, strFind(re.logFile, "audit") != -1
+
+@testing:case = "test_function_searchLog_para_logType_aclAudit"
+tnow = now()
+tstart = 2025.06.09 00:00:00.000
+tend = temporalAdd(tnow, 1, "d")
+para = {"cacheSize":1024, "startTime":tstart, "endTime":tend, "logType":["aclAudit"]}
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+assert 1, re.size() > 0
+assert 2, distinct(re.logType) == ["aclAudit"]
+assert 3, re.timestamp >= tstart
+assert 4, re.timestamp <= tend
+assert 5, strFind(re.logFile, "aclAudit") != -1
+
+// 需要设置 enableDFSQueryLog = true
+@testing:case = "test_function_searchLog_para_logType_query"
+tnow = now()
+tstart = 2025.06.09 00:00:00.000
+tend = temporalAdd(tnow, 1, "d")
+para = {"cacheSize":1024, "startTime":tstart, "endTime":tend, "logType":["query"]}
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+assert 1, re.size() > 0
+assert 2, distinct(re.logType) == ["query"]
+assert 3, re.timestamp >= tstart
+assert 4, re.timestamp <= tend
+assert 5, strFind(re.logFile, "query") != -1
+
+@testing:case = "test_function_searchLog_para_logType_access"
+tnow = now()
+tstart = 2025.06.09 00:00:00.000
+tend = temporalAdd(tnow, 1, "d")
+para = {"cacheSize":1024, "startTime":tstart, "endTime":tend, "logType":["access"]}
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+assert 1, re.size() > 0
+assert 2, distinct(re.logType) == ["access"]
+assert 3, re.timestamp >= tstart
+assert 4, re.timestamp <= tend
+assert 5, strFind(re.logFile, "access") != -1
+
+@testing:case = "test_function_searchLog_para_logType_dmesg"
+// 需要生成core才有结果
+tnow = now()
+tstart = 2025.06.09 00:00:00.000
+tend = temporalAdd(tnow, 1, "d")
+para = {"cacheSize":1024, "startTime":tstart, "endTime":tend, "logType":["dmesg"]}
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+assert 1, re.size() > 0
+assert 2, distinct(re.logType) == ["dmesg"]
+assert 3, re.timestamp >= tstart
+assert 4, re.timestamp <= tend
+assert 5, strFind(re.content, "CST") != -1
+
+@testing:case = "test_function_searchLog_para_cacheSize_64"
+// 要保证搜索到的log的cache在1MB到64MB之间
+tnow = now()
+tstart = 2025.06.09 00:00:00.000
+tend = temporalAdd(tnow, 1, "d")
+para = {"cacheSize":64, "startTime":tstart, "endTime":tend, "logType":["running", "job", "hardware", "query", "audit", "aclAudit", "access", "hardware"]}
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+re_cache = select * from getRecentJobs() where receivedTime >= tnow
+assert 1, re.size() > 0
+assert 2, re_cache.size() > 0
+assert 3, re.timestamp >= tstart
+assert 4, re.timestamp <= tend
+re2 = getJobReturn(re_cache.jobId[0], true)
+assert 5, each(eqObj, re.values(), re2.values())
+re3 = exec bytes\1024\1024 from objs() where name = "re"
+assert 6, re3 < 64
+
+@testing:case = "test_function_searchLog_para_adminPassword_empty"
+tnow = now()
+tstart = 2025.06.09 00:00:00.000
+tend = temporalAdd(tnow, 1, "d")
+para = {"adminPassword":string(), "logType":["running"]}
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+assert 1, re.size() > 0
+
+@testing:case = "test_function_searchLog_multipara"
+tnow = now()
+tstart = 2025.06.09 00:00:00.000
+tend = temporalAdd(tnow, 1, "d")
+para = dict(STRING, ANY)
+para["pattern"] = ["%ERROR%", "%WARNING%", "%dfs:%"]
+para["startTime"] = tstart
+para["endTime"] = tend
+para["logType"] = ["running", "query", "audit"]
+para["node"] = getNodeAlias()
+para["mode"] = "ilike"
+para["cacheSize"] = -1
+para["adminPassword"] = "123456"
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+re_cache = select * from getRecentJobs() where receivedTime >= tnow
+assert 1, re.size() > 0
+assert 2, re_cache.size() > 0
+assert 3, re.timestamp >= tstart
+assert 4, re.timestamp <= tend
+re2 = getJobReturn(re_cache.jobId[0], true)
+assert 5, each(eqObj, re.values(), re2.values())
+assert 6, exec ilike(content, "%ERROR%") or ilike(content, "%WARNING%") or ilike(content, "%dfs:%") as a1 from re
+assert 7, distinct(re.logType).sort() == ["running", "query", "audit"].sort()
+assert 8, distinct(re.logLevel).sort() == ["INFO", "ERROR", "WARNING", "DEBUG"].sort()
+assert 9, distinct(re.node).sort() == [getNodeAlias()].sort()
+re3 = select * from re where logType = "query"
+assert 10, strFind(re3.logFile, "query") != -1
+re4 = select * from re where logType = "audit"
+assert 11, strFind(re4.logFile, "audit") != -1
+
+
+

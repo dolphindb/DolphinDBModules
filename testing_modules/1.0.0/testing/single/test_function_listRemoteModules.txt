@@ -1,0 +1,109 @@
+@testing:case = "test_function_listRemoteModules_syntax"
+re = syntax(listRemoteModules)
+ex = "listRemoteModules([serverAddr])"
+assert 1, eqObj(re, ex)
+
+@testing:case = "test_function_listRemoteModules_serverAddr_int", exception = 1
+listRemoteModules(1)
+
+@testing:case = "test_function_listRemoteModules_serverAddr_double", exception = 1
+listRemoteModules(1.2)
+
+@testing:case = "test_function_listRemoteModules_serverAddr_date", exception = 1
+listRemoteModules(2012.01.02)
+
+@testing:case = "test_function_listRemoteModules_serverAddr_vector", exception = 1
+listRemoteModules(["test.dolphindb.cn"])
+
+@testing:case = "test_function_listRemoteModules_serverAddr_dict", exception = 1
+listRemoteModules(dict(["test.dolphindb.cn"], [1]))
+
+@testing:case = "test_function_listRemoteModules_serverAddr_table", exception = 1
+listRemoteModules(table("test.dolphindb.cn" as id))
+
+@testing:case = "test_function_listRemoteModules_serverAddr_NULL", exception = 1
+listRemoteModules(NULL)
+
+@testing:case = "test_function_listRemoteModules_serverAddr_string()", exception = 1
+listRemoteModules(string())
+
+@testing:case = "test_function_listRemoteModules_serverAddr_error_addr", exception = 1
+listRemoteModules("www.baidu.com")
+
+@testing:case = "test_function_listRemoteModules_param_more", syntaxError = 1
+listRemoteModules("test.dolphindb.cn", 1)
+ 
+@testing:case = "test_function_listRemoteModules"
+re = select * from listRemoteModules("test.dolphindb.cn") order by moduleName
+re2 = select * from listRemoteModules() order by moduleName
+modname = ["mytt", "DolphinDBModules", "LogSearcher", "ops", "gtja191Alpha", "ta", "wq101alpha", "alphalens", "PaySingleDom", "PaySingleDos", "PayCatalogDos", "PayCatalogDom", "nest", "test_RiskFactors", "test_chargeable_RiskFactors", "test_chargeable_alphalens", "模块1", "ForPrePay", "ForFreePayFile", "usePay"] join ["mytt", "DolphinDBModules", "LogSearcher", "ops", "gtja191Alpha", "ta", "wq101alpha", "alphalens", "PaySingleDom", "PaySingleDos", "PayCatalogDos", "PayCatalogDom", "nest", "test_RiskFactors", "test_chargeable_RiskFactors", "test_chargeable_alphalens", "模块1", "ForPrePay", "ForFreePayFile", "usePay"]
+modversion = ["1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.1.2", "1.1.1", "2.1.0", "2.1.0", "1.1.1", "1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.1.1", "1.1.2", "1.1.1"] join ["1.0.0", "1.0.0", "1.0.0", "1.0.1", "1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.1.2", "1.1.1", "2.1.0", "2.1.0", "1.1.1", "1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.1.1", "1.1.2", "1.1.1"]
+support_version = ["3.00.0", "3.00.0", "3.00.3", "3.00.1", "3.00.0", "3.00.0", "3.00.0", "3.00.0", "3.00.0", "3.00.0", "3.00.0", "3.00.0", "3.00.0", "3.00.3", "3.00.3", "3.00.3", "3.00.3", "3.00.0", "3.00.0", "3.00.0"] join ["2.00.9", "2.00.10", "2.00.16", "2.00.11", "2.00.9", "2.00.11", "2.00.9", "2.00.13", "2.00.13", "2.00.13", "2.00.13", "2.00.13", "2.00.13", "2.00.14", "2.00.14", "2.00.14", "", "2.00.13", "2.00.13", "2.00.13"]
+ex = table(modname, modversion, support_version)
+currverion = version().split(" ")[0].split(".")[0:3]
+currv = concat(currverion, ".")
+ex = select modname, modversion from ex where int(support_version.split(".")[2]) <= int(currverion[2]) and substr(support_version, 0, 1) == currverion[0] order by modname
+assert 1, each(eqObj, re.values(), ex.values()) && each(eqObj, re2.values(), ex.values())
+
+@testing:case = "test_function_listRemoteModules_multitimes"
+for(i in 1..1000){
+	re = listRemoteModules("test.dolphindb.cn")
+}
+re = select * from re order by moduleName
+modname = ["mytt", "DolphinDBModules", "LogSearcher", "ops", "gtja191Alpha", "ta", "wq101alpha", "alphalens", "PaySingleDom", "PaySingleDos", "PayCatalogDos", "PayCatalogDom", "nest", "test_RiskFactors", "test_chargeable_RiskFactors", "test_chargeable_alphalens", "模块1", "ForPrePay", "ForFreePayFile", "usePay"] join ["mytt", "DolphinDBModules", "LogSearcher", "ops", "gtja191Alpha", "ta", "wq101alpha", "alphalens", "PaySingleDom", "PaySingleDos", "PayCatalogDos", "PayCatalogDom", "nest", "test_RiskFactors", "test_chargeable_RiskFactors", "test_chargeable_alphalens", "模块1", "ForPrePay", "ForFreePayFile", "usePay"]
+modversion = ["1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.1.2", "1.1.1", "2.1.0", "2.1.0", "1.1.1", "1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.1.1", "1.1.2", "1.1.1"] join ["1.0.0", "1.0.0", "1.0.0", "1.0.1", "1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.1.2", "1.1.1", "2.1.0", "2.1.0", "1.1.1", "1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.1.1", "1.1.2", "1.1.1"]
+support_version = ["3.00.0", "3.00.0", "3.00.3", "3.00.1", "3.00.0", "3.00.0", "3.00.0", "3.00.0", "3.00.0", "3.00.0", "3.00.0", "3.00.0", "3.00.0", "3.00.3", "3.00.3", "3.00.3", "3.00.3", "3.00.0", "3.00.0", "3.00.0"] join ["2.00.9", "2.00.10", "2.00.16", "2.00.11", "2.00.9", "2.00.11", "2.00.9", "2.00.13", "2.00.13", "2.00.13", "2.00.13", "2.00.13", "2.00.13", "2.00.14", "2.00.14", "2.00.14", "", "2.00.13", "2.00.13", "2.00.13"]
+ex = table(modname, modversion, support_version)
+currverion = version().split(" ")[0].split(".")[0:3]
+currv = concat(currverion, ".")
+ex = select modname, modversion from ex where int(support_version.split(".")[2]) <= int(currverion[2]) and substr(support_version, 0, 1) == currverion[0] order by modname
+assert 1, each(eqObj, re.values(), ex.values())
+
+@testing:case = "test_function_listRemoteModules_multijob"
+def myJob(){
+	for(i in 1..1000){
+		re = listRemoteModules("test.dolphindb.cn")
+	}
+	return re
+}
+jobids = array(STRING, 0, 10)
+for(i in 1..5){
+	jobid = submitJob("listRemoteModulesJob"+string(i), "listRemoteModules job", myJob)
+	jobids.append!(jobid)
+}
+for(jobid in jobids){
+	re = getJobReturn(jobid, true)
+	re = select * from re order by moduleName
+	modname = ["mytt", "DolphinDBModules", "LogSearcher", "ops", "gtja191Alpha", "ta", "wq101alpha", "alphalens", "PaySingleDom", "PaySingleDos", "PayCatalogDos", "PayCatalogDom", "nest", "test_RiskFactors", "test_chargeable_RiskFactors", "test_chargeable_alphalens", "模块1", "ForPrePay", "ForFreePayFile", "usePay"] join ["mytt", "DolphinDBModules", "LogSearcher", "ops", "gtja191Alpha", "ta", "wq101alpha", "alphalens", "PaySingleDom", "PaySingleDos", "PayCatalogDos", "PayCatalogDom", "nest", "test_RiskFactors", "test_chargeable_RiskFactors", "test_chargeable_alphalens", "模块1", "ForPrePay", "ForFreePayFile", "usePay"]
+	modversion = ["1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.1.2", "1.1.1", "2.1.0", "2.1.0", "1.1.1", "1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.1.1", "1.1.2", "1.1.1"] join ["1.0.0", "1.0.0", "1.0.0", "1.0.1", "1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.1.2", "1.1.1", "2.1.0", "2.1.0", "1.1.1", "1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.1.1", "1.1.2", "1.1.1"]
+	support_version = ["3.00.0", "3.00.0", "3.00.3", "3.00.1", "3.00.0", "3.00.0", "3.00.0", "3.00.0", "3.00.0", "3.00.0", "3.00.0", "3.00.0", "3.00.0", "3.00.3", "3.00.3", "3.00.3", "3.00.3", "3.00.0", "3.00.0", "3.00.0"] join ["2.00.9", "2.00.10", "2.00.16", "2.00.11", "2.00.9", "2.00.11", "2.00.9", "2.00.13", "2.00.13", "2.00.13", "2.00.13", "2.00.13", "2.00.13", "2.00.14", "2.00.14", "2.00.14", "", "2.00.13", "2.00.13", "2.00.13"]
+	ex = table(modname, modversion, support_version)
+	currverion = version().split(" ")[0].split(".")[0:3]
+	currv = concat(currverion, ".")
+	ex = select modname, modversion from ex where int(support_version.split(".")[2]) <= int(currverion[2]) and substr(support_version, 0, 1) == currverion[0] order by modname
+	assert 1, each(eqObj, re.values(), ex.values())
+}
+
+@testing:case = "test_function_listRemoteModules_functionview"
+def myJob(){
+	re = listRemoteModules("test.dolphindb.cn")
+	return re
+}
+try{dropFunctionView(`myJob)}catch(exp){print(exp)}
+addFunctionView(myJob)
+undef(`myJob)
+go
+re = myJob()
+re = select * from re order by moduleName
+modname = ["mytt", "DolphinDBModules", "LogSearcher", "ops", "gtja191Alpha", "ta", "wq101alpha", "alphalens", "PaySingleDom", "PaySingleDos", "PayCatalogDos", "PayCatalogDom", "nest", "test_RiskFactors", "test_chargeable_RiskFactors", "test_chargeable_alphalens", "模块1", "ForPrePay", "ForFreePayFile", "usePay"] join ["mytt", "DolphinDBModules", "LogSearcher", "ops", "gtja191Alpha", "ta", "wq101alpha", "alphalens", "PaySingleDom", "PaySingleDos", "PayCatalogDos", "PayCatalogDom", "nest", "test_RiskFactors", "test_chargeable_RiskFactors", "test_chargeable_alphalens", "模块1", "ForPrePay", "ForFreePayFile", "usePay"]
+modversion = ["1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.1.2", "1.1.1", "2.1.0", "2.1.0", "1.1.1", "1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.1.1", "1.1.2", "1.1.1"] join ["1.0.0", "1.0.0", "1.0.0", "1.0.1", "1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.1.2", "1.1.1", "2.1.0", "2.1.0", "1.1.1", "1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.1.1", "1.1.2", "1.1.1"]
+support_version = ["3.00.0", "3.00.0", "3.00.3", "3.00.1", "3.00.0", "3.00.0", "3.00.0", "3.00.0", "3.00.0", "3.00.0", "3.00.0", "3.00.0", "3.00.0", "3.00.3", "3.00.3", "3.00.3", "3.00.3", "3.00.0", "3.00.0", "3.00.0"] join ["2.00.9", "2.00.10", "2.00.16", "2.00.11", "2.00.9", "2.00.11", "2.00.9", "2.00.13", "2.00.13", "2.00.13", "2.00.13", "2.00.13", "2.00.13", "2.00.14", "2.00.14", "2.00.14", "", "2.00.13", "2.00.13", "2.00.13"]
+ex = table(modname, modversion, support_version)
+currverion = version().split(" ")[0].split(".")[0:3]
+currv = concat(currverion, ".")
+ex = select modname, modversion from ex where int(support_version.split(".")[2]) <= int(currverion[2]) and substr(support_version, 0, 1) == currverion[0] order by modname
+assert 1, each(eqObj, re.values(), ex.values())
+
+
+
+

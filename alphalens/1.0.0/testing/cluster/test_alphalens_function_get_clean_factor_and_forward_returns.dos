@@ -1,0 +1,44 @@
+#include "setup/settings.txt"
+
+use alphalens
+go
+
+testData = loadText(DATA_DIR+"/testData.csv")
+prices = select close from testData pivot by tradeDate as Date, securityId
+factor = select tradeDate as Date, securityId as asset, vwap as factor from testData
+groupData = select tradeDate as Date, securityId as asset, rand(10, count(testData)) as Group from testData
+
+@testing: case = "test_alphalens_function_get_clean_factor_and_forward_returns"
+res = get_clean_factor_and_forward_returns(factor, prices)
+assert 1, count(res)!=0
+assert 2, res.columnNames()==['date', 'asset', 'forward_returns_1D', 'forward_returns_5D', 'forward_returns_10D', 'factor', 'factor_quantile']
+
+@testing: case = "test_alphalens_function_get_clean_factor_and_forward_groupby"
+res = get_clean_factor_and_forward_returns(factor, prices, groupby=groupData)
+assert 1, count(res)!=0
+assert 2, res.columnNames()==['date', 'asset', 'forward_returns_1D', 'forward_returns_5D', 'forward_returns_10D', 'factor', 'Group', 'factor_quantile']
+
+@testing: case = "test_alphalens_function_get_clean_factor_and_forward_binning_by_group"
+errorList = []
+try {res=get_clean_factor_and_forward_returns(factor, prices, groupby=NULL, binning_by_group=true)} catch(ex) {errorList.append!(ex)}
+assert 1, count(errorList)==1
+errorList = []
+try {res=get_clean_factor_and_forward_returns(factor, prices, groupby=groupData, binning_by_group=true)} catch(ex) {errorList.append!(ex)}
+assert 2, count(errorList)==0
+
+@testing: case = "test_alphalens_function_get_clean_factor_and_forward_returns_quantiles"
+res = get_clean_factor_and_forward_returns(factor, prices, quantiles=10)
+assert 1, sort(distinct(res.factor_quantile))==0..10
+res = get_clean_factor_and_forward_returns(factor, prices, quantiles=[0, 0.10, 0.5, 0.90, 1.0])
+assert 2, sort(distinct(res.factor_quantile))==1 2 3 4
+
+@testing: case = "test_alphalens_function_get_clean_factor_and_forward_returns_bins"
+errorList = []
+try {get_clean_factor_and_forward_returns(factor, prices, bins=[0, 100, 120, 150])} catch(ex){errorList.append!(ex)}
+assert 1, count(errorList)==1
+res = get_clean_factor_and_forward_returns(factor, prices, quantiles=NULL, bins=[0, 100, 120, 150])
+assert 2, sort(distinct(res.factor_quantile))==1 2 3
+
+@testing: case = "test_alphalens_function_get_clean_factor_and_forward_returns_periods"
+res = get_clean_factor_and_forward_returns(factor, prices, periods=[1, 5, 10, 15])
+assert 1, res.columnNames()==['date', 'asset', 'forward_returns_1D', 'forward_returns_5D', 'forward_returns_10D', 'forward_returns_15D', 'factor', 'factor_quantile']

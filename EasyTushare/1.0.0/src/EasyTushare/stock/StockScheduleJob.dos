@@ -1,0 +1,144 @@
+﻿module EasyTushare::stock::StockScheduleJob
+use EasyTushare::TsInit
+
+/* 
+*  @Brief: 股票每日增量数据导入函数模块
+*  @Author: DolphinDB
+*  @Last modification time: 2026.03.31
+*  @DolphinDB server version: 3.00.5 2026.02.06 LINUX x86_64
+*/
+use EasyTushare::stock::StockLoadData
+
+/*
+*  @FunctionName: module_info
+*  @Brief: 模块信息,一个相同模块dir下的每个dos都需要有module_info函数,且是相同的
+*  @Param: None
+*  @Return: dict
+*  @SampleUsage: module_info()
+*/
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "EasyTushare"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+
+use EasyTushare::stock::StockInit
+/*
+*  @FunctionName: loadStockDataDaily
+*  @Brief: 股票每日增量数据导入函数
+*  @Param: token tushare股票数据导入任务token
+*  @Return: none
+*  @SampleUsage: loadStockDataDaily(token)
+*/
+def loadStockDataDaily(token,table_names,funcDef){
+    // 公共变量
+    start_date = today()
+    end_date = today()
+
+    print("[INFO] " + now().format("yyyy.MM.dd HH:mm:ss") + " 开始执行tushare-股票每日增量数据导入任务...")
+
+    for (table_name in table_names){
+        if (table_name in ["margin","margin_detail","hk_hold","kpl_list"]) {
+            // margin表和margin_detail接口更新延迟一天
+            print("[INFO] " + now().format("yyyy.MM.dd HH:mm:ss") + " 开始导入" + table_name + "表...")
+            func = funcDef[table_name]
+            func(token, start_date-1, end_date-1)
+            print("[INFO] " + now().format("yyyy.MM.dd HH:mm:ss") + " 结束导入" + table_name + "表")
+        } else {
+            func = funcDef[table_name]
+            if(func is not null or func != ""){
+                print("[INFO] " + now().format("yyyy.MM.dd HH:mm:ss") + " 开始导入" + table_name + "表...")
+                func(token, start_date, end_date)
+                print("[INFO] " + now().format("yyyy.MM.dd HH:mm:ss") + " 结束导入" + table_name + "表")
+            }
+        }
+    }
+    print("[INFO] " + now().format("yyyy.MM.dd HH:mm:ss") + " 当日所有tushare股票数据导入任务完成!")
+}
+
+
+/**
+ * @FunctionName: getTablesFuncDefs
+ * @Brief: 获取每个函数的函数引用
+ * @Param: table_names 表名
+ * @Return: none
+ * @SampleUsage: getTablesFuncDefs()
+ */
+def stockGetTablesFuncDefs(table_names=[]) {
+    all_table_names = []
+    if (size(table_names) == 0){
+        all_table_names = stockGetAllTableNames()
+        // "kpl_list" "dc_hot" 放到最后
+        for (one_name in ["kpl_list","dc_hot","ths_hot"]) {
+            idx = all_table_names.find(one_name)
+            all_table_names.remove!(idx) 
+            all_table_names.append!(one_name)
+        } 
+    } else {
+        all_table_names = table_names
+    }all_table_names.find("stock_fuquan")
+    // 构造函数引用字典，传递给scheduleJob
+    funcDef = dict(STRING,ANY)
+    for (table_name in all_table_names){
+        funcDef[table_name] = funcByName("EasyTushare::stock::StockLoadData::append" + snakeToUpperCamel(table_name))
+    }
+    return funcDef
+}
+/**
+ * @FunctionName: scheduleJobStockDataDaily
+ * @Brief: 股票每日增量数据导入任务
+ * @Param: token tushare股票数据导入任务token
+ * @Return: none
+ * @SampleUsage: scheduleJobStockDataDaily(token)
+ */
+def scheduleJobStockDataDaily(token,table_names=[],onCompleteFunc=NULL){
+    // 构造函数引用字典，传递给scheduleJob
+    funcDef = stockGetTablesFuncDefs(table_names)
+    // 本次需要导入的表名
+    need_load_table_names = funcDef.keys()
+    for (table_name in ["stock_daily_prev","stock_daily_back","stock_fina_audit"]) {
+        try{funcDef.erase!(table_name)}catch(ex){}
+    }
+    // 设置定时任务
+    try{deleteScheduledJob("loadStockDataDaily")}catch(ex){}
+    if (onCompleteFunc==NULL) {
+        scheduleJob("loadStockDataDaily","loadStockDataDaily",loadStockDataDaily{token,funcDef.keys(),funcDef},22:30m,today(),2099.01.01,"D",,)
+    } else {
+        scheduleJob("loadStockDataDaily","loadStockDataDaily",loadStockDataDaily{token,funcDef.keys(),funcDef},22:30m,today(),2099.01.01,"D",,onCompleteFunc)
+    }
+
+    if ("stock_daily_prev" in need_load_table_names) {
+        funcDef = dict(STRING,ANY)
+        funcDef["stock_daily_prev"] = funcByName("EasyTushare::stock::StockLoadData::append" + snakeToUpperCamel("stock_daily_prev"))
+        try{deleteScheduledJob("load_stockDailyPrev")}catch(ex){}
+        if (onCompleteFunc==NULL) {
+            scheduleJob("load_stockDailyPrev","load_stockDailyPrev",loadStockDataDaily{token,["stock_daily_prev"],funcDef},22:30m,today(),2099.01.01,"D")
+        } else {
+            scheduleJob("load_stockDailyPrev","load_stockDailyPrev",loadStockDataDaily{token,["stock_daily_prev"],funcDef},22:30m,today(),2099.01.01,"D",,onCompleteFunc)
+        }  
+    }
+    
+    if ("stock_daily_back" in need_load_table_names) {
+        funcDef = dict(STRING,ANY)
+        try{deleteScheduledJob("load_stockDailyBack")}catch(ex){}
+        funcDef["stock_daily_back"] = funcByName("EasyTushare::stock::StockLoadData::append" + snakeToUpperCamel("stock_daily_back"))
+        if (onCompleteFunc==NULL) { 
+            scheduleJob("load_stockDailyBack","load_stockDailyBack",loadStockDataDaily{token,["stock_daily_back"],funcDef},22:30m,today(),2099.01.01,"D")
+        } else {
+            scheduleJob("load_stockDailyBack","load_stockDailyBack",loadStockDataDaily{token,["stock_daily_back"],funcDef},22:30m,today(),2099.01.01,"D",,onCompleteFunc)
+        }
+    }
+    
+    if ("stock_fina_audit" in need_load_table_names) {
+        funcDef = dict(STRING,ANY)
+        funcDef["stock_fina_audit"] = funcByName("EasyTushare::stock::StockLoadData::append" + snakeToUpperCamel("stock_fina_audit"))
+        try{deleteScheduledJob("load_stockFinaAudit")}catch(ex){}
+        if (onCompleteFunc==NULL) {
+            scheduleJob("load_stockFinaAudit","load_stockFinaAudit",loadStockDataDaily{token,["stock_fina_audit"],funcDef},22:30m,today(),2099.01.01,"D",,)
+        } else {
+            scheduleJob("load_stockFinaAudit","load_stockFinaAudit",loadStockDataDaily{token,["stock_fina_audit"],funcDef},22:30m,today(),2099.01.01,"D",,onCompleteFunc)
+        }  
+    }
+}

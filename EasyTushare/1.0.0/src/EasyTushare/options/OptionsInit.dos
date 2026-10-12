@@ -1,0 +1,122 @@
+module EasyTushare::options::OptionsInit
+use EasyTushare::TsInit
+
+/* 
+*  @Brief: 期权数据导入函数模块
+*  @Author: DolphinDB
+*  @Last modification time: 2026.03.31
+*  @DolphinDB server version: 3.00.5 2026.02.06 LINUX x86_64
+*/
+
+use EasyTushare::options::OptionsCreateTable
+
+/*
+*  @FunctionName: module_info
+*  @Brief: 模块信息,一个相同模块dir下的每个dos都需要有module_info函数,且是相同的
+*  @Param: None
+*  @Return: dict
+*  @SampleUsage: module_info()
+*/
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "EasyTushare"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+
+/*
+*  @FunctionName: optionsInitTables
+*  @Brief: 初始化数据库表
+*  @Param: table_names
+*  @Return: None
+*  @SampleUsage: optionsInitTables(["1min_k"])
+**/
+def optionsInitTables(table_names = []){
+    if (size(table_names) == 0){
+       ts_create_tables = exec name from defs() where name like "EasyTushare::options::OptionsCreateTable%"
+        for(table in ts_create_tables){
+            // table = 'EasyTushare::options::OptionsCreateTable::createTopList'
+            funcByName(table)()
+        }
+    } else {
+        for (table_name in table_names){ 
+            funcByName("EasyTushare::options::OptionsCreateTable::create" + snakeToUpperCamel(table_name))()
+        }
+    }
+}
+
+use EasyTushare::options::OptionsLoadData
+
+/*
+*  @FunctionName: optionsGetAllTableNames
+*  @Brief: 获取所有期权数据表名
+*  @Param: None
+*  @Return: list
+*  @SampleUsage: optionsGetAllTableNames()
+*/
+def optionsGetAllTableNames(){
+    ts_create_tables = exec name from defs() where name like "EasyTushare::options::OptionsLoadData::append%"
+    return each(upperCamelToSnake, ts_create_tables.split("::")[3].substr(6))
+}
+
+/**
+*  @FunctionName: options1Mink
+*  @Brief: 期权1min_k数据导入函数 (先导入基础信息，再导入1min_k数据)
+*  @Param: token, start_date, end_date
+*  @Return: None
+*  @SampleUsage: options1Mink(token,start_date,end_date)
+*/
+def optionsMink(token,table_names,start_date,end_date){
+    // 先导入基础信息，再导入1min_k数据
+    appendOptBasic(token, start_date, end_date)
+    for (table_name in table_names){
+        if (table_name == 'opt_1min_k'){
+            appendOpt1minK(token, start_date, end_date)
+        }  else if (table_name == 'opt_5min_k'){
+            appendOpt5minK(token, start_date, end_date)
+        } else if (table_name == 'opt_15min_k'){
+            appendOpt15minK(token, start_date, end_date) 
+        } else if (table_name == 'opt_30min_k'){
+            appendOpt30minK(token, start_date, end_date)
+        } else if (table_name == 'opt_60min_k'){
+            appendOpt60minK(token, start_date, end_date) 
+        }
+    }
+}
+
+/*
+*  @FunctionName: optionsHistoryDataLoad
+*  @Brief: 期权数据导入函数
+*  @Param: token, start_date, end_date, table_names
+*  @Return: None
+*  @SampleUsage: optionsHistoryDataLoad(token,start_date,end_date)
+*/
+def optionsHistoryDataLoad(token,start_date,end_date,table_names = []) {
+    // 本次需要导入的所有表名
+    all_table_names = []
+    if (size(table_names) == 0){
+        all_table_names = optionsGetAllTableNames()        
+    } else {
+        all_table_names = table_names
+    }
+    min_k_tables = []
+    for (table_name in all_table_names){
+        if (table_name in ["opt_1min_k","opt_5min_k" ,"opt_10min_k" ,"opt_30min_k" ,"opt_60min_k"]){
+            min_k_tables.append!(table_name)
+        }
+    }
+    
+    if (size(min_k_tables) == 0 and ("opt_basic" in all_table_names)){
+        submitJob("appendOptBasic", "appendOptBasic", appendOptBasic, token, start_date, end_date)
+    }
+
+    if ("opt_daily" in all_table_names){
+        submitJob("appendOptDaily", "appendOptDaily", appendOptDaily, token, start_date, end_date)
+    }
+
+    if (size(min_k_tables) > 0){
+        submitJob("optionsMink", "optionsMink", optionsMink, token,min_k_tables, start_date, end_date)
+    }
+}
+

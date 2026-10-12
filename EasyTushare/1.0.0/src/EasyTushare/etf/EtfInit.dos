@@ -1,0 +1,150 @@
+module EasyTushare::etf::EtfInit
+use EasyTushare::TsInit
+
+/* 
+*  @Brief: 股票历史数据导入函数模块
+*  @Author: DolphinDB
+*  @Last modification time: 2026.03.31
+*  @DolphinDB server version: 3.00.5 2026.02.06 LINUX x86_64
+*/
+
+use EasyTushare::etf::EtfCreateTable
+
+/*
+*  @FunctionName: module_info
+*  @Brief: 模块信息,一个相同模块dir下的每个dos都需要有module_info函数,且是相同的
+*  @Param: None
+*  @Return: dict
+*  @SampleUsage: module_info()
+*/
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "EasyTushare"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+
+/*
+*  @FunctionName: etfInit
+*  @Brief: 初始化数据库表
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: etfInit()
+*/
+def etfInitTables(table_names = []){
+    if (size(table_names) == 0){
+       ts_create_tables = exec name from defs() where name like "EasyTushare::etf::EtfCreateTable%"
+        for(table in ts_create_tables){
+            // table = 'EasyTushare::etf::EtfCreateTable::createTopList'
+            funcByName(table)()
+        }
+    } else {
+        for (table_name in table_names){ 
+            funcByName("EasyTushare::etf::EtfCreateTable::createTable" + snakeToUpperCamel(table_name))()
+        }
+    }
+}
+
+// 导入模块
+use EasyTushare::etf::EtfLoadData
+
+
+/*
+*  @FunctionName: etfGetAllTableNames
+*  @Brief: 获取所有ETF数据表名
+*  @Param: None
+*  @Return: list
+*  @SampleUsage: etfGetAllTableNames()
+*/
+def etfGetAllTableNames(){
+    ts_create_tables = exec name from defs() where name like "EasyTushare::etf::EtfLoadData::append%"
+    return each(upperCamelToSnake, ts_create_tables.split("::")[3].substr(6))
+}
+
+/*
+*  @FunctionName: appendEtfMink
+*  @Brief: ETF分钟K数据导入函数
+*  @Param: token, start_date, end_date
+*  @Return: None
+*  @SampleUsage: appendEtfMink(token,start_date,end_date)
+*/
+def appendEtfMink(token,start_date,end_date,table_names = []){
+    if (size(table_names) == 0){
+        // 1min
+        appendEtfStk1Mins(token, start_date, end_date)
+        // 5min
+        appendEtfStk5Mins(token, start_date, end_date)
+        // 15min
+        appendEtfStk15Mins(token, start_date, end_date) 
+        // 30min
+        appendEtfStk30Mins(token, start_date, end_date)
+        // 60min
+        appendEtfStk60Mins(token, start_date, end_date)
+    } else {
+         for (table_name in table_names){ // table_name = "stock_1min_k"
+            if (table_name == 'etf_1_stk_mins'){
+                appendEtfStk1Mins(token, start_date, end_date)
+            } else if (table_name == 'etf_5_stk_mins'){
+                appendEtfStk5Mins(token, start_date, end_date)
+            } else if (table_name == 'etf_15_stk_mins'){
+                appendEtfStk15Mins(token, start_date, end_date)
+            } else if (table_name == 'etf_30_stk_mins'){
+                appendEtfStk30Mins(token, start_date, end_date)
+            } else if (table_name == 'etf_60_stk_mins'){
+                appendEtfStk60Mins(token, start_date, end_date)
+            }
+        }
+    }
+}
+/*
+*  @FunctionName: etfHistoryDataLoad
+*  @Brief: ETF历史数据导入函数
+*  @Param: token, start_date, end_date
+*  @Return: None
+*  @SampleUsage: etfHistoryDataLoad(token,start_date,end_date)
+*/
+def etfHistoryDataLoad(token,start_date,end_date,table_names=[]) { 
+    // table_names = ["etf_basic"]
+    // start_date = 2026.04.13
+    // end_date = 2026.04.14
+    // 使用submitJob提交所有数据更新任务，并行执行以提高效率
+    // 数据起始日期（tushare接口可以返回的最早的数据日期）
+    erlist_dates = dict(STRING,DATE)
+    erlist_dates["etf_basic"] = 2000.01.01
+    erlist_dates["etf_index"] = 2000.01.01
+    erlist_dates["etf_share_size"] = 2000.01.01
+    erlist_dates["fund_adj"] = 2000.01.01
+    erlist_dates["etf_daily"] = 2000.01.01
+    erlist_dates["etf_1_stk_mins"] = 2020.01.01
+    erlist_dates["etf_5_stk_mins"] = 2020.01.01
+    erlist_dates["etf_15_stk_mins"] = 2020.01.01
+    erlist_dates["etf_30_stk_mins"] = 2020.01.01
+    erlist_dates["etf_60_stk_mins"] = 2020.01.01
+
+    mink_tb_names = []
+    // 本次需要导入的所有表名
+    all_table_names = []
+    if (size(table_names) == 0){
+        all_table_names = etfGetAllTableNames()        
+    } else {
+        all_table_names = table_names
+    }
+    for (table_name in all_table_names){ // table_name = "etf_basic"
+            
+        if (table_name in ["etf_1_stk_mins","etf_5_stk_mins","etf_15_stk_mins","etf_30_stk_mins","etf_60_stk_mins"]){
+            mink_tb_names.append!(table_name)
+        } else {
+            get_start_date = erlist_dates[table_name]
+            if (get_start_date==NULL) {
+                get_start_date = start_date
+            }
+            submitJob("append_" + table_name, "append_" + table_name, funcByName("EasyTushare::etf::EtfLoadData::append" + snakeToUpperCamel(table_name)), token, max(get_start_date,start_date), end_date)
+        }
+    }
+    // 分钟K数据
+    if (mink_tb_names.size() > 0){
+        mink_start_date = max(2009.01.01,start_date)
+        submitJob("appendEtfMink", "appendEtfMink", appendEtfMink, token, mink_start_date, end_date, mink_tb_names)
+    }
+}

@@ -1,0 +1,1223 @@
+module EasyTushare::index::IndexCreateTable
+
+/*
+*  @FunctionName: module_info
+*  @Brief: 模块信息,一个相同模块dir下的每个dos都需要有module_info函数,且是相同的
+*  @Param: None
+*  @Return: dict
+*  @SampleUsage: module_info()
+*/
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "EasyTushare"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+
+/*
+*  @FunctionName: createTableIndexWeight
+*  @Brief: Create a DFS table for Index Weight
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableIndexWeight()
+*/
+def createTableIndexWeight(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "index_weight"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as index_code,
+            array(SYMBOL, 0) as con_code,           
+            array(DATE, 0) as trade_date,             
+            array(DOUBLE, 0) as weight,         
+            array(TIMESTAMP, 0) as update_time      
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["index_code"] = "指数代码"
+        columnComments["con_code"] = "股票代码"
+        columnComments["trade_date"] = "交易日期"
+        columnComments["weight"] = "权重"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableIndexClassify
+*  @Brief: Create a DFS table for Index Classify
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableIndexClassify()
+*/
+def createTableIndexClassify(){
+    dbName = "dfs://tushare_basic_db"
+    tbName = "index_classify"
+    
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as index_code,
+            array(STRING, 0) as industry_name,
+            array(SYMBOL, 0) as parent_code,
+            array(SYMBOL, 0) as level,
+            array(SYMBOL, 0) as industry_code,
+            array(SYMBOL, 0) as is_pub,
+            array(SYMBOL, 0) as src,
+            array(TIMESTAMP, 0) as update_time
+        )
+        
+        db.createTable(
+            table = schemaTB,
+            tableName = tbName
+        )
+        
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["index_code"] = "指数代码"
+        columnComments["industry_name"] = "行业名称"
+        columnComments["parent_code"] = "父级代码"
+        columnComments["level"] = "行业层级"
+        columnComments["industry_code"] = "行业代码"
+        columnComments["is_pub"] = "是否发布了指数"
+        columnComments["src"] = "行业分类（SW申万）"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        
+        print("Table " + tbName + " created successfully!")
+        }
+    } else {
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/**
+*  @FunctionName: createTableIndexMemberAll
+*  @Brief: Create a DFS table for Index Member All
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableIndexMemberAll()
+*/
+def createTableIndexMemberAll(){
+    dbName = "dfs://tushare_basic_db"
+    tbName = "index_member_all"
+    
+    if(existsDatabase(dbName)){
+       db = database(dbName)
+       if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as l1_code,
+            array(STRING, 0) as l1_name,
+            array(SYMBOL, 0) as l2_code,
+            array(STRING, 0) as l2_name,
+            array(SYMBOL, 0) as l3_code,
+            array(STRING, 0) as l3_name,
+            array(SYMBOL, 0) as security_id,
+            array(STRING, 0) as name,
+            array(DATE, 0) as in_date,
+            array(DATE, 0) as out_date,
+            array(SYMBOL, 0) as is_new,
+            array(TIMESTAMP, 0) as update_time
+        )
+        
+        db.createTable(
+            table = schemaTB,
+            tableName = tbName
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["l1_code"] = "一级行业代码"
+        columnComments["l1_name"] = "一级行业名称"
+        columnComments["l2_code"] = "二级行业代码"
+        columnComments["l2_name"] = "二级行业名称"
+        columnComments["l3_code"] = "三级行业代码"
+        columnComments["l3_name"] = "三级行业名称"
+        columnComments["security_id"] = "成分股票代码"
+        columnComments["name"] = "成分股票名称"
+        columnComments["in_date"] = "纳入日期"
+        columnComments["out_date"] = "剔除日期"
+        columnComments["is_new"] = "是否最新Y是N否"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        
+        print("Table " + tbName + " created successfully!")
+        }
+    } else {
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableIndexDaily
+*  @Brief: Create a DFS table for 指数日线行情
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableIndexDaily()
+*/
+def createTableIndexDaily(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "index_daily"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,            // TS指数代码
+            array(DATE, 0) as trade_date,           // 交易日
+            array(DOUBLE, 0) as close,              // 收盘点位
+            array(DOUBLE, 0) as open,               // 开盘点位
+            array(DOUBLE, 0) as high,               // 最高点位
+            array(DOUBLE, 0) as low,                // 最低点位
+            array(DOUBLE, 0) as pre_close,          // 昨日收盘点
+            array(DOUBLE, 0) as change,             // 涨跌点
+            array(DOUBLE, 0) as pct_chg,            // 涨跌幅（%）
+            array(DOUBLE, 0) as vol,                // 成交量（手）
+            array(DOUBLE, 0) as amount,              // 成交额（千元）
+            array(TIMESTAMP, 0) as update_time
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "TS指数代码"
+        columnComments["trade_date"] = "交易日"
+        columnComments["close"] = "收盘点位"
+        columnComments["open"] = "开盘点位"
+        columnComments["high"] = "最高点位"
+        columnComments["low"] = "最低点位"
+        columnComments["pre_close"] = "昨日收盘点"
+        columnComments["change"] = "涨跌点"
+        columnComments["pct_chg"] = "涨跌幅（%）"
+        columnComments["vol"] = "成交量（手）"
+        columnComments["amount"] = "成交额（千元）"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableIdx1minK
+*  @Brief: Create a DFS table for 股票历史分钟行情
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableIdx1minK()
+*/
+def createTableIdx1minK(){
+    dbName = "dfs://tushare_minute_db"
+    tbName = "idx_1min_k"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,            // 指数代码
+            array(TIMESTAMP, 0) as trade_time,       // 交易时间
+            array(DOUBLE, 0) as open,               // 开盘价
+            array(DOUBLE, 0) as close,              // 收盘价
+            array(DOUBLE, 0) as high,               // 最高价
+            array(DOUBLE, 0) as low,                // 最低价
+            array(INT, 0) as vol,                   // 成交量(股)
+            array(DOUBLE, 0) as amount,             // 成交金额（元）
+            array(TIMESTAMP, 0) as update_time
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_time"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "指数代码"
+        columnComments["trade_time"] = "交易时间"
+        columnComments["open"] = "开盘价"
+        columnComments["close"] = "收盘价"
+        columnComments["high"] = "最高价"
+        columnComments["low"] = "最低价"
+        columnComments["vol"] = "成交量(股)"
+        columnComments["amount"] = "成交金额（元）"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+
+/*
+*  @FunctionName: createTableIdx5minK
+*  @Brief: Create a DFS table for 股票历史分钟行情
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableIdx5minK()
+*/
+def createTableIdx5minK(){
+    dbName = "dfs://tushare_minute_db"
+    tbName = "idx_5min_k"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,            // 指数代码
+            array(TIMESTAMP, 0) as trade_time,       // 交易时间
+            array(DOUBLE, 0) as open,               // 开盘价
+            array(DOUBLE, 0) as close,              // 收盘价
+            array(DOUBLE, 0) as high,               // 最高价
+            array(DOUBLE, 0) as low,                // 最低价
+            array(INT, 0) as vol,                   // 成交量(股)
+            array(DOUBLE, 0) as amount,             // 成交金额（元）
+            array(TIMESTAMP, 0) as update_time
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_time"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "指数代码"
+        columnComments["trade_time"] = "交易时间"
+        columnComments["open"] = "开盘价"
+        columnComments["close"] = "收盘价"
+        columnComments["high"] = "最高价"
+        columnComments["low"] = "最低价"
+        columnComments["vol"] = "成交量(股)"
+        columnComments["amount"] = "成交金额（元）"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableIdx15minK
+*  @Brief: Create a DFS table for 股票历史分钟行情
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableIdx15minK()
+*/
+def createTableIdx15minK(){
+    dbName = "dfs://tushare_minute_db"
+    tbName = "idx_15min_k"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,            // 指数代码
+            array(TIMESTAMP, 0) as trade_time,       // 交易时间
+            array(DOUBLE, 0) as open,               // 开盘价
+            array(DOUBLE, 0) as close,              // 收盘价
+            array(DOUBLE, 0) as high,               // 最高价
+            array(DOUBLE, 0) as low,                // 最低价
+            array(INT, 0) as vol,                   // 成交量(股)
+            array(DOUBLE, 0) as amount,             // 成交金额（元）
+            array(TIMESTAMP, 0) as update_time
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_time"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "指数代码"
+        columnComments["trade_time"] = "交易时间"
+        columnComments["open"] = "开盘价"
+        columnComments["close"] = "收盘价"
+        columnComments["high"] = "最高价"
+        columnComments["low"] = "最低价"
+        columnComments["vol"] = "成交量(股)"
+        columnComments["amount"] = "成交金额（元）"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableIdx30minK
+*  @Brief: Create a DFS table for 股票历史分钟行情
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableIdx30minK()
+*/
+def createTableIdx30minK(){
+    dbName = "dfs://tushare_minute_db"
+    tbName = "idx_30min_k"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,            // 指数代码
+            array(TIMESTAMP, 0) as trade_time,       // 交易时间
+            array(DOUBLE, 0) as open,               // 开盘价
+            array(DOUBLE, 0) as close,              // 收盘价
+            array(DOUBLE, 0) as high,               // 最高价
+            array(DOUBLE, 0) as low,                // 最低价
+            array(INT, 0) as vol,                   // 成交量(股)
+            array(DOUBLE, 0) as amount,             // 成交金额（元）
+            array(TIMESTAMP, 0) as update_time
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_time"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "指数代码"
+        columnComments["trade_time"] = "交易时间"
+        columnComments["open"] = "开盘价"
+        columnComments["close"] = "收盘价"
+        columnComments["high"] = "最高价"
+        columnComments["low"] = "最低价"
+        columnComments["vol"] = "成交量(股)"
+        columnComments["amount"] = "成交金额（元）"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableIdx60minK
+*  @Brief: Create a DFS table for 股票历史分钟行情
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableIdx60minK()
+*/
+def createTableIdx60minK(){
+    dbName = "dfs://tushare_minute_db"
+    tbName = "idx_60min_k"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,            // 指数代码
+            array(TIMESTAMP, 0) as trade_time,       // 交易时间
+            array(DOUBLE, 0) as open,               // 开盘价
+            array(DOUBLE, 0) as close,              // 收盘价
+            array(DOUBLE, 0) as high,               // 最高价
+            array(DOUBLE, 0) as low,                // 最低价
+            array(INT, 0) as vol,                   // 成交量(股)
+            array(DOUBLE, 0) as amount,             // 成交金额（元）
+            array(TIMESTAMP, 0) as update_time
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_time"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "指数代码"
+        columnComments["trade_time"] = "交易时间"
+        columnComments["open"] = "开盘价"
+        columnComments["close"] = "收盘价"
+        columnComments["high"] = "最高价"
+        columnComments["low"] = "最低价"
+        columnComments["vol"] = "成交量(股)"
+        columnComments["amount"] = "成交金额（元）"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableCiDaily
+*  @Brief: Create a DFS table for 中信行业指数行情
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableCiDaily()
+*/
+def createTableCiDaily(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "ci_daily"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,              // 指数代码
+            array(DATE, 0) as trade_date,          // 交易日期
+            array(DOUBLE, 0) as open,              // 开盘点位
+            array(DOUBLE, 0) as low,               // 最低点位
+            array(DOUBLE, 0) as high,              // 最高点位
+            array(DOUBLE, 0) as close,             // 收盘点位
+            array(DOUBLE, 0) as pre_close,         // 昨日收盘点位
+            array(DOUBLE, 0) as change,            // 涨跌点位
+            array(DOUBLE, 0) as pct_change,        // 涨跌幅
+            array(DOUBLE, 0) as vol,               // 成交量（万股）
+            array(DOUBLE, 0) as amount,            // 成交额（万元）
+            array(TIMESTAMP, 0) as update_time     // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "指数代码"
+        columnComments["trade_date"] = "交易日期"
+        columnComments["open"] = "开盘点位"
+        columnComments["low"] = "最低点位"
+        columnComments["high"] = "最高点位"
+        columnComments["close"] = "收盘点位"
+        columnComments["pre_close"] = "昨日收盘点位"
+        columnComments["change"] = "涨跌点位"
+        columnComments["pct_change"] = "涨跌幅"
+        columnComments["vol"] = "成交量（万股）"
+        columnComments["amount"] = "成交额（万元）"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableCiIndexMember
+*  @Brief: Create a DFS table for 中信行业成分
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableCiIndexMember()
+*/
+def createTableCiIndexMember(){
+    dbName = "dfs://tushare_basic_db"
+    tbName = "ci_index_member"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as l1_code,           // 一级行业代码
+            array(STRING, 0) as l1_name,           // 一级行业名称
+            array(SYMBOL, 0) as l2_code,           // 二级行业代码
+            array(STRING, 0) as l2_name,           // 二级行业名称
+            array(SYMBOL, 0) as l3_code,           // 三级行业代码
+            array(STRING, 0) as l3_name,           // 三级行业名称
+            array(SYMBOL, 0) as security_id,              // 成分股票代码
+            array(STRING, 0) as name,              // 成分股票名称
+            array(DATE, 0) as in_date,             // 纳入日期
+            array(DATE, 0) as out_date,            // 剔除日期
+            array(SYMBOL, 0) as is_new,            // 是否最新Y是N否
+            array(TIMESTAMP, 0) as update_time     // 更新时间
+        )
+        db.createTable(
+            table = schemaTB,
+            tableName = tbName
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["l1_code"] = "一级行业代码"
+        columnComments["l1_name"] = "一级行业名称"
+        columnComments["l2_code"] = "二级行业代码"
+        columnComments["l2_name"] = "二级行业名称"
+        columnComments["l3_code"] = "三级行业代码"
+        columnComments["l3_name"] = "三级行业名称"
+        columnComments["security_id"] = "成分股票代码"
+        columnComments["name"] = "成分股票名称"
+        columnComments["in_date"] = "纳入日期"
+        columnComments["out_date"] = "剔除日期"
+        columnComments["is_new"] = "是否最新Y是N否"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableDailyInfo
+*  @Brief: Create a DFS table for 市场交易统计
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableDailyInfo()
+*/
+def createTableDailyInfo(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "daily_info"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(DATE, 0) as trade_date,          // 交易日期
+            array(SYMBOL, 0) as ts_code,           // 市场代码
+            array(STRING, 0) as ts_name,           // 市场名称
+            array(INT, 0) as com_count,            // 挂牌数
+            array(DOUBLE, 0) as total_share,       // 总股本（亿股）
+            array(DOUBLE, 0) as float_share,       // 流通股本（亿股）
+            array(DOUBLE, 0) as total_mv,          // 总市值（亿元）
+            array(DOUBLE, 0) as float_mv,          // 流通市值（亿元）
+            array(DOUBLE, 0) as amount,            // 交易金额（亿元）
+            array(DOUBLE, 0) as vol,               // 成交量（亿股）
+            array(INT, 0) as trans_count,          // 成交笔数（万笔）
+            array(DOUBLE, 0) as pe,                // 平均市盈率
+            array(DOUBLE, 0) as tr,                // 换手率（％）
+            array(SYMBOL, 0) as exchange,          // 交易所（SH上交所 SZ深交所）
+            array(TIMESTAMP, 0) as update_time     // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["trade_date"] = "交易日期"
+        columnComments["ts_code"] = "市场代码"
+        columnComments["ts_name"] = "市场名称"
+        columnComments["com_count"] = "挂牌数"
+        columnComments["total_share"] = "总股本（亿股）"
+        columnComments["float_share"] = "流通股本（亿股）"
+        columnComments["total_mv"] = "总市值（亿元）"
+        columnComments["float_mv"] = "流通市值（亿元）"
+        columnComments["amount"] = "交易金额（亿元）"
+        columnComments["vol"] = "成交量（亿股）"
+        columnComments["trans_count"] = "成交笔数（万笔）"
+        columnComments["pe"] = "平均市盈率"
+        columnComments["tr"] = "换手率（％）"
+        columnComments["exchange"] = "交易所（SH上交所 SZ深交所）"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableIdxFactorPro
+*  @Brief: Create a DFS table for 指数技术因子(专业版)
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableIdxFactorPro()
+*/
+def createTableIdxFactorPro(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "idx_factor_pro"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,              // 指数代码
+            array(DATE, 0) as trade_date,          // 交易日期
+            array(DOUBLE, 0) as open,              // 开盘价
+            array(DOUBLE, 0) as high,              // 最高价
+            array(DOUBLE, 0) as low,               // 最低价
+            array(DOUBLE, 0) as close,             // 收盘价
+            array(DOUBLE, 0) as pre_close,         // 昨收价
+            array(DOUBLE, 0) as change,            // 涨跌额
+            array(DOUBLE, 0) as pct_change,        // 涨跌幅
+            array(DOUBLE, 0) as vol,               // 成交量（手）
+            array(DOUBLE, 0) as amount,            // 成交额（千元）
+            array(DOUBLE, 0) as asi_bfq,           // 振动升降指标
+            array(DOUBLE, 0) as asit_bfq,          // 振动升降指标
+            array(DOUBLE, 0) as atr_bfq,           // 真实波动N日平均值
+            array(DOUBLE, 0) as bbi_bfq,           // BBI多空指标
+            array(DOUBLE, 0) as bias1_bfq,         // BIAS乖离率
+            array(DOUBLE, 0) as bias2_bfq,         // BIAS乖离率
+            array(DOUBLE, 0) as bias3_bfq,         // BIAS乖离率
+            array(DOUBLE, 0) as boll_lower_bfq,    // BOLL指标，布林带
+            array(DOUBLE, 0) as boll_mid_bfq,      // BOLL指标，布林带
+            array(DOUBLE, 0) as boll_upper_bfq,    // BOLL指标，布林带
+            array(DOUBLE, 0) as brar_ar_bfq,       // BRAR情绪指标
+            array(DOUBLE, 0) as brar_br_bfq,       // BRAR情绪指标
+            array(DOUBLE, 0) as cci_bfq,           // 顺势指标
+            array(DOUBLE, 0) as cr_bfq,            // CR价格动量指标
+            array(DOUBLE, 0) as dfma_dif_bfq,      // 平行线差指标
+            array(DOUBLE, 0) as dfma_difma_bfq,    // 平行线差指标
+            array(DOUBLE, 0) as dmi_adx_bfq,       // 动向指标
+            array(DOUBLE, 0) as dmi_adxr_bfq,      // 动向指标
+            array(DOUBLE, 0) as dmi_mdi_bfq,       // 动向指标
+            array(DOUBLE, 0) as dmi_pdi_bfq,       // 动向指标
+            array(DOUBLE, 0) as downdays,          // 连跌天数
+            array(DOUBLE, 0) as updays,            // 连涨天数
+            array(DOUBLE, 0) as dpo_bfq,           // 区间震荡线
+            array(DOUBLE, 0) as madpo_bfq,         // 区间震荡线
+            array(DOUBLE, 0) as ema_bfq_10,        // 指数移动平均-N=10
+            array(DOUBLE, 0) as ema_bfq_20,        // 指数移动平均-N=20
+            array(DOUBLE, 0) as ema_bfq_250,       // 指数移动平均-N=250
+            array(DOUBLE, 0) as ema_bfq_30,        // 指数移动平均-N=30
+            array(DOUBLE, 0) as ema_bfq_5,         // 指数移动平均-N=5
+            array(DOUBLE, 0) as ema_bfq_60,        // 指数移动平均-N=60
+            array(DOUBLE, 0) as ema_bfq_90,        // 指数移动平均-N=90
+            array(DOUBLE, 0) as emv_bfq,           // 简易波动指标
+            array(DOUBLE, 0) as maemv_bfq,         // 简易波动指标
+            array(DOUBLE, 0) as expma_12_bfq,      // EMA指数平均数指标
+            array(DOUBLE, 0) as expma_50_bfq,      // EMA指数平均数指标
+            array(DOUBLE, 0) as kdj_bfq,           // KDJ指标
+            array(DOUBLE, 0) as kdj_d_bfq,         // KDJ指标
+            array(DOUBLE, 0) as kdj_k_bfq,         // KDJ指标
+            array(DOUBLE, 0) as ktn_down_bfq,      // 肯特纳交易通道
+            array(DOUBLE, 0) as ktn_mid_bfq,       // 肯特纳交易通道
+            array(DOUBLE, 0) as ktn_upper_bfq,     // 肯特纳交易通道
+            array(DOUBLE, 0) as lowdays,           // 近多少周期内最低价的最小值
+            array(DOUBLE, 0) as topdays,           // 近多少周期内最高价的最大值
+            array(DOUBLE, 0) as ma_bfq_10,         // 简单移动平均-N=10
+            array(DOUBLE, 0) as ma_bfq_20,         // 简单移动平均-N=20
+            array(DOUBLE, 0) as ma_bfq_250,        // 简单移动平均-N=250
+            array(DOUBLE, 0) as ma_bfq_30,         // 简单移动平均-N=30
+            array(DOUBLE, 0) as ma_bfq_5,          // 简单移动平均-N=5
+            array(DOUBLE, 0) as ma_bfq_60,         // 简单移动平均-N=60
+            array(DOUBLE, 0) as ma_bfq_90,         // 简单移动平均-N=90
+            array(DOUBLE, 0) as macd_bfq,          // MACD指标
+            array(DOUBLE, 0) as macd_dea_bfq,      // MACD指标
+            array(DOUBLE, 0) as macd_dif_bfq,      // MACD指标
+            array(DOUBLE, 0) as mass_bfq,          // 梅斯线
+            array(DOUBLE, 0) as ma_mass_bfq,       // 梅斯线
+            array(DOUBLE, 0) as mfi_bfq,           // MFI指标
+            array(DOUBLE, 0) as mtm_bfq,           // 动量指标
+            array(DOUBLE, 0) as mtmma_bfq,         // 动量指标
+            array(DOUBLE, 0) as obv_bfq,           // 能量潮指标
+            array(DOUBLE, 0) as psy_bfq,           // 投资者情绪指标
+            array(DOUBLE, 0) as psyma_bfq,         // 投资者情绪指标
+            array(DOUBLE, 0) as roc_bfq,           // 变动率指标
+            array(DOUBLE, 0) as maroc_bfq,         // 变动率指标
+            array(DOUBLE, 0) as rsi_bfq_12,        // RSI指标
+            array(DOUBLE, 0) as rsi_bfq_24,        // RSI指标
+            array(DOUBLE, 0) as rsi_bfq_6,         // RSI指标
+            array(DOUBLE, 0) as taq_down_bfq,      // 唐安奇通道(海龟)交易指标
+            array(DOUBLE, 0) as taq_mid_bfq,       // 唐安奇通道(海龟)交易指标
+            array(DOUBLE, 0) as taq_up_bfq,        // 唐安奇通道(海龟)交易指标
+            array(DOUBLE, 0) as trix_bfq,          // 三重指数平滑平均线
+            array(DOUBLE, 0) as trma_bfq,          // 三重指数平滑平均线
+            array(DOUBLE, 0) as vr_bfq,            // VR容量比率
+            array(DOUBLE, 0) as wr_bfq,            // W&R 威廉指标
+            array(DOUBLE, 0) as wr1_bfq,           // W&R 威廉指标
+            array(DOUBLE, 0) as xsii_td1_bfq,      // 薛斯通道II
+            array(DOUBLE, 0) as xsii_td2_bfq,      // 薛斯通道II
+            array(DOUBLE, 0) as xsii_td3_bfq,      // 薛斯通道II
+            array(DOUBLE, 0) as xsii_td4_bfq,      // 薛斯通道II
+            array(TIMESTAMP, 0) as update_time     // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "指数代码"
+        columnComments["trade_date"] = "交易日期"
+        columnComments["open"] = "开盘价"
+        columnComments["high"] = "最高价"
+        columnComments["low"] = "最低价"
+        columnComments["close"] = "收盘价"
+        columnComments["pre_close"] = "昨收价"
+        columnComments["change"] = "涨跌额"
+        columnComments["pct_change"] = "涨跌幅"
+        columnComments["vol"] = "成交量（手）"
+        columnComments["amount"] = "成交额（千元）"
+        columnComments["asi_bfq"] = "振动升降指标"
+        columnComments["asit_bfq"] = "振动升降指标"
+        columnComments["atr_bfq"] = "真实波动N日平均值"
+        columnComments["bbi_bfq"] = "BBI多空指标"
+        columnComments["bias1_bfq"] = "BIAS乖离率"
+        columnComments["bias2_bfq"] = "BIAS乖离率"
+        columnComments["bias3_bfq"] = "BIAS乖离率"
+        columnComments["boll_lower_bfq"] = "BOLL指标，布林带"
+        columnComments["boll_mid_bfq"] = "BOLL指标，布林带"
+        columnComments["boll_upper_bfq"] = "BOLL指标，布林带"
+        columnComments["brar_ar_bfq"] = "BRAR情绪指标"
+        columnComments["brar_br_bfq"] = "BRAR情绪指标"
+        columnComments["cci_bfq"] = "顺势指标"
+        columnComments["cr_bfq"] = "CR价格动量指标"
+        columnComments["dfma_dif_bfq"] = "平行线差指标"
+        columnComments["dfma_difma_bfq"] = "平行线差指标"
+        columnComments["dmi_adx_bfq"] = "动向指标"
+        columnComments["dmi_adxr_bfq"] = "动向指标"
+        columnComments["dmi_mdi_bfq"] = "动向指标"
+        columnComments["dmi_pdi_bfq"] = "动向指标"
+        columnComments["downdays"] = "连跌天数"
+        columnComments["updays"] = "连涨天数"
+        columnComments["dpo_bfq"] = "区间震荡线"
+        columnComments["madpo_bfq"] = "区间震荡线"
+        columnComments["ema_bfq_10"] = "指数移动平均-N=10"
+        columnComments["ema_bfq_20"] = "指数移动平均-N=20"
+        columnComments["ema_bfq_250"] = "指数移动平均-N=250"
+        columnComments["ema_bfq_30"] = "指数移动平均-N=30"
+        columnComments["ema_bfq_5"] = "指数移动平均-N=5"
+        columnComments["ema_bfq_60"] = "指数移动平均-N=60"
+        columnComments["ema_bfq_90"] = "指数移动平均-N=90"
+        columnComments["emv_bfq"] = "简易波动指标"
+        columnComments["maemv_bfq"] = "简易波动指标"
+        columnComments["expma_12_bfq"] = "EMA指数平均数指标"
+        columnComments["expma_50_bfq"] = "EMA指数平均数指标"
+        columnComments["kdj_bfq"] = "KDJ指标"
+        columnComments["kdj_d_bfq"] = "KDJ指标"
+        columnComments["kdj_k_bfq"] = "KDJ指标"
+        columnComments["ktn_down_bfq"] = "肯特纳交易通道"
+        columnComments["ktn_mid_bfq"] = "肯特纳交易通道"
+        columnComments["ktn_upper_bfq"] = "肯特纳交易通道"
+        columnComments["lowdays"] = "近多少周期内最低价的最小值"
+        columnComments["topdays"] = "近多少周期内最高价的最大值"
+        columnComments["ma_bfq_10"] = "简单移动平均-N=10"
+        columnComments["ma_bfq_20"] = "简单移动平均-N=20"
+        columnComments["ma_bfq_250"] = "简单移动平均-N=250"
+        columnComments["ma_bfq_30"] = "简单移动平均-N=30"
+        columnComments["ma_bfq_5"] = "简单移动平均-N=5"
+        columnComments["ma_bfq_60"] = "简单移动平均-N=60"
+        columnComments["ma_bfq_90"] = "简单移动平均-N=90"
+        columnComments["macd_bfq"] = "MACD指标"
+        columnComments["macd_dea_bfq"] = "MACD指标"
+        columnComments["macd_dif_bfq"] = "MACD指标"
+        columnComments["mass_bfq"] = "梅斯线"
+        columnComments["ma_mass_bfq"] = "梅斯线"
+        columnComments["mfi_bfq"] = "MFI指标"
+        columnComments["mtm_bfq"] = "动量指标"
+        columnComments["mtmma_bfq"] = "动量指标"
+        columnComments["obv_bfq"] = "能量潮指标"
+        columnComments["psy_bfq"] = "投资者情绪指标"
+        columnComments["psyma_bfq"] = "投资者情绪指标"
+        columnComments["roc_bfq"] = "变动率指标"
+        columnComments["maroc_bfq"] = "变动率指标"
+        columnComments["rsi_bfq_12"] = "RSI指标"
+        columnComments["rsi_bfq_24"] = "RSI指标"
+        columnComments["rsi_bfq_6"] = "RSI指标"
+        columnComments["taq_down_bfq"] = "唐安奇通道(海龟)交易指标"
+        columnComments["taq_mid_bfq"] = "唐安奇通道(海龟)交易指标"
+        columnComments["taq_up_bfq"] = "唐安奇通道(海龟)交易指标"
+        columnComments["trix_bfq"] = "三重指数平滑平均线"
+        columnComments["trma_bfq"] = "三重指数平滑平均线"
+        columnComments["vr_bfq"] = "VR容量比率"
+        columnComments["wr_bfq"] = "W&R 威廉指标"
+        columnComments["wr1_bfq"] = "W&R 威廉指标"
+        columnComments["xsii_td1_bfq"] = "薛斯通道II"
+        columnComments["xsii_td2_bfq"] = "薛斯通道II"
+        columnComments["xsii_td3_bfq"] = "薛斯通道II"
+        columnComments["xsii_td4_bfq"] = "薛斯通道II"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableIndexBasic
+*  @Brief: Create a DFS table for 指数基本信息
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableIndexBasic()
+*/
+def createTableIndexBasic(){
+    dbName = "dfs://tushare_basic_db"
+    tbName = "index_basic"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,              // TS代码
+            array(STRING, 0) as name,              // 简称
+            array(STRING, 0) as fullname,          // 指数全称
+            array(SYMBOL, 0) as market,            // 市场
+            array(SYMBOL, 0) as publisher,         // 发布方
+            array(SYMBOL, 0) as index_type,        // 指数风格
+            array(SYMBOL, 0) as category,          // 指数类别
+            array(DATE, 0) as base_date,           // 基期
+            array(DOUBLE, 0) as base_point,        // 基点
+            array(DATE, 0) as list_date,           // 发布日期
+            array(STRING, 0) as weight_rule,       // 加权方式
+            array(STRING, 0) as desc,              // 描述
+            array(DATE, 0) as exp_date,            // 终止日期
+            array(TIMESTAMP, 0) as update_time     // 更新时间
+        )
+        db.createTable(
+            table = schemaTB,
+            tableName = tbName
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "TS代码"
+        columnComments["name"] = "简称"
+        columnComments["fullname"] = "指数全称"
+        columnComments["market"] = "市场"
+        columnComments["publisher"] = "发布方"
+        columnComments["index_type"] = "指数风格"
+        columnComments["category"] = "指数类别"
+        columnComments["base_date"] = "基期"
+        columnComments["base_point"] = "基点"
+        columnComments["list_date"] = "发布日期"
+        columnComments["weight_rule"] = "加权方式"
+        columnComments["desc"] = "描述"
+        columnComments["exp_date"] = "终止日期"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableIndexDailybasic
+*  @Brief: Create a DFS table for 大盘指数每日指标
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableIndexDailybasic()
+*/
+def createTableIndexDailybasic(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "index_dailybasic"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,              // TS代码
+            array(DATE, 0) as trade_date,          // 交易日期
+            array(DOUBLE, 0) as total_mv,          // 当日总市值（元）
+            array(DOUBLE, 0) as float_mv,          // 当日流通市值（元）
+            array(DOUBLE, 0) as total_share,       // 当日总股本（股）
+            array(DOUBLE, 0) as float_share,       // 当日流通股本（股）
+            array(DOUBLE, 0) as free_share,        // 当日自由流通股本（股）
+            array(DOUBLE, 0) as turnover_rate,     // 换手率
+            array(DOUBLE, 0) as turnover_rate_f,   // 换手率(基于自由流通股本)
+            array(DOUBLE, 0) as pe,                // 市盈率
+            array(DOUBLE, 0) as pe_ttm,            // 市盈率TTM
+            array(DOUBLE, 0) as pb,                // 市净率
+            array(TIMESTAMP, 0) as update_time     // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "TS代码"
+        columnComments["trade_date"] = "交易日期"
+        columnComments["total_mv"] = "当日总市值（元）"
+        columnComments["float_mv"] = "当日流通市值（元）"
+        columnComments["total_share"] = "当日总股本（股）"
+        columnComments["float_share"] = "当日流通股本（股）"
+        columnComments["free_share"] = "当日自由流通股本（股）"
+        columnComments["turnover_rate"] = "换手率"
+        columnComments["turnover_rate_f"] = "换手率(基于自由流通股本)"
+        columnComments["pe"] = "市盈率"
+        columnComments["pe_ttm"] = "市盈率TTM"
+        columnComments["pb"] = "市净率"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableIndexGlobal
+*  @Brief: Create a DFS table for 国际指数
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableIndexGlobal()
+*/
+def createTableIndexGlobal(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "index_global"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,              // 指数代码
+            array(DATE, 0) as trade_date,          // 交易日
+            array(DOUBLE, 0) as open,              // 开盘点位
+            array(DOUBLE, 0) as close,             // 收盘点位
+            array(DOUBLE, 0) as high,              // 最高点位
+            array(DOUBLE, 0) as low,               // 最低点位
+            array(DOUBLE, 0) as pre_close,         // 昨日收盘点
+            array(DOUBLE, 0) as change,            // 涨跌点位
+            array(DOUBLE, 0) as pct_chg,           // 涨跌幅
+            array(DOUBLE, 0) as swing,             // 振幅
+            array(DOUBLE, 0) as vol,               // 成交量
+            array(DOUBLE, 0) as amount,            // 成交额
+            array(TIMESTAMP, 0) as update_time     // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "指数代码"
+        columnComments["trade_date"] = "交易日"
+        columnComments["open"] = "开盘点位"
+        columnComments["close"] = "收盘点位"
+        columnComments["high"] = "最高点位"
+        columnComments["low"] = "最低点位"
+        columnComments["pre_close"] = "昨日收盘点"
+        columnComments["change"] = "涨跌点位"
+        columnComments["pct_chg"] = "涨跌幅"
+        columnComments["swing"] = "振幅"
+        columnComments["vol"] = "成交量"
+        columnComments["amount"] = "成交额"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableIndexMonthly
+*  @Brief: Create a DFS table for 指数月线行情
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableIndexMonthly()
+*/
+def createTableIndexMonthly(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "index_monthly"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,              // 指数代码
+            array(DATE, 0) as trade_date,          // 交易日
+            array(DOUBLE, 0) as close,             // 收盘点位
+            array(DOUBLE, 0) as open,              // 开盘点位
+            array(DOUBLE, 0) as high,              // 最高点位
+            array(DOUBLE, 0) as low,               // 最低点位
+            array(DOUBLE, 0) as pre_close,         // 昨日收盘点
+            array(DOUBLE, 0) as change,            // 涨跌点位
+            array(DOUBLE, 0) as pct_chg,           // 涨跌幅
+            array(DOUBLE, 0) as vol,               // 成交量（手）
+            array(DOUBLE, 0) as amount,            // 成交额（千元）
+            array(TIMESTAMP, 0) as update_time     // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "指数代码"
+        columnComments["trade_date"] = "交易日"
+        columnComments["close"] = "收盘点位"
+        columnComments["open"] = "开盘点位"
+        columnComments["high"] = "最高点位"
+        columnComments["low"] = "最低点位"
+        columnComments["pre_close"] = "昨日收盘点"
+        columnComments["change"] = "涨跌点位"
+        columnComments["pct_chg"] = "涨跌幅"
+        columnComments["vol"] = "成交量（手）"
+        columnComments["amount"] = "成交额（千元）"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableIndexWeekly
+*  @Brief: Create a DFS table for 指数周线行情
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableIndexWeekly()
+*/
+def createTableIndexWeekly(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "index_weekly"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,              // 指数代码
+            array(DATE, 0) as trade_date,          // 交易日
+            array(DOUBLE, 0) as close,             // 收盘点位
+            array(DOUBLE, 0) as open,              // 开盘点位
+            array(DOUBLE, 0) as high,              // 最高点位
+            array(DOUBLE, 0) as low,               // 最低点位
+            array(DOUBLE, 0) as pre_close,         // 昨日收盘点
+            array(DOUBLE, 0) as change,            // 涨跌点位
+            array(DOUBLE, 0) as pct_chg,           // 涨跌幅
+            array(DOUBLE, 0) as vol,               // 成交量（手）
+            array(DOUBLE, 0) as amount,            // 成交额（千元）
+            array(TIMESTAMP, 0) as update_time     // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "指数代码"
+        columnComments["trade_date"] = "交易日"
+        columnComments["close"] = "收盘点位"
+        columnComments["open"] = "开盘点位"
+        columnComments["high"] = "最高点位"
+        columnComments["low"] = "最低点位"
+        columnComments["pre_close"] = "昨日收盘点"
+        columnComments["change"] = "涨跌点位"
+        columnComments["pct_chg"] = "涨跌幅"
+        columnComments["vol"] = "成交量（手）"
+        columnComments["amount"] = "成交额（千元）"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableSwDaily
+*  @Brief: Create a DFS table for 申万行业日线行情
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableSwDaily()
+*/
+def createTableSwDaily(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "sw_daily"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,              // 指数代码
+            array(DATE, 0) as trade_date,          // 交易日期
+            array(STRING, 0) as name,              // 指数名称
+            array(DOUBLE, 0) as open,              // 开盘点位
+            array(DOUBLE, 0) as low,               // 最低点位
+            array(DOUBLE, 0) as high,              // 最高点位
+            array(DOUBLE, 0) as close,             // 收盘点位
+            array(DOUBLE, 0) as change,            // 涨跌点位
+            array(DOUBLE, 0) as pct_change,        // 涨跌幅
+            array(DOUBLE, 0) as vol,               // 成交量（万股）
+            array(DOUBLE, 0) as amount,            // 成交额（万元）
+            array(DOUBLE, 0) as pe,                // 市盈率
+            array(DOUBLE, 0) as pb,                // 市净率
+            array(DOUBLE, 0) as float_mv,          // 流通市值（万元）
+            array(DOUBLE, 0) as total_mv,          // 总市值（万元）
+            array(TIMESTAMP, 0) as update_time     // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "指数代码"
+        columnComments["trade_date"] = "交易日期"
+        columnComments["name"] = "指数名称"
+        columnComments["open"] = "开盘点位"
+        columnComments["low"] = "最低点位"
+        columnComments["high"] = "最高点位"
+        columnComments["close"] = "收盘点位"
+        columnComments["change"] = "涨跌点位"
+        columnComments["pct_change"] = "涨跌幅"
+        columnComments["vol"] = "成交量（万股）"
+        columnComments["amount"] = "成交额（万元）"
+        columnComments["pe"] = "市盈率"
+        columnComments["pb"] = "市净率"
+        columnComments["float_mv"] = "流通市值（万元）"
+        columnComments["total_mv"] = "总市值（万元）"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableSzDailyInfo
+*  @Brief: Create a DFS table for 深圳市场每日交易概况
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableSzDailyInfo()
+*/
+def createTableSzDailyInfo(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "sz_daily_info"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(DATE, 0) as trade_date,          // 交易日期
+            array(SYMBOL, 0) as ts_code,           // 市场类型
+            array(INT, 0) as count,                // 股票个数
+            array(DOUBLE, 0) as amount,            // 成交金额
+            array(DOUBLE, 0) as vol,               // 成交量
+            array(DOUBLE, 0) as total_share,       // 总股本
+            array(DOUBLE, 0) as total_mv,          // 总市值
+            array(DOUBLE, 0) as float_share,       // 流通股票
+            array(DOUBLE, 0) as float_mv,          // 流通市值
+            array(TIMESTAMP, 0) as update_time     // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["trade_date"] = "交易日期"
+        columnComments["ts_code"] = "市场类型"
+        columnComments["count"] = "股票个数"
+        columnComments["amount"] = "成交金额"
+        columnComments["vol"] = "成交量"
+        columnComments["total_share"] = "总股本"
+        columnComments["total_mv"] = "总市值"
+        columnComments["float_share"] = "流通股票"
+        columnComments["float_mv"] = "流通市值"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}

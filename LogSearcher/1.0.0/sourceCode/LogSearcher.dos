@@ -1,0 +1,1087 @@
+module LogSearcher
+
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "LogSearcher"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+
+def validatePrivilege() {
+    username = getCurrentSessionAndUser().at(1);
+    if (username == "guest") {
+        throw("user must be admin");
+    }
+    isAdmin = getUserAccess()["isAdmin"].first();
+    if (!isAdmin) {
+        throw("user must be admin");
+    }
+
+    return true;
+}
+
+def validateParams(params) {  
+    if (isVoid(params)) return true; // NULL 是允许的默认值  
+      
+    if (form(params) != DICT) {  
+        throw("params must be a dictionary");  
+    }
+
+    hasKey = def(params, key) {
+        return in(key, params.keys());
+    }
+      
+    // 检查 pattern 字段  
+    if (hasKey(params, `pattern)) {  
+        val = params[`pattern];  
+        if (!isVoid(val)) {  
+            formVal = form(val);  
+            typeVal = typestr(val);  
+            if (!(formVal in [0, 1] && typeVal in ["STRING", "STRING VECTOR"])) { // 0=标量, 1=向量  
+                throw("pattern must be a string scalar or vector");  
+            }
+            if (formVal == 0) {
+                if (isNull(val)) {
+                    throw("pattern must not be null");
+                }
+            } else {
+                for (item in val) {
+                    if (isNull(item)) {
+                        throw("pattern must not be null");
+                    }
+                }
+            }
+        }  
+    }  
+      
+    // 检查 startTime 和 endTime 字段  
+    for (timeField in [`startTime, `endTime]) {  
+        if (hasKey(params, timeField)) {  
+            val = params[timeField];  
+            if (!isVoid(val)) {  
+                temporalTypestrs = ["TIMESTAMP", "NANOTIMESTAMP", "DATE", "DATETIME", "DATEHOUR"]
+                if (form(val) != 0 || !in(typestr(val), temporalTypestrs) || isNull(val)) {  
+                    throw(string(timeField) + " must be a timestamp scalar that is not null");  
+                }  
+            }  
+        }  
+    }
+    if (!isVoid(params["startTime"]) && !isVoid(params["endTime"])) {
+        if (timestamp(params["startTime"]) > timestamp(params["endTime"])) {
+            throw("startTime must be earlier than endTime");
+        }
+    } 
+      
+    // 检查 logLevel 字段  
+    if (hasKey(params, `logLevel)) {  
+        val = params[`logLevel];  
+        if (!isVoid(val)) {  
+            formVal = form(val);  
+            typeVal = typestr(val);  
+            if (!(formVal in [0, 1] && typeVal in ["STRING", "STRING VECTOR"])) {  
+                throw("logLevel must be a string scalar or vector");  
+            }  
+            // 检查值是否在允许的范围内  
+            validLevels = ["INFO", "ERROR", "WARNING", "DEBUG"];  
+            if (formVal == 0) { // 标量  
+                if (!(val in validLevels)) {  
+                    throw("logLevel must be one of: " + concat(validLevels, ", "));  
+                }  
+            } else { // 向量  
+                for (level in val) {  
+                    if (!(level in validLevels)) {  
+                        throw("logLevel must contain only: " + concat(validLevels, ", "));  
+                    }  
+                }  
+            }  
+        }  
+    }  
+      
+    // 检查 logType 字段  
+    if (hasKey(params, `logType)) {  
+        val = params[`logType];  
+        if (!isVoid(val)) {  
+            formVal = form(val);  
+            typeVal = typestr(val);  
+            if (!(formVal in [0, 1] && typeVal in ["STRING", "STRING VECTOR"])) {  
+                throw("logType must be a string scalar or vector");  
+            }  
+            // 检查值是否在允许的范围内  
+            validTypes = ["running", "job", "query", "audit", "aclAudit", "access", "hardware", "dmesg", "coredump"];  
+            if (formVal == 0) { // 标量  
+                if (!(val in validTypes)) {  
+                    throw("logType must be one of: " + concat(validTypes, ", "));  
+                }  
+            } else { // 向量  
+                for (type in val) {  
+                    if (!(type in validTypes)) {  
+                        throw("logType must contain only: " + concat(validTypes, ", "));  
+                    }  
+                }  
+            }  
+        }  
+    }  
+      
+    // 检查 node 字段  
+    if (hasKey(params, `node)) {  
+        val = params[`node];  
+        if (!isVoid(val)) {  
+            formVal = form(val);  
+            typeVal = typestr(val);  
+            if (!(formVal in [0, 1] && typeVal in ["STRING", "STRING VECTOR"])) {  
+                throw("node must be a string scalar or vector");  
+            }  
+        }
+        nodes = exec distinct(name) from rpc(getControllerAlias(), getClusterPerf{true}) where mode != 1
+        if(!all(in(val, nodes))) {
+            throw("node must be one of: " + concat(nodes, ", "))
+        }
+    }  
+      
+    // 检查 mode 字段  
+    if (hasKey(params, `mode)) {  
+        val = params[`mode];  
+        if (!isVoid(val)) {  
+            if (form(val) != 0 || typestr(val) != "STRING") {  
+                throw("mode must be a string scalar");  
+            }  
+            validModes = ["strpos", "like", "ilike", "regexFind"];  
+            if (!(val in validModes)) {  
+                throw("mode must be one of: " + concat(validModes, ", "));  
+            }  
+        }  
+    }  
+      
+    // 检查 cacheSize 字段  
+    if (hasKey(params, `cacheSize)) {  
+        val = params[`cacheSize];  
+        if (!isVoid(val)) {  
+            if (form(val) != 0 || typestr(val) != "INT" || isNull(val) || val < -1) {  
+                throw("cacheSize must be an integer scalar greater than or equal to -1");  
+            }  
+        }  
+    }  
+      
+    // 检查 adminPassword 字段  
+    if (hasKey(params, `adminPassword)) {  
+        val = params[`adminPassword];  
+        if (!isVoid(val)) {  
+            if (form(val) != 0 || typestr(val) != "STRING") {  
+                throw("adminPassword must be a string scalar");  
+            }  
+        }  
+    }  
+      
+    // 检查 dolphindbPath 字段  
+    if (hasKey(params, `dolphindbPath)) {  
+        val = params[`dolphindbPath];  
+        if (!isVoid(val)) {  
+            if (form(val) != 0 || typestr(val) != "STRING") {  
+                throw("dolphindbPath must be a string scalar");  
+            }
+            
+            if (!exists(val)) {
+                throw("dolphindbPath " + val + " does not exist");
+            }
+        }  
+    }
+    
+    // 检查 saveDir 字段  
+    if (hasKey(params, `saveDir)) {  
+        val = params[`saveDir];  
+        if (!isVoid(val)) {  
+            if (form(val) != 0 || typestr(val) != "STRING") {  
+                throw("saveDir must be a string scalar");  
+            }
+            
+            if (!exists(val)) {
+                throw("saveDir " + val + " does not exist");
+            }
+        }   
+    } 
+      
+    return true;  
+}
+
+def getConfigEx(nodeAlias, key, defaultValue=NULL) {
+    clusterPerf = rpc(getControllerAlias(), getClusterPerf{true})
+    if (!in(nodeAlias, clusterPerf["name"])) {
+        throw "node alias " + nodeAlias + " not found in cluster"
+    }
+    
+    state = (exec state from clusterPerf where name == nodeAlias).first()
+    if (state == 1) { // 如果节点在线，直接 rpc 节点读取配置项
+        return rpc(nodeAlias, getConfig{key})
+    }
+    // 否则读取控制节点存储的配置文件值
+    nodeType = (exec mode from clusterPerf where name == nodeAlias).first()
+    if (nodeType == 2) {
+        cfg = rpc(getControllerAlias(), loadControllerConfigs)
+    } else {
+        cfg = rpc(getControllerAlias(), loadClusterNodesConfigs)
+    }
+    val = NULL
+    for (item in cfg) {
+        s = item.split("=")
+        key_ = s[0].strip()
+        val_ = s[1].strip()
+        if (key_ == nodeAlias + "." + key) {
+            val = val_
+        } else if (key_ == key) {
+            if (!isNull(val_)) {
+                val = val_
+            }
+        }
+    }
+    if (isVoid(val)) {
+        if (isVoid(defaultValue)) {
+            throw "key " + key + " is not found in config"
+        } else {
+            return defaultValue
+        }
+    }
+
+    return val
+}
+
+def getLogDir() {
+    logFile = getConfig("logFile")
+    s = logFile.split("/")
+    logDir = s[:(s.size()-1)].concat("/")
+    if (isNull(logDir)) {
+        logDir = "."
+    }
+
+    return logDir
+}
+
+def customWriteLog(log, level=INFO) {
+    if (level == INFO) {
+        level_ = "INFO"
+    } else if (level == ERROR) {
+        level_ = "ERROR"
+    } else if (level == WARNING) {
+        level_ = "WARNING"
+    } else {
+        level_ = "UNKNOWN"
+    }
+    ts = now()
+    log_ = stringFormat("%T <%W> : %W", ts, level_, string(log))
+    print(log_)
+}
+
+def generateDefaultParams(params=NULL) {
+    validatePrivilege()
+    validateParams(params)
+    defaultParams = dict(STRING, ANY)
+    defaultParams["pattern"] = []$STRING
+    ts = now()
+    defaultParams["startTime"] = temporalAdd(ts, -1, "d")
+    defaultParams["endTime"] = ts
+    defaultParams["logLevel"] = ["INFO", "ERROR", "WARNING", "DEBUG"]
+    defaultParams["logType"] = ["running", "job", "query", "audit", "aclAudit", "access", "hardware", "dmesg", "coredump"]
+    defaultParams["node"] = exec name from rpc(getControllerAlias(), getClusterPerf{true}) where mode != 1 // 排除 agent
+    defaultParams["mode"] = "strpos"
+    defaultParams["cacheSize"] = 1024
+    defaultParams["adminPassword"] = NULL
+    homeDir = getHomeDir()
+    defaultParams["dolphindbPath"] = homeDir.substr(0, homeDir.strpos("server")) + "server/dolphindb"
+    defaultParams["saveDir"] = getLogDir()
+
+    if (!isVoid(params)) {
+        for (key in params.keys()) {
+            if (isVoid(params[key])) {
+                continue
+            } else if (form(params[key]) == 1 and params[key].size() == 0) { // 跳过空数组
+                continue
+            }
+            defaultParams[key] = params[key]
+        }
+    }
+
+    // 标量统一处理为向量
+    if (form(defaultParams["logLevel"])==0) {
+        defaultParams["logLevel"] = [defaultParams["logLevel"]]
+    }
+    if (form(defaultParams["pattern"])==0) {
+        defaultParams["pattern"] = [defaultParams["pattern"]]
+    }
+    if (form(defaultParams["logType"])==0) {
+        defaultParams["logType"] = [defaultParams["logType"]]
+    }
+    if (form(defaultParams["node"])==0) {
+        defaultParams["node"] = [defaultParams["node"]]
+    }
+
+    // 类型转换
+    defaultParams["startTime"] = timestamp(defaultParams["startTime"])
+    defaultParams["endTime"] = timestamp(defaultParams["endTime"])
+
+    return defaultParams
+}
+
+def getSearchHistory(params=NULL) {
+    validatePrivilege()
+    validateParams(params)
+    nodes = exec name from rpc(getControllerAlias(), getClusterPerf{true}) where mode != 1 and state == 1 // 除 agent 的存活节点（包括controller）
+    jobInfo = select * from pnodeRun(getRecentJobs, nodes) where jobId.startsWith("searchLog") and endTime != NULL and errorMsg == NULL
+    if (jobInfo.size() == 0) {
+        return table(1:0,
+            `logLevel`pattern`startTime`endTime`logType`node`mode`cacheSize`jobId`jobNode`jobStartTime`jobEndTime`jobErrorMsg,
+            [STRING, STRING, TIMESTAMP, TIMESTAMP, STRING, STRING, STRING, INT, STRING, STRING, TIMESTAMP, TIMESTAMP, STRING]
+        )
+    }
+
+    sc = table(
+        `logLevel`pattern`startTime`endTime`logType`node`mode`cacheSize as name,
+        ["STRING", "STRING", "TIMESTAMP", "TIMESTAMP", "STRING", "STRING", "STRING", "INT"] as type
+    )
+    res = parseJsonTable(jobInfo["jobDesc"], sc)
+    update res set jobId = jobInfo["jobId"]
+    update res set jobNode = jobInfo["node"]
+    update res set jobStartTime = jobInfo["startTime"]
+    update res set jobEndTime = jobInfo["endTime"]
+    update res set jobErrorMsg = jobInfo["errorMsg"]
+
+    if (!isVoid(params)) {
+        allIn = def (a, b) {
+            return all(in(a, b))
+        }
+        res = select * from res where endTime >= params["endTime"] and startTime <= params["startTime"]
+        if (!isVoid(params["pattern"]) and params["pattern"].size() > 0) {
+            res = select * from res where each(allIn{params["pattern"]}, pattern.split(",")) or pattern == NULL
+        } else {
+            res = select * from res where pattern == NULL
+        }
+        if (!isVoid(params["logType"]) and params["logType"].size() > 0) {
+            res = select * from res where each(allIn{params["logType"]}, logType.split(","))
+        }
+        if (!isVoid(params["logLevel"]) and params["logLevel"].size() > 0) {
+            res = select * from res where each(allIn{params["logLevel"]}, logLevel.split(","))
+        }
+        if (!isVoid(params["mode"])) {
+            res = select * from res where mode == params["mode"] or pattern == NULL
+        }
+        if (!isVoid(params["node"])) {
+            res = select * from res where each(allIn{params["node"]}, node.split(","))
+        }
+    }
+
+    return res
+}
+
+def generateJobDesc(params) {
+    params_ = params
+
+    if (isVoid(params_["adminPassword"])) {
+        deadNodes = exec name from rpc(getControllerAlias(), getClusterPerf) where state == 0
+        node = params_["node"]
+        params_["node"] = node[not (node in deadNodes)]
+    }
+
+    erase!(params_, "adminPassword")
+    params_["logLevel"] = params_["logLevel"].concat(",")
+    params_["pattern"] = params_["pattern"].concat(",")
+    params_["logType"] = params_["logType"].concat(",")
+    params_["node"] = params_["node"].concat(",")
+
+    return toStdJson(params_)
+}
+
+def parseJobDesc(jobDesc) {
+    params = fromStdJson(jobDesc)
+    params["logLevel"] = params["logLevel"].split(",")
+    params["pattern"] = params["pattern"].split(",")
+    params["logType"] = params["logType"].split(",")
+    params["node"] = params["node"].split(",")
+
+    return params
+}
+
+def searchLogByPattern(log, pattern, mode) {
+    if (pattern.size() == 0 or log.size() == 0) {
+        return log
+    }
+
+    colName = "content"
+    for (i in 0..(pattern.size()-1)) {
+        if (mode == "strpos") {
+            whereCond = makeCall(def(colName, pattern){return rowOr(strpos:R(colName, pattern)!=-1)}, sqlCol(colName), pattern)
+        } else if (mode == "like") {
+            whereCond = makeCall(def(colName, pattern){return rowOr(like:R(colName, pattern))}, sqlCol(colName), pattern)
+        } else if (mode == "ilike") {
+            whereCond = makeCall(def(colName, pattern){return rowOr(ilike:R(colName, pattern))}, sqlCol(colName), pattern)
+        } else if (mode == "regexFind") {
+            whereCond = makeCall(def(colName, pattern){return rowOr(regexFind:R(colName, pattern)!=-1)}, sqlCol(colName), pattern)
+        } else {
+            throw "mode: " + mode + " is not supported"
+        }
+    }
+    return sql(sqlCol("*"), log, whereCond).eval()
+}
+
+def searchLogFromCache(params, cachedJobId) {
+    res = getJobReturn(cachedJobId)
+    jobDesc = (exec jobDesc from getJobStatus(cachedJobId)).first()
+    cachedJobParams = parseJobDesc(jobDesc)
+
+    if (params["startTime"] != cachedJobParams["startTime"] or params["endTime"] != cachedJobParams["endTime"]) {
+        res = select * from res where timestamp >= params["startTime"] and timestamp <= params["endTime"]
+    }
+    if (all(in(params["logType"], cachedJobParams["logType"])) and !eqObj(params["logType"], cachedJobParams["logType"])) {
+        res = select * from res where logType in params["logType"]
+    }
+    if (all(in(params["logLevel"], cachedJobParams["logLevel"])) and !eqObj(params["logLevel"], cachedJobParams["logLevel"])) {
+        res = select * from res where logLevel in params["logLevel"]
+    }
+    if (all(in(params["node"], cachedJobParams["node"])) and !eqObj(params["node"], cachedJobParams["node"])) {
+        hosts = exec host from rpc(getControllerAlias(), getClusterPerf{true}) where mode != 1 and name in params["node"]
+        res = select * from res where node in params["node"] or node in hosts
+    }
+    pattern = params["pattern"]
+    mode = params["mode"]
+    res = searchLogByPattern(res, pattern, mode)
+    return res
+}
+
+def getLogFilesInfo(logDir, filePattern, startTime_, endTime_) {
+    logFiles = select * from files(logDir, filePattern) where isDir == false order by filename asc
+    addColumn(logFiles, `startTime`endTime, [TIMESTAMP, TIMESTAMP])
+    update logFiles set endTime = temporalParse(substr(filename, 0, 14), "yyyyMMddHHmmss")
+    update logFiles set startTime = move(endTime, 1)
+    if (isNull(startTime_) and isNull(endTime_)) { // 未指定时间范围，则只读取当前日志文件
+        logFiles = select * from logFiles where endTime == NULL
+    } else {
+        if (!isNull(startTime_)) {
+            delete from logFiles where endTime != NULL and endTime < startTime_
+        }
+        if (!isNull(endTime_)) {
+            delete from logFiles where startTime != NULL and startTime > endTime_
+        }
+    }
+    return logFiles
+}
+
+def searchLogFromFileInner(params, logDir, filePattern, extractTsAndLevelFunc, skipFirstLine=false) {
+    startTime = nanotimestamp(params["startTime"])
+    endTime = nanotimestamp(params["endTime"])
+    logLevel_ = params["logLevel"]
+    pattern = params["pattern"]
+    mode = params["mode"]
+    logFiles = getLogFilesInfo(logDir, filePattern, startTime, endTime)
+    
+    ret = table(1:0, `timestamp`logLevel`logFile`content, [NANOTIMESTAMP, SYMBOL, STRING, STRING])
+    for (filename in logFiles["filename"]) {
+        // filename = logFiles["filename"][0]
+        filepath = logDir + "/" + filename
+        fin = file(filepath)
+        if (skipFirstLine) {
+            readLine(fin)
+        }
+        maxByteSize = 1024*1024
+        bytes = array(CHAR, maxByteSize)
+        lastLine = ""
+
+        ret_ = table(1:0, `timestamp`logLevel`content, [NANOTIMESTAMP, SYMBOL, STRING])
+        do {
+            numByte = fin.read!(bytes, 0, maxByteSize)
+            validBytes = bytes[0:numByte]
+            if (validBytes.first() == '\10') { // D20-19493 \n 在 char 数组开头时 concat 有 bug
+                text = concat(validBytes[1:])
+                lines = text.split("\n")
+                lines = [lastLine].append!(lines)
+            } else {
+                text = concat(validBytes)
+                lines = text.split("\n")
+                text = lastLine+lines[0]
+                lines[0] = text
+            }
+            lastLine=lines.tail();
+            lines=lines[:lines.size()-1];
+            if (lines.size() == 0) {
+                continue
+            }
+            
+            ts, level = extractTsAndLevelFunc(lines)
+            tb = table(
+                ts as timestamp,
+                level as logLevel,
+                lines as content
+            )
+            // 去除无效日志行
+            delete from tb where timestamp == NULL
+            delete from tb where content == NULL
+            // 初略且快速的时间范围过滤
+            if (!isNull(endTime) and ts.first() > endTime) {
+                break
+            }
+            if (!isNull(startTime) and ts.last() < startTime) {
+                continue
+            }
+            // 具体的过滤
+            if (!isNull(startTime)) {
+                tb = select * from tb where timestamp >= startTime
+            }
+            if (!isNull(endTime)) {
+                tb = select * from tb where timestamp <= endTime
+            }
+            if (logLevel_.size() > 0) {
+                tb = select * from tb where logLevel in logLevel_
+            }
+            tb = searchLogByPattern(tb, pattern, mode)
+            ret_.append!(tb)
+        } while(numByte==maxByteSize);
+        update ret_ set logFile = filepath
+        reorderColumns!(ret_, ret.schema().colDefs.name)
+        ret.append!(ret_)
+        fin.close()
+    }
+    
+    return ret
+}
+
+def searchRunningLog(params) {
+    logDir = getLogDir()
+    cnt = exec count(*) from rpc(params["controllerAlias"], getClusterPerf) where mode == 3
+    if (cnt == 1) {
+        logFile = getConfig("logFile")
+        s = logFile.split("/")
+        filePattern = "%" + s.last()
+    } else {
+        if (params["nodeType"] == 2) {
+            filePattern = "%controller.log"
+        } else {
+            filePattern = "%" + params["nodeAlias"] + ".log"
+        }
+    }
+    extractTsAndLevelFunc = def (lines) {
+        formattedLines = lines.substr(0, 45) // WARNING 等级时最长，为 45 个字符
+        ts = temporalParse(formattedLines.substr(0, 29), "yyyy-MM-dd HH:mm:ss.nnnnnnnnn")
+        levels = formattedLines.split(" ").at(2)
+        levels = formattedLines.split(" ").at(2).substr(1, levels.strlen() - 2)
+        return ts, levels
+    }
+    ret = searchLogFromFileInner(params, logDir, filePattern, extractTsAndLevelFunc)
+    
+    return ret
+}
+
+def searchJobLog(params) {
+    if (params["nodeType"] == 2) { // 排除控制节点
+        return table(1:0, `timestamp`logLevel`logFile`content, [NANOTIMESTAMP, SYMBOL, STRING, STRING])
+    }
+    logDir = getLogDir()
+    filePattern = "%" + params["nodeAlias"] + "_job.log"
+    extractTsAndLevelFunc = def (lines) {
+        s = lines.split(",")
+        ts = temporalParse(s.at(7), "yyyy.MM.ddTHH:mm:ss.nnnnnnnnn")
+        level = iif(each(last, s) == "", "INFO", "ERROR")
+        return ts, level
+    }
+    ret = searchLogFromFileInner(params, logDir, filePattern, extractTsAndLevelFunc, true)
+    
+    return ret
+}
+
+def searchQueryLog(params) {
+    ret = table(1:0, `timestamp`logLevel`logFile`content, [NANOTIMESTAMP, SYMBOL, STRING, STRING])
+    if (params["nodeType"] == 2) { // 排除控制节点
+        return ret
+    }
+    enableDFSQueryLog = params["enableDFSQueryLog"]
+    if (bool(enableDFSQueryLog) == false) {
+        customWriteLog("The config enableDFSQueryLog is " + enableDFSQueryLog + ", searching for query log is disabled")
+        return ret
+    }
+
+    logDir = getLogDir()
+    filePattern = "%" + params["nodeAlias"] + "_query.log"
+    extractTsAndLevelFunc = def (lines) {
+        ts = temporalParse(lines.split(",").at(7), "yyyy.MM.ddTHH:mm:ss.nnnnnnnnn")
+        level = take("INFO", ts.size())
+        return ts, level
+    }
+    ret = searchLogFromFileInner(params, logDir, filePattern, extractTsAndLevelFunc, true)
+    
+    return ret
+}
+
+def searchStructuredAuditLog(params) {
+    logLevel_ = params["logLevel"]
+    pattern = params["pattern"]
+    log = pnodeRun(getAuditLog{startTime=params["startTime"], endTime=params["endTime"]})
+    n = log.size()
+
+    tb = table(
+        log["startTime"] as timestamp,
+        take("INFO", n) as logLevel,
+        take("", n) as logFile,
+        each(toStdJson, log) as content
+    )
+    if (logLevel_.size() > 0) {
+        tb = select * from tb where logLevel in logLevel_
+    }
+    tb = searchLogByPattern(tb, pattern, mode)
+
+    return tb
+}
+
+def searchAuditLog(params) {
+    ret = table(1:0, `timestamp`logLevel`logFile`content, [NANOTIMESTAMP, SYMBOL, STRING, STRING])
+    if (params["nodeType"] == 2) { // 排除控制节点
+        return ret
+    }
+    enableAuditLog = params["enableAuditLog"]
+    if (bool(enableAuditLog) == false) {
+        customWriteLog("The config enableAuditLog is " + enableAuditLog + ", searching for audit log is disabled")
+        return ret
+    }
+
+    enableStructuredAuditLog = params["enableStructuredAuditLog"]
+    if (bool(enableStructuredAuditLog) == true) {
+        ret = searchStructuredAuditLog(params)
+    } else {
+        logDir = getLogDir()
+        filePattern = "%" + params["nodeAlias"] + "_audit.log"
+        extractTsAndLevelFunc = def (lines) {
+            ts = temporalParse(lines.split(",").at(1), "yyyy.MM.ddTHH:mm:ss.nnnnnnnnn")
+            level = take("INFO", ts.size())
+            return ts, level
+        }
+        ret = searchLogFromFileInner(params, logDir, filePattern, extractTsAndLevelFunc, true)
+    }
+    
+    return ret
+}
+
+def searchStructuredAclAuditLog(params) {
+    logLevel_ = params["logLevel"]
+    pattern = params["pattern"]
+    log = pnodeRun(getAclAuditLog{startTime=params["startTime"], endTime=params["endTime"]})
+    n = log.size()
+
+    tb = table(
+        log["time"] as timestamp,
+        take("INFO", n) as logLevel,
+        take("", n) as logFile,
+        each(toStdJson, log) as content
+    )
+    if (logLevel_.size() > 0) {
+        tb = select * from tb where logLevel in logLevel_
+    }
+    tb = searchLogByPattern(tb, pattern, mode)
+
+    return tb
+}
+
+def searchAclAuditLog(params) {
+    ret = table(1:0, `timestamp`logLevel`logFile`content, [NANOTIMESTAMP, SYMBOL, STRING, STRING])
+    if (params["nodeType"] == 2) { // 排除控制节点
+        return ret
+    }
+    enableAuditLog = params["enableAuditLog"]
+    if (bool(enableAuditLog) == false) {
+        customWriteLog("The config enableAuditLog is " + enableAuditLog + ", searching for aclAudit log is disabled")
+        return ret
+    }
+
+    enableStructuredAuditLog = params["enableStructuredAuditLog"]
+    if (bool(enableStructuredAuditLog) == true) {
+        ret = searchStructuredAclAuditLog(params)
+    } else {
+        logDir = getLogDir()
+        filePattern = "%" + params["nodeAlias"] + "_aclAudit.log"
+        extractTsAndLevelFunc = def (lines) {
+            ts = temporalParse(lines.split(",").at(1), "yyyy.MM.ddTHH:mm:ss.nnnnnnnnn")
+            level = take("INFO", ts.size())
+            return ts, level
+        }
+        ret = searchLogFromFileInner(params, logDir, filePattern, extractTsAndLevelFunc, true)
+    }
+    
+    return ret
+}
+
+def searchAccessLog(params) {
+    ret = table(1:0, `timestamp`logLevel`logFile`content, [NANOTIMESTAMP, SYMBOL, STRING, STRING])
+    if (params["nodeType"] == 2) { // 排除控制节点
+        return ret
+    }
+    resourceSamplingInterval = params["resourceSamplingInterval"]
+    if (int(resourceSamplingInterval) <= 0) {
+        customWriteLog("The config resourceSamplingInterval is " + resourceSamplingInterval + ", searching for access log is disabled")
+        return ret
+    }
+    if (params["state"] == 0) {
+        logDir = getHomeDir() + "/" + params["nodeAlias"] + "/resource"
+    } else {
+        logDir = getHomeDir() + "/resource"
+    }
+    filePattern = "%access.log"
+    extractTsAndLevelFunc = def (lines) {
+        ts = temporalParse(lines.split(",").at(0), "yyyy.MM.ddTHH:mm:ss.nnnnnnnnn")
+        level = take("INFO", ts.size())
+        return ts, level
+    }
+    ret = searchLogFromFileInner(params, logDir, filePattern, extractTsAndLevelFunc, true)
+    
+    return ret
+}
+
+def searchHardwareLog(params) {
+    ret = table(1:0, `timestamp`logLevel`logFile`content, [NANOTIMESTAMP, SYMBOL, STRING, STRING])
+    if (params["nodeType"] == 2) { // 排除控制节点
+        return ret
+    }
+    cfg = params["resourceSamplingInterval"]
+    if (int(cfg) <= 0) {
+        customWriteLog("The config resourceSamplingInterval is " + cfg + ", searching for hardware log is disabled")
+        return ret
+    }
+    if (params["state"] == 0) {
+        logDir = getHomeDir() + "/" + params["nodeAlias"] + "/resource"
+    } else {
+        logDir = getHomeDir() + "/resource"
+    }
+    filePattern = "%hardware.log"
+    extractTsAndLevelFunc = def (lines) {
+        ts = temporalParse(lines.split(",").at(0), "yyyy.MM.ddTHH:mm:ss.nnnnnnnnn")
+        level = take("INFO", ts.size())
+        return ts, level
+    }
+    ret = searchLogFromFileInner(params, logDir, filePattern, extractTsAndLevelFunc, true)
+    
+    return ret
+}
+
+def searchDmesgLog(params) {
+    ret = table(1:0, `timestamp`logLevel`logFile`content, [NANOTIMESTAMP, SYMBOL, STRING, STRING])
+    cfg = getConfig("enableShellFunction")
+    if (bool(cfg) == false) {
+        customWriteLog("The config enableShellFunction is false, searching for dmesg is disabled")
+        return ret
+    }
+    startTime = params["startTime"]
+    endTime = params["endTime"]
+    pattern = params["pattern"]
+    mode = params["mode"]
+    logLevel_ = params["logLevel"]
+    if (!in("ERROR", logLevel_)) {
+        return ret
+    }
+
+    tmpFilename = "LogSearcher_dmesg_" + getNodeAlias() + "_" + temporalFormat(now(), "yyyyMMddHmsSSS") + "_tmp.txt"
+    execName = params["dolphindbPath"].split("/").last()
+    shell("dmesg | grep " + execName + " | awk -F ] '{\"cat /proc/uptime | cut -d \\\" \\\" -f 1\" | getline st;a=substr( $1,2, length($1) - 1);print strftime(\"%F %H:%M:%S %Z\",systime()-st+a)\" -> \"$0}' > " + tmpFilename)
+    fin = file(tmpFilename)
+
+    do {
+        line = readLine(fin)
+        if (isVoid(line)) {
+            break
+        }  
+        ts = nanotimestamp(temporalParse(line.substr(0, 19), "yyyy-MM-dd HH:mm:ss"))
+        if (ts < startTime or ts > endTime) {
+            continue
+        }
+        ret_ = table(
+            ts as timestamp,
+            "ERROR" as logLevel,
+            string(NULL) as logFile,
+            line as content
+        )
+        ret_ = searchLogByPattern(ret_, pattern, mode)
+        ret.append!(ret_)
+    } while(true)
+    
+    rm(tmpFilename)
+    return ret
+}
+
+def searchCoredumpLog(params) {
+    ret = table(1:0, `timestamp`logLevel`logFile`content, [NANOTIMESTAMP, SYMBOL, STRING, STRING])
+    cfg = getConfig("enableShellFunction")
+    if (bool(cfg) == false) {
+        customWriteLog("The config enableShellFunction is false, searching for coredump is disabled")
+        return ret
+    }
+    startTime = nanotimestamp(params["startTime"])
+    endTime = nanotimestamp(params["endTime"])
+    pattern = params["pattern"]
+    mode = params["mode"]
+    logLevel_ = params["logLevel"]
+    if (!in("ERROR", logLevel_)) {
+        return ret
+    }
+    dolphindbPath = params["dolphindbPath"]
+    execName = dolphindbPath.split("/").last()
+
+    tmpFilename = "LogSearcher_coredump_" + getNodeAlias() + "_" + temporalFormat(now(), "yyyyMMddHmsSSS") + "_tmp.txt"
+    shell("cat /proc/sys/kernel/core_pattern > " + tmpFilename)
+    f = file(tmpFilename)
+    line = readLine(f)
+    f.close()
+    if (line.startsWith("/")) { // 绝对路径
+        s = line.split("/")
+        dir = s[0:(s.size()-1)].concat("/")
+    } else if (char(line[0]).isAlpha()) { // 形如 core-%e，生成 coredump 在当前目录
+        shell("pwd > " + tmpFilename)
+        f = file(tmpFilename)
+        dir = readLine(f)
+        f.close()
+    } else {
+        customWriteLog("Unsupported core_pattern: " + line, ERROR)
+        rm(tmpFilename)
+        return ret
+    }
+    
+    info = select * from files(dir) where isDir == false and lastModified >= startTime and lastModified <= endTime and !filename.startsWith("LogSearcher")
+    for (item in info) {
+        // item = info[9]
+        filename = item["filename"]
+        filePath = dir + "/" + filename
+        shell("file " + filePath + " > " + tmpFilename)
+        f = file(tmpFilename)
+        line = readLine(f)
+        f.close()
+        if (strFind(line, "core") != -1 and strFind(line, execName) != -1) {
+            content = ""
+            shell("gdb " + dolphindbPath + " " + filePath + ' --eval-command "bt" --eval-command "quit" > ' + tmpFilename)
+            f = file(tmpFilename)
+            do {
+                line = readLine(f)
+                if (content.strlen() >= 65400) {
+                    content += "\n...\nbacktrace is too long, please view full content via command line."
+                    break
+                }
+                if (isVoid(line)) {
+                    break
+                }
+                content += line + "\n"
+            } while(true)
+            ret_ = table(
+                item["lastModified"] as timestamp,
+                "ERROR" as logLevel,
+                filePath as logFile,
+                content as content
+            )
+            ret_ = searchLogByPattern(ret_, pattern, mode)
+            ret.append!(ret_)
+        }
+    }
+    ret = select * from ret order by timestamp desc
+    rm(tmpFilename)
+    return ret
+}
+
+def searchLogInParallel(params, nodes, searchFunc) {
+    params_ = params
+    clusterPerf = select * from rpc(getControllerAlias(), getClusterPerf{true}) where name in nodes
+    params_["controllerAlias"] = getControllerAlias()
+    ret = table(1:0, `timestamp`logLevel`logFile`content`node, [NANOTIMESTAMP, SYMBOL, STRING, STRING, STRING])
+
+    aliveNodesInfo = select name, mode from clusterPerf where state == 1
+    if (aliveNodesInfo.size() > 0) {
+        f = def (searchFunc, params) {
+            nodeAlias = getNodeAlias()
+            params_ = params
+            params_["nodeAlias"] = nodeAlias
+            params_["nodeType"] = getNodeType()
+            params_["state"] = 1
+            params_["enableAuditLog"] = getConfigEx(nodeAlias, "enableAuditLog", false)
+            params_["enableStructuredAuditLog"] = getConfigEx(nodeAlias, "enableStructuredAuditLog", false)
+            params_["enableDFSQueryLog"] = getConfigEx(nodeAlias, "enableDFSQueryLog", false)
+            params_["resourceSamplingInterval"] = getConfigEx(nodeAlias, "resourceSamplingInterval", -1)
+            ret_ = searchFunc(params_)
+            update ret_ set node = nodeAlias
+            return ret_
+        }
+        ret = pnodeRun(f{searchFunc, params_}, aliveNodesInfo["name"])
+    }
+
+    deadNodesInfo = select name, mode, agentSite from clusterPerf where state == 0
+    if (deadNodesInfo.size() > 0) {
+        if (isVoid(params_["adminPassword"])) {
+            customWriteLog("The config adminPassword is empty, skip dead nodes: " + deadNodesInfo["name"].concat(", "), WARNING)
+        } else {
+            f = def (searchFunc, params, nodeAlias, nodeType, agentSite) {
+                s = agentSite.split(":")
+                host = s[0]
+                port = int(s[1])
+                params_ = params
+                params_["nodeAlias"] = nodeAlias
+                params_["nodeType"] = nodeType
+                params_["state"] = 0
+                params_["enableAuditLog"] = getConfigEx(nodeAlias, "enableAuditLog", false)
+                params_["enableStructuredAuditLog"] = getConfigEx(nodeAlias, "enableStructuredAuditLog", false)
+                params_["enableDFSQueryLog"] = getConfigEx(nodeAlias, "enableDFSQueryLog", false)
+                params_["resourceSamplingInterval"] = getConfigEx(nodeAlias, "resourceSamplingInterval", -1)
+
+                conn = xdb(host, port, "admin", params_["adminPassword"])
+                ret_ = remoteRun(conn, searchFunc{params_})
+                update ret_ set node = nodeAlias
+                return ret_
+            }
+            res = peach(f{searchFunc, params_}, deadNodesInfo["name"], deadNodesInfo["mode"], deadNodesInfo["agentSite"])
+            for (item in res) {
+                if (!isVoid(item)) {
+                    ret.append!(item)
+                }
+            }
+        }
+    }
+
+    return ret
+}
+
+def searchLogFromFile(params) {
+    logTypes = params["logType"]
+    nodes = params["node"]
+    ret = table(1:0, `timestamp`logLevel`logFile`content`node`logType, [NANOTIMESTAMP, SYMBOL, SYMBOL, STRING, SYMBOL, SYMBOL])
+    res = []$TABLE
+    for (logType_ in logTypes) {
+        customWriteLog("Start to search log type: " + logType_)
+        // 这一段不能封装为函数，有 BUG D20-23813
+        if (logType_ == "running") {
+            searchFunc = searchRunningLog
+        } else if (logType_ == "job") {
+            searchFunc = searchJobLog
+        } else if (logType_ == "query") {
+            searchFunc = searchQueryLog
+        } else if (logType_ == "audit") {
+            searchFunc = searchAuditLog
+        } else if (logType_ == "aclAudit") {
+            searchFunc = searchAclAuditLog
+        } else if (logType_ == "access") {
+            searchFunc = searchAccessLog
+        } else if (logType_ == "hardware") {
+            searchFunc = searchHardwareLog
+        } else if (logType_ == "coredump") {
+            searchFunc = searchCoredumpLog
+        } else if (logType_ == "dmesg") {
+            searchFunc = searchDmesgLog
+        } else {
+            throw "unsupported logType: " + logType_
+        }
+        if (logType_ == "dmesg" or logType_ == "coredump") {
+            // 一台机器看一次
+            clusterPerf = rpc(getControllerAlias(), getClusterPerf{true})
+            nodes_ = exec first(name) as node from clusterPerf where name in nodes and state == 1 group by host
+            nodes_ = nodes_["node"]
+            log = searchLogInParallel(params, nodes_, searchFunc)
+            log = select timestamp, logLevel, host as node, logFile, content from log left join clusterPerf on log.node == clusterPerf.name
+        } else {
+            log = searchLogInParallel(params, nodes, searchFunc)
+        }
+        update log set logType = logType_
+        reorderColumns!(log, ret.schema().colDefs.name)
+        ret.append!(log)
+    }
+
+    ret = select timestamp, logLevel, node, logType, logFile, content from ret order by timestamp, node, logType
+    return ret
+}
+
+def searchLogInner(params) {
+    isCacheHit = false
+    if (params["cacheSize"] == 0) {
+        ret = searchLogFromFile(params)
+    } else {
+        cachedJobInfo = select * from getSearchHistory(params)
+        if (cachedJobInfo.size() > 0) {
+            node = cachedJobInfo["jobNode"].last()
+            cachedJobId = cachedJobInfo["jobId"].last()
+            customWriteLog("Hit cache! JobId: " + cachedJobId + ", node: " + node)
+            ret = rpc(node, searchLogFromCache, params, cachedJobId)
+            isCacheHit = true
+        } else {
+            ret = searchLogFromFile(params)
+        }
+    }
+    
+    return ret, isCacheHit
+}
+
+def searchLog(params=NULL) {
+    validatePrivilege()
+    params_ = generateDefaultParams(params)
+    ret, isCacheHit = searchLogInner(params_)
+    if ((!isCacheHit and (memSize(ret) \ 1024 \ 1024) <= params_["cacheSize"]) or params_["cacheSize"] < 0) {
+        jobDesc = generateJobDesc(params_)
+        cacheFunc = def (log) {
+            return log
+        }
+        jobId = submitJob("searchLog", jobDesc, cacheFunc, ret)
+        customWriteLog("Cache! JobId: " + jobId)
+    }
+    return ret
+}
+
+def saveLogInner(log, dir, params_) {
+    nodes = exec distinct(node) from log
+    logTypes = exec distinct(logType) from log
+    clusterPerf = rpc(getControllerAlias(), getClusterPerf{true})
+    for (node_ in nodes) {
+        for (logType_ in logTypes) {
+            log_ = select * from log where node == node_ and logType == logType_
+            if (log_.size() == 0) {
+                continue
+            }
+            addColumn(log_, `filename, [STRING])
+            if (logType_ == "dmesg") {
+                update log_ set filename = "dmesg.log"
+            } else if (logType_ == "coredump") {
+                update log_ set filename = each(last, logFile.split("/")) + "." + temporalFormat(timestamp, "yyyyMMddHmsSSS") + ".log"
+            } else if (logType_ == "access" or logType_ == "hardware") {
+                filenames = each(last, log_["logFile"].split("/"))
+                filenames = strReplace(filenames, logType_, node_ + "_" + logType_)
+                update log_ set filename = filenames
+            } else {
+                update log_ set filename = each(last, logFile.split("/"))
+            }
+
+            nodeInfo = select * from clusterPerf where name == node_
+            if (nodeInfo.size() == 0) {
+                host = node_
+            } else {
+                host = nodeInfo["host"].first()
+            }
+            if (!exists(dir + "/" + host)) {
+                mkdir(dir + "/" + host)
+            }
+
+            filenames = exec distinct(filename) from log_ 
+            for (filename_ in filenames) {
+                // filename_ = filenames[0]
+                filepath = dir + "/" + host + "/" + filename_
+                f = file(filepath, "w")
+                content = exec content from log_ where filename == filename_
+                f.writeLines(content)
+                f.close()
+            }
+        }
+    }
+}
+
+def saveLog(log, params=NULL) {
+    validatePrivilege()
+    if (log.form() != 6) {
+        throw("log must be a table")
+    }
+    params_ = generateDefaultParams(params)
+    v = version().split(" ").first()
+    dir = params_["saveDir"] + "/LogSearcher_" + v + "_" + temporalFormat(params_["startTime"], "yyyyMMddHmsSSS") + "_" + temporalFormat(params_["endTime"], "yyyyMMddHmsSSS") + "_" + temporalFormat(now(), "yyyyMMddHmsSSS")
+
+    try {
+        mkdir(dir)
+        saveLogInner(log, dir, params_)
+    } catch(err) {
+        customWriteLog("Save log error: " + err, ERROR)
+        rmdir(dir, true)
+        return
+    }
+
+    return dir
+}
+

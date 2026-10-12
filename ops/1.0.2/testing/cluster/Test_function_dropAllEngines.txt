@@ -1,0 +1,108 @@
+use ops
+login("admin", "123456")
+
+existsTableCheck = getStreamTables().name
+clearSTable = def (stName){
+    try{
+    	if (existsStreamTable(stName)){
+        	dropStreamTable(stName)
+    	}
+    }catch(ex){}
+}
+each(clearSTable, existsTableCheck)
+
+try{
+	unsubscribeTable(,"st5","sub5")
+	dropStreamTable("st5")
+	}
+catch(ex){print(ex)}
+
+@testing:case="prepare_data_1"
+share streamTable(1000:0, `time`sym`volume, [TIMESTAMP, SYMBOL, INT]) as dummyTable1
+outputTable1 = table(10000:0, `time`sym`sumVolume, [TIMESTAMP, SYMBOL, INT])
+sessionWindowEngine = createSessionWindowEngine(name = "sessionWindowEngine", sessionGap = 5, metrics = <sum(volume)>, dummyTable = dummyTable1, outputTable = outputTable1, timeColumn = `time, keyColumn=`sym)
+sleep(1000)
+
+def sum_diff(x, y){
+return (x-y)/(x+y)
+}
+factor1 = <ema(1000 * sum_diff(ema(price, 20), ema(price, 40)),10) -  ema(1000 * sum_diff(ema(price, 20), ema(price, 40)), 20)>
+share streamTable(1:0, `sym`time`price, [STRING,DATETIME,DOUBLE]) as dummyTable2
+outputTable2 = table(1000:0, `sym`time`factor1, [STRING,DATETIME,DOUBLE])
+reactiveStateEngine = createReactiveStateEngine(name="reactiveStateEngine", metrics =[<time>, factor1], dummyTable=dummyTable2, outputTable=outputTable2, keyColumn="sym", filter=<sym in ["000001.SH", "000002.SH"]>)
+sleep(1000)
+
+share streamTable(10:0,`time`sym`price`volume,[TIMESTAMP,SYMBOL,DOUBLE,INT]) as dummyTable3
+outputTable3 = table(1:0, `time`avgPrice`volume`dollarVolume`count, [TIMESTAMP,DOUBLE,INT,DOUBLE,INT])
+crossSectionalEngine=createCrossSectionalEngine(name="crossSectionalEngine", metrics=<[avg(price), sum(volume), sum(price*volume), count(price)]>, dummyTable=dummyTable3, outputTable=outputTable3, keyColumn=`sym, triggeringPattern="perRow", useSystemTime=false, timeColumn=`time)
+sleep(1000)
+
+share streamTable(1000:0, `time`sym`qty, [TIMESTAMP, SYMBOL, INT]) as dummyTable4
+outputTable4 = table(1000:0, `time`sym`type`metric, [TIMESTAMP, SYMBOL, INT, STRING])
+anomalyDetectionEngine = createAnomalyDetectionEngine(name="anomalyDetectionEngine", metrics=<[sum(qty) > 5, avg(qty) > qty, qty < 4]>, dummyTable=dummyTable4, outputTable=outputTable4, timeColumn=`time, keyColumn=`sym, windowSize=3, step=3)
+sleep(1000)
+
+share streamTable(1000:0, `time`sym`volume, [TIMESTAMP, SYMBOL, INT]) as dummyTable5
+outputTable5 = table(10000:0, `time`sym`sumVolume, [TIMESTAMP, SYMBOL, INT])
+timeSeriesEngine = createTimeSeriesEngine(name="timeSeriesEngine", windowSize=60000, step=60000, metrics=<[sum(volume)]>, dummyTable=dummyTable5, outputTable=outputTable5, timeColumn=`time, useSystemTime=false, keyColumn=`sym, garbageSize=50, useWindowStartTime=false)
+sleep(1000)
+
+share streamTable(1000:0, `date`second`sym`volume, [DATE, SECOND, SYMBOL, INT]) as dummyTable6
+outputTable6 = keyedTable(`time`sym, 10000:0, `time`sym`sumVolume, [DATETIME, SYMBOL, INT])
+dailyTimeSeriesEngine = createDailyTimeSeriesEngine(name="dailyTimeSeriesEngine", windowSize=60, step=60, metrics=<[sum(volume)]>, dummyTable=dummyTable6, outputTable=outputTable6, timeColumn=`date`second, useSystemTime=false, keyColumn=`sym, garbageSize=50, updateTime=2, useWindowStartTime=false, sessionBegin=09:30:00 13:00:00, sessionEnd=11:30:00 15:00:00,mergeSessionEnd=true)
+sleep(1000)
+
+share streamTable(1:0, `time`sym`price, [TIMESTAMP, SYMBOL, DOUBLE]) as dummyTableLeft7
+share streamTable(1:0, `time`sym`bid`ask, [TIMESTAMP, SYMBOL, DOUBLE, DOUBLE]) as dummyTableRight7
+outputTable7=table(100:0, `time`sym`price`bid`ask`spread, [TIMESTAMP, SYMBOL, DOUBLE, DOUBLE, DOUBLE, DOUBLE])
+asofJoinEngine=createAsofJoinEngine(name="asofJoinEngine", leftTable=dummyTableLeft7, rightTable=dummyTableRight7, outputTable=outputTable7, metrics=<[price, bid, ask, abs(price-(bid+ask)/2)]>, matchingColumn=`sym, timeColumn=`time, useSystemTime=false)
+sleep(1000)
+
+share streamTable(1:0, `time`sym`price, [SECOND, SYMBOL, DOUBLE]) as dummyTableLeft8
+share streamTable(1:0, `time`sym`val, [SECOND, SYMBOL, DOUBLE]) as dummyTableRight8
+outputTable8=table(100:0, `time`sym`price`val`total, [SECOND, SYMBOL, DOUBLE, DOUBLE, DOUBLE])
+equiJoinEngine=createEquiJoinEngine("equiJoinEngine", dummyTableLeft8, dummyTableRight8, outputTable8, [<price>, <val>, <price*val>], `sym, `time)
+sleep(1000)
+
+share streamTable(1:0, `time`sym`price, [TIMESTAMP, SYMBOL, DOUBLE]) as dummyTableLeft9
+share streamTable(1:0, `time`sym`val, [TIMESTAMP, SYMBOL, DOUBLE]) as dummyTableRight9
+outputTable9=table(100:0, `time`sym`factor1`factor2`factor3, [TIMESTAMP, SYMBOL, DOUBLE, DOUBLE, DOUBLE])
+windowJoinEngine=createWindowJoinEngine(name="windowJoinEngine", leftTable=dummyTableLeft9, rightTable=dummyTableRight9, outputTable=outputTable9,  window=-2:2, metrics=<[price,val,sum(val)]>, matchingColumn=`sym, timeColumn=`time, useSystemTime=false)
+sleep(1000)
+
+share streamTable(1000:0, `timestamps`sym`price, [TIMESTAMP, SYMBOL, DOUBLE]) as dummyTableLeft10
+dummyTableRight10=table(1000:0, `timestamps`sym`val`id, [TIMESTAMP, SYMBOL, DOUBLE, INT])
+outputTable10 = table(100:0, `sym`factor1`factor2`factor3, [SYMBOL, DOUBLE, DOUBLE, DOUBLE])
+lookupJoinEngine = createLookupJoinEngine(name="lookupJoinEngine", leftTable=dummyTableLeft10, rightTable=dummyTableRight10, outputTable=outputTable10, metrics=<[price,val,price*val]>, matchingColumn=`sym, rightTimeColumn=`timestamps, checkTimes=1s)
+sleep(1000)
+
+share streamTable(1:0, `time`sym`price, [TIMESTAMP, SYMBOL, DOUBLE]) as dummyTableLeft11
+share streamTable(1:0, `time`sym1`vol, [TIMESTAMP, SYMBOL, INT]) as dummyTableRight11
+outputTable11=table(100:0, `time`sym`price`vol`total, [TIMESTAMP, SYMBOL, DOUBLE, INT, DOUBLE])
+leftSemiJoinEngine=createLeftSemiJoinEngine(name="leftSemiJoinEngine", leftTable=dummyTableLeft11, rightTable=dummyTableRight11, outputTable=outputTable11,  metrics=<[price, vol,price*vol]>, matchingColumn=[[`time,`sym], [`time,`sym1]], updateRightTable=true)
+sleep(1000)
+
+
+
+@testing:case="test_function_dropAllEngines_All_Engines"
+re = getStreamEngineStat().rows()
+assert 1, re==11
+
+ops::dropAllEngines()
+
+re = getStreamEngineStat().rows()
+assert 2, re==0
+
+@testing:case="test_function_dropAllEngines_NULL_Engines"
+re = getStreamEngineStat().rows()
+assert 3, re==0
+
+ops::dropAllEngines()
+
+re = getStreamEngineStat().rows()
+assert 4, re==0
+
+@testing:case="test_function_dropAllEngines_NOT_NULL_SYNTAX", syntaxError = 1
+ops::dropAllEngines(1)
+ops::dropAllEngines(["aaa", "bbb"])
+

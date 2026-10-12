@@ -1,0 +1,37 @@
+module DolphinDBModules::easyTLDataImport::tbSchema::csvSchema::entrustCsvSchema
+
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "DolphinDBModules"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+/*
+ * @FunctionName: entrustCsvSchemaSZ
+ * @Brief: Defines the schema for the entrust CSV data for the Shenzhen market based on the trading day.
+ * @Param: day: The specific trading day for which the schema is being defined.
+ * @Return: A table schema defining the structure of the entrust CSV data.
+ */
+def entrustCsvSchemaSZ(day){
+	if(day < 2016.05.07){
+		name = `RecNo`SecurityID`OrderEntryTime`Price`OrderQty`OrderKind`FunctionCode`SetNo`LocalTime`SeqNo
+		typeString = `INT`SYMBOL`TIME`DOUBLE`LONG`SYMBOL`SYMBOL`INT`TIME`LONG
+	}else{
+		name = `ChannelNo`ApplSeqNum`MDStreamID`SecurityID`SecurityIDSource`Price`OrderQty`Side`TransactTime`OrdType`LocalTime`SeqNo
+		typeString = `INT`LONG`SYMBOL`SYMBOL`SYMBOL`DOUBLE`LONG`INT`TIME`INT`TIME`LONG
+	}
+	return table(name, typeString)
+}
+
+/*
+ * @FunctionName: entrustCsvSchemaSH
+ * @Breif: Defines the schema for the entrust CSV data for the Shanghai market.
+ * @Return: A table schema defining the structure of the entrust CSV data.
+ */
+def entrustCsvSchemaSH(){
+	name = `DataStatus`OrderIndex`OrderChannel`SecurityID`OrderTime`OrderType`OrderNO`OrderPrice`Balance`OrderBSFlag`BizIndex`LocalTime`SeqNo
+	typeString = `INT`LONG`INT`SYMBOL`TIME`SYMBOL`INT`DOUBLE`LONG`SYMBOL`LONG`TIME`LONG
+	return table(name, typeString)	
+}
+

@@ -1,0 +1,22 @@
+module testAnnotation
+
+/**
+    * This module is used to test the function annotation. 
+    * It is not meant to be used in production.
+    * It is only meant to be used for testing purposes.
+*/
+
+def module_info()
+{
+    res = dict(STRING, ANY)
+    res["moduleName"] = "testAnnotation"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+
+@desc("A simple test function")
+def func1(x::INT, y::LONG)::DOUBLE
+{
+    return double(x * y)
+}

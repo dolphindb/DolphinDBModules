@@ -1,0 +1,3 @@
+@testing:case="test_module_easyTLDataImport"
+use easyTLDataImport::loadTLData
+

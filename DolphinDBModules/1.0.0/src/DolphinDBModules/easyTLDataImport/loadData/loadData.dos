@@ -1,0 +1,149 @@
+module DolphinDBModules::easyTLDataImport::loadData::loadData  
+
+use DolphinDBModules::easyTLDataImport::loadData::loadOneDayData
+
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "DolphinDBModules"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+/*
+ * @FunctionName: printLog
+ * @Brief: Function to log and print messages.
+ * @Param: errorMessage: The message to be logged and printed. It can be either a dictionary or a plain message.
+ * @Param: isDict=true: A boolean flag indicating whether the error message should be processed as a dictionary.
+ *               		Default is true, meaning the message will be converted to JSON format before logging and printing.
+ */
+def printLog(errorMessage, isDict=true){
+	if(isDict==true){
+		writeLog(toStdJson(errorMessage))
+		print(toStdJson(errorMessage))
+	}else{
+		writeLog(errorMessage)
+		print(errorMessage)
+	}
+    return false
+}
+
+/*
+ * @FunctionName: myFiles
+ * @Brief: Recursively retrieves file paths that match a specified regular expression from a given directory.
+ * @Param: fileDir: The directory path to search for files. 
+ * @Param: regex: The regular expression pattern to match filenames against.
+ * @Return: A string vector containing the full paths of matching files.
+ */
+def myFiles(fileDir, regex){
+	// Ensure that the directory path ends with a '/' for consistency
+	if(endsWith(fileDir, "/")) 	filedir = fileDir
+	else 				filedir = fileDir + "/"
+	// Get the filenames in the current directory that match the regex pattern
+	res = filedir + exec filename from files(filedir) where regexFind(filename, regex) != -1
+	// Get a list of subdirectories in the current directory
+	folderFiles = exec filename from files(filedir) where isDir=true
+	// If there are no subdirectories, return the matched files
+	if(size(folderFiles)==0) return res
+	// Recursively search for matching files in each subdirectory
+	for(folder in folderFiles){
+		res = res join myFiles(filedir + folder, regex)
+	}
+	return res
+}
+
+/*
+ * @FunctionName: getFileDate
+ * @Brief: Retrieves the paths of directories containing dates that match the "yyyyMMdd" format
+ * @Param: fileDir: The directory path to search for date-named folders.
+ * @Param: startDate=NULL: The starting date as a string in "YYYYMMDD" format. Default is NULL, meaning no filtering.
+ * @Param: endDate=NULL: The ending date as a string in "YYYYMMDD" format. Default is NULL, meaning no filtering.
+ * @Return: A vector of paths corresponding to directories matching the specified date format, optionally filtered.
+ */
+def getFileDate(fileDir, startDate=NULL, endDate=NULL){
+	// Retrieve all directory paths that match the "^[0-9]{8}$" format, indicating dates.
+	try{
+		fileDirs = myFiles(fileDir, "^[0-9]{8}$")
+	}catch(ex){
+		errorMessage = dict(`message`code, [string(ex[0])+":"+string(ex[1]), "error"])
+		return printLog(errorMessage)
+	}
+	// Check if any date directories were found
+	if(count(fileDirs) == 0){
+		errorMessage = dict(`message`code, ["[" + fileDir + "] 路径下没有找到指定日期的文件夹，请确认文件路径", "warning"])
+		return printLog(errorMessage)
+	}
+
+	// Filter folders based on startDate if provided
+	if(typestr(startDate) != "VOID"){
+		if(typestr(startDate)=="STRING" and regexFind(string(startDate), "^[0-9]{8}$")==0){
+			// Filter directories to include only those greater than or equal to startDate
+			fileDirs = fileDirs[each(def(path, file){return last(split(path, "/")) >= file}, fileDirs, startDate)]	
+		}else{
+			// Log an error if the startDate format is invalid
+			errorMessage = dict(`message`code, ["开始日期 [" + startDate + "] 格式有误", "error"])
+			return printLog(errorMessage)
+		}
+	}
+
+	// Filter folders based on endDate if provided
+	if(typestr(endDate) != "VOID")	{
+		if(typestr(endDate)=="STRING" and regexFind(string(endDate), "^[0-9]{8}$")==0){
+			// Filter directories to include only those less than or equal to endDate
+			fileDirs = fileDirs[each(def(path, file){return last(split(path, "/")) <= file}, fileDirs, endDate)]		
+		}else{
+			// Log an error if the endDate format is invalid
+			errorMessage = dict(`message`code, ["结束日期 [" + endDate + "] 格式有误", "error"])
+			return printLog(errorMessage)
+		}
+	}
+
+	// Check if any date directories remain after filtering
+	if(count(fileDirs) == 0){
+		errorMessage = dict(`message`code, ["[" + fileDir + "] 路径下没有找到指定日期的文件夹，请确认文件路径", "warning"])
+		return printLog(errorMessage)
+	}
+	// Return the remaining directories that match the date criteria
+	return fileDirs
+}
+
+/*
+ * @FunctionName: loadDaysData
+ * @Brief: Loads daily trading data from specified files into the corresponding database tables.
+ * @Param: fileList: A vector containing the paths of the files to load data from.
+ * @Param: dbNames: A vector of database names where the data will be loaded.
+ * @Param: tbNames: A vector of table names corresponding to the databases.
+ * @Param: dtypes: A vector representing the data types for the import process.
+ * @Param: market: The market type (ALL, SH, SZ) defining how the table is structured.
+ * @Param: isConcatTime: A boolean flag indicating whether to concatenate date andtime into a single timestamp column.
+ * @Param: isDataDuplicated: A boolean flag indicating whether to handle duplicate data entries.
+ * @Param: isNeedOrderQueue: A boolean flag indicating whether to include the order queue data in the import.
+ */
+def loadDaysData(fileList, dbNames, tbNames, dtypes, market, isConcatTime, isDataDuplicated, isNeedOrderQueue){
+	// Determine the merge behavior based on the market type
+	if(market in ["ALL"])			merge = true
+	else if(market in ["SZ", "SH"])	merge = false
+
+    // Iterate through each file in the fileList
+	for(file in fileList){	//file=fileList[0]
+		printLog("Start loading the data in path [" + file + "]", false)
+		// Get all absolute CSV file paths in the specified directory
+		day = temporalParse(lastNot(split(file, "/")),"yyyyMMdd")
+		if(day < 2016.05.07){                      // 2016.05.06 以前沪深的 csv 名字相同，所以需要再使用上层目录区分
+			csvFilesSZ = myFiles(file, "SZ$")[0]	
+			csvFilesSH = myFiles(file, "SH$")[0]
+		}else{
+            csvFilesSZ, csvFilesSH = file, file
+        }
+		csvFilesSZ = myFiles(csvFilesSZ, "csv$")
+        csvFilesSH = myFiles(csvFilesSH, "csv$")
+		
+		// Attempt to load data into the database
+		try{
+			if(market in ["ALL", "SH"]) loadOneDayDataSH(csvFilesSH, day, dbNames, tbNames, merge, dtypes, isConcatTime, isDataDuplicated, isNeedOrderQueue)
+			if(market in ["ALL", "SZ"]) loadOneDayDataSZ(csvFilesSZ, day, dbNames, tbNames, merge, dtypes, isConcatTime, isDataDuplicated, isNeedOrderQueue)
+		}catch(ex){
+			errorMessage = dict(`message`code, [string(ex[0])+":"+string(ex[1]), "error"])
+            return printLog(errorMessage)
+		}
+	}
+}

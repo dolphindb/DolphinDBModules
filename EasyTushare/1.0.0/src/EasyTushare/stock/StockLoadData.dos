@@ -1,0 +1,4492 @@
+module EasyTushare::stock::StockLoadData
+
+use EasyTushare::TsInit
+
+/* 
+*  @Brief: 股票数据单个表导入函数模块
+*  @Author: DolphinDB
+*  @Last modification time: 2026.03.31
+*  @DolphinDB server version: 3.00.5 2026.02.06 LINUX x86_64
+*/
+
+/*
+*  @FunctionName: module_info
+*  @Brief: 模块信息,一个相同模块dir下的每个dos都需要有module_info函数,且是相同的
+*  @Param: None
+*  @Return: dict
+*  @SampleUsage: module_info()
+*/
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "EasyTushare"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+
+// 判断指定日期 d 是否为本周最后一个交易日（A股用 XSHG / XSHE）
+def isLastTradingDayOfWeek(d, market="XSHG") {
+    // 本周周日（weekEnd 默认 weekday=6 即周日）
+    sunday = weekEnd(d)
+    monday = sunday - 6
+    // 取本周一~周日之间的所有交易日
+    cal = getMarketCalendar(market, monday, sunday)
+    if (cal.size() == 0) return false
+    lastTd = cal[cal.size()-1]   // 本周最后一个交易日
+    return d == lastTd
+}
+
+def isLastTradingDayOfMonth(d, market="XSHG") {
+    mStart = monthStart(d)          // 当月 1 号
+    mEnd   = monthEnd(d)            // 当月最后一天（自然日）
+    cal    = getMarketCalendar(market, mStart, mEnd)
+    if (cal.size() == 0) return false
+    return d == cal.last()
+}
+
+
+/*
+*  @FunctionName: appendBakBasic
+*  @Brief: 追加股票历史基本面数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendBakBasic("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendBakBasic(token,start_date,end_date){
+    api = "bak_basic" 
+    dts = getMarketCalendar("XSHG",start_date,end_date)
+    for(dt in dts){
+        // dt = 2019.12.31
+        raw = getApiData(token, api, {"trade_date":dt.temporalFormat("yyyyMMdd")})
+        if(raw.count() != 0){ 
+            res = select trade_date, ts_code as code, name, industry, area, pe, float_share, total_share, total_assets, liquid_assets, fixed_assets, reserved, reserved_pershare, eps, bvps, pb, list_date, undp, per_undp, rev_yoy, profit_yoy, gpr, npr, holder_num, now() as update_time from raw
+
+            replaceColumn!(res, "trade_date", temporalParse(string(res.trade_date), "yyyyMMdd"))
+            replaceColumn!(res, "code", symbol(string(res.code)))
+            replaceColumn!(res, "name", string(res.name))
+            replaceColumn!(res, "industry", symbol(string(res.industry)))
+            replaceColumn!(res, "area", symbol(string(res.area)))
+            replaceColumn!(res, "pe", double(res.pe))
+            replaceColumn!(res, "float_share", double(res.float_share))
+            replaceColumn!(res, "total_share", double(res.total_share))
+            replaceColumn!(res, "total_assets", double(res.total_assets))
+            replaceColumn!(res, "liquid_assets", double(res.liquid_assets))
+            replaceColumn!(res, "fixed_assets", double(res.fixed_assets))
+            replaceColumn!(res, "reserved", double(res.reserved))
+            replaceColumn!(res, "reserved_pershare", double(res.reserved_pershare))
+            replaceColumn!(res, "eps", double(res.eps))
+            replaceColumn!(res, "bvps", double(res.bvps))
+            replaceColumn!(res, "pb", double(res.pb))
+            replaceColumn!(res, "list_date", temporalParse(string(res.list_date), "yyyyMMdd"))
+            replaceColumn!(res, "undp", double(res.undp))
+            replaceColumn!(res, "per_undp", double(res.per_undp))
+            replaceColumn!(res, "rev_yoy", double(res.rev_yoy))
+            replaceColumn!(res, "profit_yoy", double(res.profit_yoy))
+            replaceColumn!(res, "gpr", double(res.gpr))
+            replaceColumn!(res, "npr", double(res.npr))
+            replaceColumn!(res, "holder_num", int(res.holder_num))
+
+            delete from loadTable("dfs://tushare_basic_db","bak_basic") where trade_date = dt
+            loadTable("dfs://tushare_basic_db","bak_basic").append!(res)
+            print("Success append data for trade_date: " + dt.temporalFormat("yyyyMMdd"))
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+*  @FunctionName: appendBseMapping
+*  @Brief: 追加股票代码映射数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendBseMapping("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendBseMapping(token, start_date, end_date){
+    api = "bse_mapping" 
+    dts = getMarketCalendar("XSHG", start_date, end_date)
+
+    res = getApiData(token, api)
+    if(res.count() != 0){
+        replaceColumn!(res,"list_date",temporalParse(res.list_date,"yyyyMMdd"))
+
+        update res set update_time = now()
+
+        truncate("dfs://tushare_basic_db","bse_mapping") 
+        loadTable("dfs://tushare_basic_db","bse_mapping").append!(res) 
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+*  @FunctionName: appendNamechange
+*  @Brief: 追加股票名称变更数据
+*  @Param: token - Tushare API令牌 
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendNamechange("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendNamechange(token,start_date,end_date){
+    api = "stock_basic" //接口名称为股票列表
+    cols = ["ts_code"]
+    // 获取数据
+    codes =exec ts_code from getApiData(token, api,{"list_status":"L,D,G,P"}, cols)
+    api = "namechange" 
+    truncate("dfs://tushare_basic_db","namechange") 
+    offset_ = 0
+    prev_count_=0
+    curr_count = 0
+    do {
+        res = getApiData(token, api, {"offset":offset_})
+        if(!res.isVoid() and res.count() != 0){
+            replaceColumn!(res,"start_date",temporalParse(res.start_date,"yyyyMMdd"))
+            replaceColumn!(res,"end_date",temporalParse(res.end_date,"yyyyMMdd"))
+            replaceColumn!(res,"ann_date",temporalParse(res.ann_date,"yyyyMMdd"))
+
+            update res set update_time = now()
+
+            loadTable("dfs://tushare_basic_db","namechange").append!(res)
+            curr_count = res.count()
+            prev_count_ = prev_count_ + curr_count
+            offset_ = prev_count_ + 1
+            print(prev_count_)
+        }
+    } while(res.count() != 0)
+    print("Success append data for Table " + api)   
+}
+
+/*
+*  @FunctionName: appendNewShare
+*  @Brief: 追加新股上市数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendNewShare("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendNewShare(token,start_date,end_date){ 
+    // start_date = 2026.04.21
+    // end_date = 2026.04.21
+    api = "new_share" 
+    dts = getMarketCalendar("XSHG",start_date,end_date)
+    delete from loadTable("dfs://tushare_basic_db","new_share") where ipo_date >= start_date and ipo_date <= end_date
+    for(dt in dts){
+        // dt = 2026.04.21
+        raw = getApiData(token, api, {"start_date":dt.temporalFormat("yyyyMMdd"),"end_date":dt.temporalFormat("yyyyMMdd")})
+
+        if(!raw.isVoid() and raw.count() != 0){ 
+
+            res = select ts_code as code, sub_code, name, ipo_date, issue_date, amount, market_amount, price, pe, limit_amount, funds, ballot, now() as update_time from raw
+            
+            replaceColumn!(res, "code", symbol(string(res.code)))
+            replaceColumn!(res, "sub_code", symbol(string(res.sub_code)))
+            replaceColumn!(res, "name", string(res.name))
+            replaceColumn!(res, "ipo_date", temporalParse(string(res.ipo_date), "yyyyMMdd"))
+            replaceColumn!(res, "issue_date", temporalParse(string(res.issue_date), "yyyyMMdd"))
+            replaceColumn!(res, "amount", double(res.amount))
+            replaceColumn!(res, "market_amount", double(res.market_amount))
+            replaceColumn!(res, "price", double(res.price))
+            replaceColumn!(res, "pe", double(res.pe))
+            replaceColumn!(res, "limit_amount", double(res.limit_amount))
+            replaceColumn!(res, "funds", double(res.funds))
+            replaceColumn!(res, "ballot", double(res.ballot))
+
+            loadTable("dfs://tushare_basic_db","new_share").append!(res)
+            print("Success append data for trade_date: " + dt.temporalFormat("yyyyMMdd"))
+            sleep(500)
+        } else {
+            print("No data for trade_date: " + dt.temporalFormat("yyyyMMdd"))
+            sleep(500)
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+*  @FunctionName: appendSt
+*  @Brief: 追加股票ST状态数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendSt("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendSt(token,start_date,end_date){
+    api = "st" 
+    dts = getMarketCalendar("XSHG",start_date,end_date)
+    truncate("dfs://tushare_basic_db","st") 
+    offset_ = 0
+    prev_count_=0
+    curr_count = 0
+    do {
+        res = getApiData(token, api, {"offset":offset_})
+        if(!res.isVoid() and res.count() != 0){
+            replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+            replaceColumn!(res, "name", string(res.name))
+            replaceColumn!(res, "pub_date", temporalParse(string(res.pub_date), "yyyyMMdd"))
+            replaceColumn!(res, "imp_date", temporalParse(string(res.imp_date), "yyyyMMdd"))
+            replaceColumn!(res, "st_type", symbol(string(res.st_type)))
+            replaceColumn!(res, "st_reason", string(res.st_reason))
+            replaceColumn!(res, "st_explain", string(res.st_explain))
+            update res set update_time = now()
+
+            loadTable("dfs://tushare_basic_db","st") .append!(res)
+            curr_count = res.count()
+            prev_count_ = prev_count_ + curr_count
+            offset_ = prev_count_ + 1
+        }
+    } while(res.count()!=0)
+    print("Success append data for Table " + api)
+}
+
+/*
+*  @FunctionName: appendStkManagers
+*  @Brief: 追加股票管理层数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendStkManagers("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendStkManagers(token,start_date,end_date){
+    api = "stk_managers" 
+    // dts = getMarketCalendar("XSHG",start_date,end_date)
+    cols = ["ts_code", "ann_date", "name", "gender", "lev", "title", "edu", "national", "birthday", "begin_date", "end_date"]
+    raw = getApiData(token, api, cols)
+    delete from loadTable("dfs://tushare_basic_db","stk_managers") 
+    if(raw.count() != 0){ 
+        res = select ts_code as code, ann_date, name, gender, lev, title, edu, national, birthday, begin_date, end_date, now() as update_time from raw
+        
+        replaceColumn!(res, "code", symbol(string(res.code)))
+        replaceColumn!(res, "ann_date", temporalParse(string(res.ann_date), "yyyyMMdd"))
+        replaceColumn!(res, "name", string(res.name))
+        replaceColumn!(res, "gender", symbol(string(res.gender)))
+        replaceColumn!(res, "lev", symbol(string(res.lev)))
+        replaceColumn!(res, "title", string(res.title))
+        replaceColumn!(res, "edu", symbol(string(res.edu)))
+        replaceColumn!(res, "national", symbol(string(res.national)))
+        replaceColumn!(res, "birthday", temporalParse(iif(strlen(string(res.birthday)) == 4, string(res.birthday) + "01", string(res.birthday)), "yyyyMM"))
+        replaceColumn!(res, "begin_date", temporalParse(string(res.begin_date), "yyyyMMdd"))
+        replaceColumn!(res, "end_date", temporalParse(string(res.end_date), "yyyyMMdd"))
+
+        //先清空再导入
+        truncate("dfs://tushare_basic_db","stk_managers")
+        loadTable("dfs://tushare_basic_db","stk_managers").append!(res)
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+*  @FunctionName: appendStkPremarket
+*  @Brief: 追加股票盘前数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendStkPremarket("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendStkPremarket(token,start_date,end_date){
+    api = "stk_premarket" 
+    dts = getMarketCalendar("XSHG",start_date,end_date)
+    delete from loadTable("dfs://tushare_basic_db","stk_premarket") where trade_date >= start_date and trade_date <= end_date
+    for(dt in dts){
+        // dt = dts[0]
+        raw = getApiData(token, api, {"trade_date":dt.temporalFormat("yyyyMMdd")})
+
+        if(raw.count() != 0){
+
+            res = select trade_date, ts_code as code, total_share, float_share, pre_close, up_limit, down_limit, now() as update_time from raw
+
+            replaceColumn!(res, "trade_date", temporalParse(string(res.trade_date), "yyyyMMdd"))
+            replaceColumn!(res, "code", symbol(string(res.code)))
+            replaceColumn!(res, "total_share", double(res.total_share))
+            replaceColumn!(res, "float_share", double(res.float_share))
+            replaceColumn!(res, "pre_close", double(res.pre_close))
+            replaceColumn!(res, "up_limit", double(res.up_limit))
+            replaceColumn!(res, "down_limit", double(res.down_limit))
+
+
+            loadTable("dfs://tushare_basic_db","stk_premarket").append!(res)
+            print("Success append data for trade_date: " + dt.temporalFormat("yyyyMMdd"))
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+*  @FunctionName: appendStkRewards
+*  @Brief: 追加股票管理层薪酬数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendStkRewards("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendStkRewards(token,start_date1,end_date1){
+    api = "stock_basic" //接口名称为股票列表
+    cols = ["ts_code"]
+    // 获取数据
+    codes =exec ts_code from getApiData(token, api, {"list_status":"L,D"}, cols)
+    // 2026.07.31 9 all 1,633,120
+    delete from loadTable("dfs://tushare_basic_db","stk_rewards") where end_date in start_date1..end_date1
+    codes_lists = codes.cut(codes.size()/50)
+    for(dt in start_date1..end_date1){
+        // dt = 2026.04.21
+        dt = dt.temporalFormat("yyyyMMdd")
+        for(codes_list in codes_lists){
+            // codes_list = codes_lists[0]
+            code=codes_list.toStdJson().strReplace("[","").strReplace("]","").strReplace("\"","")
+            offset_ = 0
+            prev_count_=0
+            curr_count = 0
+            do {
+                api = "stk_rewards"
+                cols = ["ts_code", "ann_date", "end_date", "name", "title", "reward", "hold_vol"]
+                p = {"ts_code":code,"end_date":dt,"offset":offset_}
+                res = getApiData(token, api, p, cols)
+                if(!res.isVoid() and res.count() != 0){
+                res = select ts_code as code, ann_date, end_date, name, title, reward, hold_vol, now() as update_time from res
+            
+                replaceColumn!(res, "code", symbol(string(res.code)))
+                replaceColumn!(res, "ann_date", temporalParse(string(res.ann_date), "yyyyMMdd"))
+                replaceColumn!(res, "end_date", temporalParse(string(res.end_date), "yyyyMMdd"))
+                replaceColumn!(res, "name", string(res.name))
+                replaceColumn!(res, "title", string(res.title))
+                replaceColumn!(res, "reward", double(res.reward))
+                replaceColumn!(res, "hold_vol", double(res.hold_vol))
+
+                loadTable("dfs://tushare_basic_db","stk_rewards").append!(res)
+                curr_count = res.count()
+                prev_count_ = prev_count_ + curr_count
+                offset_ = prev_count_ + 1
+                print(offset_)
+                }
+            } while(res.count()!=0)
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+*  @FunctionName: appendStockBasic
+*  @Brief: 追加股票基础信息数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendStockBasic("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendStockBasic(token, start_date, end_date){
+    api = "stock_basic"
+    cols = ["ts_code", "symbol", "name", "area", "industry", "fullname", "enname", "cnspell", "market", "exchange", "curr_type", "list_status", "list_date", "delist_date", "is_hs", "act_name", "act_ent_type"]
+    raw = getApiData(token, api,{"list_status":"L,D"} ,cols)
+    delete from loadTable("dfs://tushare_basic_db","stock_basic") 
+    if(raw.count() != 0){
+
+        res = select ts_code as code, symbol, name, area, industry, fullname, enname, cnspell, market, exchange, curr_type, list_status, list_date, delist_date, is_hs, act_name, act_ent_type, now() as update_time from raw
+
+        replaceColumn!(res, "code", symbol(string(res.code)))
+        replaceColumn!(res, "symbol", symbol(string(res.symbol)))
+        replaceColumn!(res, "name", string(res.name))
+        replaceColumn!(res, "area", symbol(string(res.area)))
+        replaceColumn!(res, "industry", symbol(string(res.industry)))
+        replaceColumn!(res, "fullname", string(res.fullname))
+        replaceColumn!(res, "enname", string(res.enname))
+        replaceColumn!(res, "cnspell", string(res.cnspell))
+        replaceColumn!(res, "market", symbol(string(res.market)))
+        replaceColumn!(res, "exchange", symbol(string(res.exchange)))
+        replaceColumn!(res, "curr_type", symbol(string(res.curr_type)))
+        replaceColumn!(res, "list_status", symbol(string(res.list_status)))
+        replaceColumn!(res, "list_date", temporalParse(string(res.list_date), "yyyyMMdd"))
+        replaceColumn!(res, "delist_date", temporalParse(string(res.delist_date), "yyyyMMdd"))
+        replaceColumn!(res, "is_hs", symbol(string(res.is_hs)))
+        replaceColumn!(res, "act_name", string(res.act_name))
+        replaceColumn!(res, "act_ent_type", symbol(string(res.act_ent_type)))
+
+        //先清空再导入
+        truncate("dfs://tushare_basic_db","stock_basic")
+        loadTable("dfs://tushare_basic_db","stock_basic").append!(res)
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+*  @FunctionName: appendStockCompany
+*  @Brief: 追加股票公司信息数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendStockCompany("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendStockCompany(token,start_date,end_date){
+    api = "stock_company" 
+    dts = getMarketCalendar("XSHG",start_date,end_date)
+        cols = ["ts_code", "com_name", "com_id", "exchange", "chairman", "manager", "secretary", "reg_capital", "setup_date", "province", "city", "introduction", "website", "email", "office", "employees", "main_business", "business_scope"]
+        raw = getApiData(token, api, cols)
+        delete from loadTable("dfs://tushare_basic_db","stock_company") 
+        if(raw.count() != 0){ 
+            res = select ts_code as code, com_name, com_id, exchange, chairman, manager, secretary, reg_capital, setup_date, province, city, introduction, website, email, office, employees, main_business, business_scope, now() as update_time from raw
+
+            replaceColumn!(res, "code", symbol(string(res.code)))
+            replaceColumn!(res, "com_name", string(res.com_name))
+            replaceColumn!(res, "com_id", string(res.com_id))
+            replaceColumn!(res, "exchange", symbol(string(res.exchange)))
+            replaceColumn!(res, "chairman", string(res.chairman))
+            replaceColumn!(res, "manager", string(res.manager))
+            replaceColumn!(res, "secretary", string(res.secretary))
+            replaceColumn!(res, "reg_capital", double(res.reg_capital))
+            replaceColumn!(res, "setup_date", temporalParse(string(res.setup_date), "yyyyMMdd"))
+            replaceColumn!(res, "province", symbol(string(res.province)))
+            replaceColumn!(res, "city", symbol(string(res.city)))
+            replaceColumn!(res, "introduction", string(res.introduction))
+            replaceColumn!(res, "website", string(res.website))
+            replaceColumn!(res, "email", string(res.email))
+            replaceColumn!(res, "office", string(res.office))
+            replaceColumn!(res, "employees", int(res.employees))
+            replaceColumn!(res, "main_business", string(res.main_business))
+            replaceColumn!(res, "business_scope", string(res.business_scope))
+
+            //先清空再导入
+            truncate("dfs://tushare_basic_db","stock_company")
+            loadTable("dfs://tushare_basic_db","stock_company").append!(res)
+        }
+    print("Success append data for Table " + api)
+}
+
+/*
+*  @FunctionName: appendStockHsgt
+*  @Brief: 追加沪深港股通标的数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendStockHsgt("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendStockHsgt(token,start_date,end_date){
+    api = "stock_hsgt" 
+    types = ["HK_SZ","SZ_HK","HK_SH","SH_HK"]
+    delete from loadTable("dfs://tushare_basic_db","stock_hsgt") 
+    for(type_ in types){
+        // dt = dts[0]
+        raw = getApiData(token, api, {"type":type_})
+
+        if(raw.count() != 0){
+            res = select ts_code as code, trade_date, type, name, type_name, now() as update_time from raw
+
+            replaceColumn!(res, "code", symbol(string(res.code)))
+            replaceColumn!(res, "trade_date", temporalParse(string(res.trade_date), "yyyyMMdd"))
+            replaceColumn!(res, "type", symbol(string(res.type)))
+            replaceColumn!(res, "name", string(res.name))
+            replaceColumn!(res, "type_name", symbol(string(res.type_name)))
+
+            delete from loadTable("dfs://tushare_basic_db","stock_hsgt") where type == type_
+            loadTable("dfs://tushare_basic_db","stock_hsgt").append!(res)
+            print("Success append data for type: " + type)
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+*  @FunctionName: appendStockSt
+*  @Brief: 追加股票ST状态数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendStockSt("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendStockSt(token,start_date,end_date){
+    api = "stock_st" 
+    dts = getMarketCalendar("XSHG",start_date,end_date)
+    delete from loadTable("dfs://tushare_basic_db","stock_st") where trade_date >= start_date and trade_date <= end_date
+    for(dt in dts){
+        // dt = dts[0]
+        raw = getApiData(token, api, {"trade_date":dt.temporalFormat("yyyyMMdd")})
+        if( !raw.isVoid() and raw.count() != 0){
+
+            res = select ts_code as code, name, trade_date, type, type_name, now() as update_time from raw
+
+            replaceColumn!(res, "code", symbol(string(res.code)))
+            replaceColumn!(res, "name", string(res.name))
+            replaceColumn!(res, "trade_date", temporalParse(string(res.trade_date), "yyyyMMdd"))
+            replaceColumn!(res, "type", symbol(string(res.type)))
+            replaceColumn!(res, "type_name", symbol(string(res.type_name)))
+
+            loadTable("dfs://tushare_basic_db","stock_st").append!(res)
+            print("Success append data for trade_date: " + dt.temporalFormat("yyyyMMdd"))
+        } else {
+            print("No data for trade_date: " + dt.temporalFormat("yyyyMMdd"))
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+// 股票数据-两融及转融通相关函数
+
+/*
+*  @FunctionName: appendMargin
+*  @Brief: 追加融资融券交易汇总数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendMargin("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendMargin(token, start_date, end_date) {
+    dts = getMarketCalendar("XSHG",start_date,end_date)
+    api = "margin"
+    delete from loadTable("dfs://tushare_basic_db","margin") where trade_date >= start_date and trade_date <= end_date
+    for(dt in dts){ // dt = 2026.06.24-1
+        cols = ["trade_date", "exchange_id", "rzye", "rzmre", "rzche", "rqye", "rqmcl", "rzrqye", "rqyl"]
+        p = {"trade_date": dt.temporalFormat("yyyyMMdd")}
+        res = getApiData(token, api, p, cols)
+
+        if( !res.isVoid() and res.count() != 0){
+            replaceColumn!(res, "trade_date", temporalParse(res.trade_date, "yyyyMMdd"))
+            replaceColumn!(res, "exchange_id", symbol(string(res.exchange_id)))
+            replaceColumn!(res, "rzye", double(res.rzye))
+            replaceColumn!(res, "rzmre", double(res.rzmre))
+            replaceColumn!(res, "rzche", double(res.rzche))
+            replaceColumn!(res, "rqye", double(res.rqye))
+            replaceColumn!(res, "rqmcl", double(res.rqmcl))
+            replaceColumn!(res, "rzrqye", double(res.rzrqye))
+            replaceColumn!(res, "rqyl", double(res.rqyl))
+            update res set update_time = now()
+            loadTable("dfs://tushare_basic_db", "margin").append!(res)
+            print("Success append data for trade_date: " + dt.temporalFormat("yyyyMMdd"))
+        } else {
+            print("no data for trade_date: " + dt.temporalFormat("yyyyMMdd"))
+        }
+    }
+    print("Success append data for Table " + api)   
+}
+
+/*
+*  @FunctionName: appendMarginDetail
+*  @Brief: 追加融资融券交易明细数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendMarginDetail("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendMarginDetail(token, start_date, end_date) {
+    dts = getMarketCalendar("XSHG",start_date,end_date)
+    api = "margin_detail"
+    delete from loadTable("dfs://tushare_daily_db","margin_detail") where trade_date >= start_date and trade_date <= end_date
+    for(dt in dts){
+        cols = ["trade_date", "ts_code", "name", "rzye", "rqye", "rzmre", "rqyl", "rzche", "rqchl", "rqmcl", "rzrqye"]
+        p = {"trade_date": dt.temporalFormat("yyyyMMdd")}
+        res = getApiData(token, api, p, cols)
+        if( !res.isVoid() and res.count() != 0){
+            replaceColumn!(res, "trade_date", temporalParse(res.trade_date, "yyyyMMdd"))
+            replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+            replaceColumn!(res, "name", symbol(string(res.name)))
+            replaceColumn!(res, "rzye", double(res.rzye))
+            replaceColumn!(res, "rqye", double(res.rqye))
+            replaceColumn!(res, "rzmre", double(res.rzmre))
+            replaceColumn!(res, "rqyl", double(res.rqyl))
+            replaceColumn!(res, "rzche", double(res.rzche))
+            replaceColumn!(res, "rqchl", double(res.rqchl))
+            replaceColumn!(res, "rqmcl", double(res.rqmcl))
+            replaceColumn!(res, "rzrqye", double(res.rzrqye))
+            update res set update_time = now()
+            loadTable("dfs://tushare_daily_db", "margin_detail").append!(res)
+            print("Success append data for trade_date: " + dt.temporalFormat("yyyyMMdd"))
+        } else {
+            print("no data for trade_date: " + dt.temporalFormat("yyyyMMdd"))
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+*  @FunctionName: appendMarginSecs
+*  @Brief: 追加融资融券标的数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendMarginSecs("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendMarginSecs(token, start_date, end_date) {
+    dts = getMarketCalendar("XSHG",start_date,end_date)
+    api = "margin_secs"
+    delete from loadTable("dfs://tushare_daily_db","margin_secs") where trade_date >= start_date and trade_date <= end_date
+    for(dt in dts){
+        // dt = 2024.04.17
+        cols = ["trade_date", "ts_code", "name", "exchange"]
+        p = {"trade_date": dt.temporalFormat("yyyyMMdd")}
+        res = getApiData(token, api, p, cols)
+        if( !res.isVoid() and res.count() != 0){
+            replaceColumn!(res, "trade_date", temporalParse(res.trade_date, "yyyyMMdd"))
+            replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+            replaceColumn!(res, "name", string(res.name))
+            replaceColumn!(res, "exchange", symbol(string(res.exchange)))
+            update res set update_time = now()
+            loadTable("dfs://tushare_daily_db", "margin_secs").append!(res)
+            print("Success append data for trade_date: " + dt.temporalFormat("yyyyMMdd"))
+        } else {
+            print("no data for trade_date: " + dt.temporalFormat("yyyyMMdd"))
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+*  @FunctionName: appendSlbLen
+*  @Brief: 追加转融资交易汇总数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendSlbLen("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendSlbLen(token, start_date, end_date) {
+    dts = getMarketCalendar("XSHG",start_date,end_date)
+    api = "slb_len"
+    delete from loadTable("dfs://tushare_basic_db","slb_len") where trade_date >= start_date and trade_date <= end_date
+    for(dt in dts){ // dt = 2026.03.06
+        cols = ["trade_date", "ob", "auc_amount", "repo_amount", "repay_amount", "cb"]
+        p = {"trade_date": dt.temporalFormat("yyyyMMdd")}
+        res = getApiData(token, api, p, cols)
+        if( !res.isVoid() and res.count() != 0){
+            replaceColumn!(res, "trade_date", temporalParse(res.trade_date, "yyyyMMdd"))
+            replaceColumn!(res, "ob", double(res.ob))
+            replaceColumn!(res, "auc_amount", double(res.auc_amount))
+            replaceColumn!(res, "repo_amount", double(res.repo_amount))
+            replaceColumn!(res, "repay_amount", double(res.repay_amount))
+            replaceColumn!(res, "cb", double(res.cb))
+            update res set update_time = now()
+            loadTable("dfs://tushare_basic_db", "slb_len").append!(res)
+            print("Success append data for trade_date: " + dt.temporalFormat("yyyyMMdd"))
+        } else {
+            print("no data for trade_date: " + dt.temporalFormat("yyyyMMdd"))
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+*  @FunctionName: appendSlbLenMm
+*  @Brief: 追加做市借券交易汇总数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendSlbLenMm("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendSlbLenMm(token, start_date, end_date) {
+    dts = getMarketCalendar("XSHG",start_date,end_date)
+    api = "slb_len_mm"
+    delete from loadTable("dfs://tushare_daily_db","slb_len_mm") where trade_date >= start_date and trade_date <= end_date
+    for(dt in dts){ // dt = 2026.03.06
+        cols = ["trade_date", "ts_code", "name", "ope_inv", "lent_qnt", "cls_inv", "end_bal"]
+        p = {"trade_date": dt.temporalFormat("yyyyMMdd")}
+        res = getApiData(token, api, p, cols)
+        if( !res.isVoid() and res.count() != 0){
+            replaceColumn!(res, "trade_date", temporalParse(res.trade_date, "yyyyMMdd"))
+            replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+            replaceColumn!(res, "name", string(res.name))
+            replaceColumn!(res, "ope_inv", double(res.ope_inv))
+            replaceColumn!(res, "lent_qnt", double(res.lent_qnt))
+            replaceColumn!(res, "cls_inv", double(res.cls_inv))
+            replaceColumn!(res, "end_bal", double(res.end_bal))
+            update res set update_time = now()
+            loadTable("dfs://tushare_daily_db", "slb_len_mm").append!(res)
+            print("Success append data for trade_date: " + dt.temporalFormat("yyyyMMdd"))
+        } else {
+            print("no data for trade_date: " + dt.temporalFormat("yyyyMMdd"))
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+*  @FunctionName: appendSlbSec
+*  @Brief: 追加转融券交易汇总数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendSlbSec("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendSlbSec(token, start_date, end_date) {
+    dts = getMarketCalendar("XSHG",start_date,end_date)
+    api = "slb_sec"
+    delete from loadTable("dfs://tushare_daily_db","slb_sec") where trade_date >= start_date and trade_date <= end_date
+    for(dt in dts){ // dt = 2024.09.30
+        cols = ["trade_date", "ts_code", "name", "ope_inv", "lent_qnt", "cls_inv", "end_bal"]
+        p = {"trade_date": dt.temporalFormat("yyyyMMdd")}
+        res = getApiData(token, api, p, cols)
+        if( !res.isVoid() and res.count() != 0){
+            replaceColumn!(res, "trade_date", temporalParse(res.trade_date, "yyyyMMdd"))
+            replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+            replaceColumn!(res, "name", string(res.name))
+            replaceColumn!(res, "ope_inv", double(res.ope_inv))
+            replaceColumn!(res, "lent_qnt", double(res.lent_qnt))
+            replaceColumn!(res, "cls_inv", double(res.cls_inv))
+            replaceColumn!(res, "end_bal", double(res.end_bal))
+            update res set update_time = now()
+            loadTable("dfs://tushare_daily_db", "slb_sec").append!(res)
+            print("Success append data for trade_date: " + dt.temporalFormat("yyyyMMdd"))
+        } else {
+            print("no data for trade_date: " + dt.temporalFormat("yyyyMMdd"))
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+*  @FunctionName: appendSlbSecDetail
+*  @Brief: 追加转融券交易明细数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendSlbSecDetail("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendSlbSecDetail(token, start_date, end_date) {
+    dts = getMarketCalendar("XSHG",start_date,end_date)
+    api = "slb_sec_detail"
+    delete from loadTable("dfs://tushare_daily_db","slb_sec_detail") where trade_date >= start_date and trade_date <= end_date
+    for(dt in dts){
+        cols = ["trade_date", "ts_code", "name", "tenor", "fee_rate", "lent_qnt"]
+        p = {"trade_date": dt.temporalFormat("yyyyMMdd")}
+        res = getApiData(token, api, p, cols)
+        if( !res.isVoid() and res.count() != 0){
+            replaceColumn!(res, "trade_date", temporalParse(res.trade_date, "yyyyMMdd"))
+            replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+            replaceColumn!(res, "name", string(res.name))
+            replaceColumn!(res, "tenor", string(res.tenor))
+            replaceColumn!(res, "fee_rate", double(res.fee_rate))
+            replaceColumn!(res, "lent_qnt", double(res.lent_qnt))
+            update res set update_time = now()
+            loadTable("dfs://tushare_daily_db", "slb_sec_detail").append!(res)
+            print("Success append data for trade_date: " + dt.temporalFormat("yyyyMMdd"))
+        } else {
+            print("no data for trade_date: " + dt.temporalFormat("yyyyMMdd"))
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+// 打板专题数据相关函数
+
+/*
+*  @FunctionName: appendDcDaily
+*  @Brief: 追加东财概念板块行情数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendDcDaily("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendDcDaily(token, start_date, end_date){
+    pt = loadTable("dfs://tushare_daily_db","dc_daily")
+    dts = getMarketCalendar("XSHG", start_date, end_date)
+    api = "dc_daily" 
+    delete from loadTable("dfs://tushare_daily_db","dc_daily") where trade_date >= start_date and trade_date <= end_date
+    for(dt in dts){
+        // 获取数据
+        try{
+            res = getApiData(token, api, {"trade_date":dt.temporalFormat("yyyyMMdd")})
+        }catch(ex){
+            print("appendDcDaily error: failed to get api data for "+ dt.temporalFormat("yyyyMMdd"))
+            continue
+        }
+        if(form(res) == 6 and size(res) > 0){
+            // 类型转换
+            replaceColumn!(res, "trade_date", temporalParse(res.trade_date,"yyyyMMdd"))
+            // 列顺序重排（使用原始接口列名 ts_code，顺序与 schemaTB 一致）
+            reorderColumns!(res, ["ts_code","trade_date","close","open","high","low","change","pct_change","vol","amount","swing","turnover_rate", "category"])
+            // 追加数据（按顺序对应，最后添加 update_time）
+            pt.append!(select *, now() as update_time from res)
+            print("Success append data for trade_date: " + dt.temporalFormat("yyyyMMdd"))
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+*  @FunctionName: appendDcHot
+*  @Brief: 追加东财热度数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendDcHot("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendDcHot(token, start_date, end_date){
+    pt = loadTable("dfs://tushare_daily_db","dc_hot")
+    dts = getMarketCalendar("XSHG", start_date, end_date)
+    api = "dc_hot" 
+    delete from loadTable("dfs://tushare_daily_db","dc_hot") where trade_date >= start_date and trade_date <= end_date
+    for(dt in dts){ // dt = 2026.07.20
+        // 获取数据
+        try{
+            res = getApiData(token, api, {"trade_date":dt.temporalFormat("yyyyMMdd")})
+        }catch(ex){
+            print("appendDcHot error: failed to get api data for "+ dt.temporalFormat("yyyyMMdd"))
+            continue
+        }
+        if(form(res) == 6 and size(res) > 0){
+            // 类型转换
+            replaceColumn!(res, "trade_date", temporalParse(res.trade_date,"yyyyMMdd"))
+            replaceColumn!(res, "rank", int(res.rank))
+            replaceColumn!(res, "hot", double(res.hot))
+            replaceColumn!(res, "concept", string(res.concept))
+            replaceColumn!(res, "rank_time", timestamp(res.rank_time))
+            // 列顺序重排（使用原始接口列名，顺序与 schemaTB 一致）
+            reorderColumns!(res, ["trade_date","data_type","ts_code","ts_name","rank","pct_change","current_price","rank_time","hot","concept"])
+            // 追加数据（按顺序对应，最后添加 update_time）
+            pt.append!(select *, now() as update_time from res)
+            print("Success append data for trade_date: " + dt.temporalFormat("yyyyMMdd"))
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+*  @FunctionName: appendDcIndex
+*  @Brief: 追加东财指数行情数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendDcIndex("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendDcIndex(token, start_date, end_date){
+    pt = loadTable("dfs://tushare_daily_db","dc_index")
+    dts = getMarketCalendar("XSHG", start_date, end_date)
+    api = "dc_index" 
+    delete from loadTable("dfs://tushare_daily_db","dc_index") where trade_date >= start_date and trade_date <= end_date
+    for(dt in dts){ 
+        // 获取数据
+        try{
+            res = getApiData(token, api, {"trade_date":dt.temporalFormat("yyyyMMdd")})
+        }catch(ex){
+            print("appendDcIndex error: failed to get api data for "+ dt.temporalFormat("yyyyMMdd"))
+            continue
+        }
+        if(form(res) == 6 and size(res) > 0){
+            // 类型转换
+            replaceColumn!(res, "trade_date", temporalParse(res.trade_date,"yyyyMMdd"))
+            replaceColumn!(res, "up_num", int(res.up_num))
+            replaceColumn!(res, "down_num", int(res.down_num))
+            replaceColumn!(res, "level", string(res.level))
+            replaceColumn!(res, "leading_code", string(res.leading_code))
+
+            // 列顺序重排（使用原始接口列名 ts_code，顺序与 schemaTB 一致）
+            reorderColumns!(res, ["ts_code","trade_date","name","leading","leading_code","pct_change","leading_pct","total_mv","turnover_rate","up_num","down_num","idx_type","level"])
+            // 追加数据（按顺序对应，最后添加 update_time）
+            pt.append!(select *, now() as update_time from res)
+            print("Success append data for trade_date: " + dt.temporalFormat("yyyyMMdd"))
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+*  @FunctionName: appendDcMember
+*  @Brief: 追加东财概念板块成分股数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendDcMember("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendDcMember(token, start_date, end_date){
+    pt = loadTable("dfs://tushare_daily_db","dc_member")
+    dts = getMarketCalendar("XSHG", start_date, end_date)
+    api = "dc_member"
+    delete from loadTable("dfs://tushare_daily_db","dc_member") where trade_date >= start_date and trade_date <= end_date
+    for(dt in dts){
+        offset_ = 0
+        prev_count = 0
+        cur_count = 0 
+        do {
+            res = get_api_data(token, api, {"trade_date":dt.temporalFormat("yyyyMMdd"),"offset":offset_})
+            cur_count = res.count()
+            if(form(res) == 6 and cur_count > 0){
+                // 类型转换
+                replaceColumn!(res, "trade_date", temporalParse(res.trade_date,"yyyyMMdd"))
+                reorderColumns!(res, ["trade_date","ts_code","con_code","name"])
+                // 追加数据（按顺序对应，最后添加 update_time）
+                pt.append!(select *, now() as update_time from res)
+                print("Success append data for trade_date: " + dt.temporalFormat("yyyyMMdd") + "for count:" + cur_count)
+
+                prev_count = prev_count + cur_count
+                offset_ = prev_count + 1
+            }
+        } while(res.count()!=0)
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+*  @FunctionName: appendHmDetail
+*  @Brief: 追加打板数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendHmDetail("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendHmDetail(token, start_date, end_date){
+    pt = loadTable("dfs://tushare_daily_db","hm_detail")
+    dts = getMarketCalendar("XSHG", start_date, end_date)
+    api = "hm_detail"
+    delete from loadTable("dfs://tushare_daily_db","hm_detail") where trade_date >= start_date and trade_date <= end_date
+    for(dt in dts){ 
+        // 获取数据
+        try{ 
+            res = getApiData(token, api, {"trade_date":dt.temporalFormat("yyyyMMdd")})
+        }catch(ex){
+            print("appendHmDetail error: failed to get api data for "+ dt.temporalFormat("yyyyMMdd"))
+            continue
+        }
+        if(form(res) == 6 and size(res) > 0){
+            // 类型转换
+            replaceColumn!(res, "trade_date", temporalParse(res.trade_date,"yyyyMMdd"))
+            // 列顺序重排（使用原始接口列名 ts_code，顺序与 schemaTB 一致）
+            reorderColumns!(res, ["trade_date","ts_code", "ts_name","buy_amount","sell_amount","net_amount","hm_name","hm_orgs"])
+            // 追加数据（按顺序对应，最后添加 update_time）
+            pt.append!(select *, now() as update_time from res)
+            print("Success append data for trade_date: " + dt.temporalFormat("yyyyMMdd"))
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+*  @FunctionName: appendHmList
+*  @Brief: 追加打板机构列表数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendHmList("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendHmList(token, start_date, end_date){
+    pt = loadTable("dfs://tushare_basic_db","hm_list")
+    api = "hm_list" 
+    // 获取数据（静态数据，一次性获取全部）
+    res = getApiData(token, api, {})
+    if(form(res) == 6 and size(res) > 0){
+        // 列顺序重排（使用原始接口列名，顺序与 schemaTB 一致）
+        reorderColumns!(res, ["name","desc","orgs"])
+        // 追加数据（按顺序对应，最后添加 update_time）
+
+        // 由于数据量较小，且无日期字段，直接删除后全量追加
+        truncate("dfs://tushare_basic_db","hm_list")
+        pt.append!(select *, now() as update_time from res)
+        print("Success append data for Table " + api)
+    }
+}
+
+/*
+*  @FunctionName: appendKplConceptCons
+*  @Brief: 追加科普概念成分股数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendKplConceptCons("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendKplConceptCons(token, start_date, end_date){
+    pt = loadTable("dfs://tushare_daily_db","kpl_concept_cons")
+    dts = getMarketCalendar("XSHG", start_date, end_date)
+    api = "kpl_concept_cons" 
+    delete from loadTable("dfs://tushare_daily_db","kpl_concept_cons") where trade_date >= start_date and trade_date <= end_date
+    for(dt in dts){
+        // 获取数据
+        try{
+            res = getApiData(token, api, {"trade_date":dt.temporalFormat("yyyyMMdd")}) 
+        }catch(ex){
+            print("appendKplConceptCons error: failed to get api data for "+ dt.temporalFormat("yyyyMMdd"))
+            continue
+        }
+        if(form(res) == 6 and size(res) > 0){
+            // 类型转换
+            replaceColumn!(res, "trade_date", temporalParse(res.trade_date,"yyyyMMdd"))
+            replaceColumn!(res, "hot_num", int(res.hot_num))
+            reorderColumns!(res, ["ts_code","name","con_code","con_name","trade_date","desc","hot_num"])
+            // 追加数据（按顺序对应，最后添加 update_time）
+            pt.append!(select *, now() as update_time from res)
+            print("Success append data for trade_date: " + dt.temporalFormat("yyyyMMdd"))
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+*  @FunctionName: appendKplList
+*  @Brief: 追加科普概念列表数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendKplList("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendKplList(token, start_date, end_date){
+    pt = loadTable("dfs://tushare_daily_db","kpl_list")
+    dts = getMarketCalendar("XSHG", start_date, end_date)
+    api = "kpl_list" 
+    delete from loadTable("dfs://tushare_daily_db","kpl_list") where trade_date >= start_date and trade_date <= end_date
+    for(dt in dts){ // dt = 2026.09.04
+        // 获取数据
+        try{
+            res = getApiData(token, api, {"trade_date":dt.temporalFormat("yyyyMMdd")})
+        }catch(ex){
+            print("appendKplList error: failed to get api data for "+ dt.temporalFormat("yyyyMMdd"))
+            continue
+        }
+        if(form(res) == 6 and size(res) > 0){
+            // 类型转换
+            replaceColumn!(res, "trade_date", temporalParse(res.trade_date,"yyyyMMdd"))
+            replaceColumn!(res, "lu_time", time(res.lu_time))
+            replaceColumn!(res, "ld_time", time(res.ld_time))
+            replaceColumn!(res, "open_time", time(res.open_time))
+            replaceColumn!(res, "last_time", time(res.last_time))
+            // 列顺序重排（使用原始接口列名 ts_code，顺序与 schemaTB 一致）
+            reorderColumns!(res, ["ts_code","name","trade_date","lu_time","ld_time","open_time","last_time","lu_desc","tag","theme","net_change","bid_amount","status","bid_change","bid_turnover","lu_bid_vol","pct_chg","bid_pct_chg","rt_pct_chg","limit_order","amount","turnover_rate","free_float","lu_limit_order"])
+            // 追加数据（按顺序对应，最后添加 update_time）
+            pt.append!(select *, now() as update_time from res)
+            print("Success append data for trade_date: " + dt.temporalFormat("yyyyMMdd"))
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+*  @FunctionName: appendLimitCptList
+*  @Brief: 追加涨停概念列表数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendLimitCptList("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendLimitCptList(token, start_date, end_date){
+    pt = loadTable("dfs://tushare_daily_db","limit_cpt_list")
+    dts = getMarketCalendar("XSHG", start_date, end_date)
+    api = "limit_cpt_list" 
+    delete from loadTable("dfs://tushare_daily_db","limit_cpt_list") where trade_date >= start_date and trade_date <= end_date
+    for(dt in dts){
+        // 获取数据
+        try{
+            res = getApiData(token, api, {"trade_date":dt.temporalFormat("yyyyMMdd")})
+        }catch(ex){
+            print("appendLimitCptList error: failed to get api data for "+ dt.temporalFormat("yyyyMMdd"))
+            continue
+        }
+        if(form(res) == 6 and size(res) > 0){
+            replaceColumn!(res, "trade_date", temporalParse(res.trade_date,"yyyyMMdd"))
+            replaceColumn!(res, "days", int(res.days))
+            replaceColumn!(res, "cons_nums", int(res.cons_nums))
+            replaceColumn!(res, "up_nums", int(res.up_nums))
+            replaceColumn!(res, "rank", int(res.rank))
+            reorderColumns!(res, ["ts_code","name", "trade_date", "days","up_stat","cons_nums","up_nums","pct_chg","rank"])
+            // 4. 追加数据 (按标准化顺序选择列)
+            pt.append!(select *, now() as update_time from res)
+            print("Success append data for trade_date: " + dt.temporalFormat("yyyyMMdd"))
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+*  @FunctionName: appendLimitListD
+*  @Brief: 追加每日涨停股票列表数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendLimitListD("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendLimitListD(token, start_date, end_date){
+    pt = loadTable("dfs://tushare_daily_db","limit_list_d")
+    dts = getMarketCalendar("XSHG", start_date, end_date)
+    api = "limit_list_d"
+    delete from loadTable("dfs://tushare_daily_db","limit_list_d") where trade_date >= start_date and trade_date <= end_date
+    for(dt in dts){
+        // 获取数据
+        try{
+            res = getApiData(token, api, {"trade_date":dt.temporalFormat("yyyyMMdd")})
+        }catch(ex){
+            print("appendLimitListD error: failed to get api data for "+ dt.temporalFormat("yyyyMMdd"))
+            continue
+        }
+        if(form(res) == 6 and size(res) > 0){
+            reorderColumns!(res, ["trade_date","ts_code","industry","name","close","pct_chg","amount","limit_amount","float_mv","total_mv","turnover_ratio","fd_amount","first_time","last_time","open_times","up_stat","limit_times","limit"])
+            replaceColumn!(res, "trade_date", temporalParse(res.trade_date,"yyyyMMdd"))
+            replaceColumn!(res, "open_times", res.open_times.int())
+            replaceColumn!(res, "limit_times", res.limit_times.int())
+            replaceColumn!(res, "first_time", iif(res.first_time.isNull(), time(NULL), temporalParse(lpad(res.first_time,6,"0"),"HHmmss").time()))
+            replaceColumn!(res, "last_time", iif(res.last_time.isNull(), time(NULL), temporalParse(lpad(res.last_time,6,"0"),"HHmmss").time()))
+            pt.append!(select *, now() as update_time from res)
+            print("Success append data for trade_date: " + dt.temporalFormat("yyyyMMdd"))
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+*  @FunctionName: appendLimitListThs
+*  @Brief: 追加同花顺涨跌停池数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendLimitListThs("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendLimitListThs(token, start_date, end_date){
+    pt = loadTable("dfs://tushare_daily_db","limit_list_ths")
+    dts = getMarketCalendar("XSHG", start_date, end_date)
+    api = "limit_list_ths"
+    delete from loadTable("dfs://tushare_daily_db","limit_list_ths") where trade_date >= start_date and trade_date <= end_date
+    for(dt in dts){
+        for(lt in ['涨停池','连扳池','冲刺涨停','炸板池','跌停池']){ 
+            // lt = '冲刺涨停'
+            // 获取数据
+            try{
+                res = getApiData(token, api, {"trade_date":dt.temporalFormat("yyyyMMdd"), limit_type:lt})
+            }catch(ex){
+                print("appendLimitListThs error: failed to get api data for "+ dt.temporalFormat("yyyyMMdd") + " with limit_type " + lt)
+                continue
+            }
+            if(form(res) == 6 and size(res) > 0){
+                // 类型转换
+                reorderColumns!(res, ["trade_date","ts_code","name","price","pct_chg","open_num","lu_desc","limit_type","tag","status","limit_order","limit_amount","turnover_rate","free_float","lu_limit_order","limit_up_suc_rate","turnover","market_type"])
+                replaceColumn!(res, "trade_date", temporalParse(res.trade_date,"yyyyMMdd"))
+                replaceColumn!(res, "open_num", res.open_num.int())
+                replaceColumn!(res, "lu_desc", res.lu_desc.string())
+                replaceColumn!(res, "tag", res.tag.string())
+                replaceColumn!(res, "status", res.status.string())
+                pt.append!(select *, now() as update_time from res)
+                print("Success append data for trade_date: " + dt.temporalFormat("yyyyMMdd") + " with limit_type " + lt)
+            }
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+// def appendLimitStep(token, start_date, end_date){
+//     pt = loadTable("dfs://tushare_daily_db","limit_step")
+//     dts = getMarketCalendar("XSHG", start_date, end_date)
+//     for(dt in dts){
+//         api = "limit_step" 
+//         // 获取数据
+//         try{
+//             res = getApiData(token, api, {"trade_date":dt.temporalFormat("yyyyMMdd")})
+//         }catch(ex){
+//             print("appendLimitStep error: failed to get api data for "+ dt.temporalFormat("yyyyMMdd"))
+//             continue
+//         }
+//         if(form(res) == 6 and size(res) > 0){
+//             replaceColumn!(res, "trade_date", temporalParse(res.trade_date,"yyyyMMdd"))
+//             replaceColumn!(res, "nums", int(res.nums))
+//             reorderColumns!(res, ["ts_code", "name", "trade_date", "nums"])
+//             pt.append!(select *, now() as update_time from res)
+//         }
+//     }
+// }
+
+def appendStkAuction(token, start_date, end_date){
+    pt = loadTable("dfs://tushare_daily_db","stk_auction")
+    dts = getMarketCalendar("XSHG", start_date, end_date)
+    api = "stk_auction"
+    delete from loadTable("dfs://tushare_daily_db","stk_auction") where trade_date >= start_date and trade_date <= end_date
+    for(dt in dts){
+        // 获取数据
+        try{
+            res = getApiData(token, api, {"trade_date":dt.temporalFormat("yyyyMMdd")})
+        }catch(ex){
+            print("appendStkAuction error: failed to get api data for "+ dt.temporalFormat("yyyyMMdd"))
+            continue
+        }
+        if(form(res) == 6 and size(res) > 0){
+            // 类型转换
+            replaceColumn!(res, "trade_date", temporalParse(res.trade_date,"yyyyMMdd"))
+            replaceColumn!(res, "vol", int(res.vol))
+            // 列顺序重排（使用原始接口列名 ts_code，顺序与 schemaTB 一致）
+            reorderColumns!(res, ["ts_code","trade_date","vol","price","amount","pre_close","turnover_rate","volume_ratio","float_share"])
+            // 追加数据（按顺序对应，最后添加 update_time）
+            pt.append!(select *, now() as update_time from res)
+            print("Success append data for trade_date: " + dt.temporalFormat("yyyyMMdd"))
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+def appendTdxDaily(token, start_date, end_date){
+    pt = loadTable("dfs://tushare_daily_db","tdx_daily")
+    dts = getMarketCalendar("XSHG", start_date, end_date)
+    cols = ["ts_code","trade_date","close","open","high","low","pre_close","change","pct_change","vol","amount","rise","vol_ratio","turnover_rate","swing","up_num","down_num","limit_up_num","limit_down_num","lu_days","day3","day5","day10","day20","day60","mtd","ytd","year1","pe","pb","float_mv","ab_total_mv","float_share","total_share","bm_buy_net","bm_buy_ratio","bm_net","bm_ratio"]
+    api = "tdx_daily"
+    delete from loadTable("dfs://tushare_daily_db","tdx_daily") where trade_date >= start_date and trade_date <= end_date
+    for(dt in dts){
+        // 获取数据
+        try{
+            res = getApiData(token, api, {"trade_date":dt.temporalFormat("yyyyMMdd")}, ddbCols=cols)
+        }catch(ex){
+            print("appendTdxDaily error: failed to get api data for "+ dt.temporalFormat("yyyyMMdd"))
+            continue
+        }
+        if(form(res) == 6 and size(res) > 0){
+            // 类型转换
+            replaceColumn!(res, "trade_date", temporalParse(res.trade_date,"yyyyMMdd"))
+            replaceColumn!(res, "rise", double(res.rise))
+            replaceColumn!(res, "up_num", int(res.up_num))
+            replaceColumn!(res, "down_num", int(res.down_num))
+            replaceColumn!(res, "limit_up_num", int(res.limit_up_num))
+            replaceColumn!(res, "limit_down_num", int(res.limit_down_num))
+            replaceColumn!(res, "lu_days", int(res.lu_days))
+            replaceColumn!(res, "pe", double(res.pe))
+            replaceColumn!(res, "pb", double(res.pb))
+            // 列顺序重排（使用原始接口列名 ts_code，顺序与 schemaTB 一致）
+            reorderColumns!(res, cols)
+            // 追加数据（按顺序对应，最后添加 update_time）
+            pt.append!(select *, now() as update_time from res)
+            print("Success append data for trade_date: " + dt.temporalFormat("yyyyMMdd"))
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+def appendTdxIndex(token, start_date, end_date){
+    pt = loadTable("dfs://tushare_daily_db","tdx_index")
+    dts = getMarketCalendar("XSHG", start_date, end_date)
+    api = "tdx_index"
+    delete from loadTable("dfs://tushare_daily_db","tdx_index") where trade_date >= start_date and trade_date <= end_date
+    for(dt in dts){
+        // 获取数据
+        try{
+            res = getApiData(token, api, {"trade_date":dt.temporalFormat("yyyyMMdd")})
+        }catch(ex){
+            print("appendTdxIndex error: failed to get api data for "+ dt.temporalFormat("yyyyMMdd"))
+            continue
+        }
+        if(form(res) == 6 and size(res) > 0){
+            // 类型转换
+            replaceColumn!(res, "trade_date", temporalParse(res.trade_date,"yyyyMMdd"))
+            replaceColumn!(res, "idx_count", int(res.idx_count))
+            // 列顺序重排（使用原始接口列名 ts_code，顺序与 schemaTB 一致）
+            reorderColumns!(res, ["ts_code","trade_date","name","idx_type","idx_count","total_share","float_share","total_mv","float_mv"])
+            // 追加数据（按顺序对应，最后添加 update_time）
+            pt.append!(select *, now() as update_time from res)
+            print("Success append data for trade_date: " + dt.temporalFormat("yyyyMMdd"))
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+def appendTdxMember(token, start_date, end_date){
+    pt = loadTable("dfs://tushare_daily_db","tdx_member")
+    dts = getMarketCalendar("XSHG", start_date, end_date)
+    api = "tdx_member"
+    delete from loadTable("dfs://tushare_daily_db","tdx_member") where trade_date >= start_date and trade_date <= end_date
+    for(dt in dts){
+        // 获取数据
+        try{
+            res = getApiData(token, api, {"trade_date":dt.temporalFormat("yyyyMMdd")})
+        }catch(ex){
+            print("appendTdxMember error: failed to get api data for "+ dt.temporalFormat("yyyyMMdd"))
+            continue
+        }
+        if(form(res) == 6 and size(res) > 0){
+            // 类型转换
+            replaceColumn!(res, "trade_date", temporalParse(res.trade_date,"yyyyMMdd"))
+            // 列顺序重排（使用原始接口列名，顺序与 schemaTB 一致）
+            reorderColumns!(res, ["ts_code","trade_date","con_code","con_name"])
+            // 追加数据（按顺序对应，最后添加 update_time）
+            pt.append!(select *, now() as update_time from res)
+            print("Success append data for trade_date: " + dt.temporalFormat("yyyyMMdd"))
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+def appendThsDaily(token, start_date, end_date){
+    pt = loadTable("dfs://tushare_daily_db","ths_daily")
+    dts = getMarketCalendar("XSHG", start_date, end_date)
+    api = "ths_daily"
+    delete from loadTable("dfs://tushare_daily_db","ths_daily") where trade_date >= start_date and trade_date <= end_date
+    for(dt in dts){
+        // 获取数据
+        try{
+            res = getApiData(token, api, {"trade_date":dt.temporalFormat("yyyyMMdd")})
+        }catch(ex){
+            print("appendThsDaily error: failed to get api data for "+ dt.temporalFormat("yyyyMMdd"))
+            continue
+        }
+        if(form(res) == 6 and size(res) > 0){
+            // 类型转换
+            replaceColumn!(res, "trade_date", temporalParse(res.trade_date,"yyyyMMdd"))
+            // 列顺序重排（使用原始接口列名 ts_code，顺序与 schemaTB 一致）
+            reorderColumns!(res, ["ts_code","trade_date","close","open","high","low","pre_close","avg_price","change","pct_change","vol","turnover_rate"])
+            // 追加数据（按顺序对应，最后添加 update_time）
+            pt.append!(select *, now() as update_time from res)
+            print("Success append data for trade_date: " + dt.temporalFormat("yyyyMMdd"))
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+def appendThsHot(token, start_date, end_date){
+    pt = loadTable("dfs://tushare_daily_db","ths_hot")
+    dts = getMarketCalendar("XSHG", start_date, end_date)
+    //getMarketCalendar("XSHG", 2023.08.18, end_date)
+    api = "ths_hot"
+    delete from loadTable("dfs://tushare_daily_db","ths_hot") where trade_date >= start_date and trade_date <= end_date
+    for(dt in dts){ // dt = 2023.08.21
+        // 获取数据
+        try{ 
+            res = getApiData(token, api, {"trade_date":dt.temporalFormat("yyyyMMdd")})
+            // select * from res where trade_date = "20230821"
+        }catch(ex){
+            print("appendThsHot error: failed to get api data for "+ dt.temporalFormat("yyyyMMdd"))
+            continue
+        }
+        if(form(res) == 6 and size(res) > 0){
+            // 类型转换
+            replaceColumn!(res, "trade_date", temporalParse(trim(res.trade_date),"yyyyMMdd"))
+            replaceColumn!(res, "rank", int(res.rank))
+            replaceColumn!(res, "concept", string(res.concept))
+            replaceColumn!(res, "rank_reason", string(res.rank_reason))
+            replaceColumn!(res, "hot", string(res.hot))
+            replaceColumn!(res, "rank_time", timestamp(res.rank_time))
+            // 列顺序重排（使用原始接口列名，顺序与 schemaTB 一致）
+            reorderColumns!(res, ["trade_date","data_type", "ts_code","ts_name","rank","pct_change","current_price","concept","rank_reason","hot","rank_time"])
+            // 追加数据（按顺序对应，最后添加 update_time）
+            update res set update_time = now()
+            pt.append!(res)
+            print("Success append data for trade_date: " + dt.temporalFormat("yyyyMMdd"))
+        } else {
+            print("no data for "+ dt.temporalFormat("yyyyMMdd"))
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+def appendThsIndex(token, start_date, end_date){
+    pt = loadTable("dfs://tushare_basic_db","ths_index")
+    api = "ths_index" 
+    // 获取数据（静态数据，一次性获取全部）
+    res = getApiData(token, api, {})
+    
+    if(form(res) == 6 and size(res) > 0){
+        reorderColumns!(res, ["ts_code","name", "count","exchange","list_date","type"])
+        replaceColumn!(res, "list_date", temporalParse(res.list_date,"yyyyMMdd"))
+        replaceColumn!(res, "count", int(res.count))
+
+        // 追加数据（按顺序对应，最后添加 update_time）
+        // 由于数据量较小，且无日期字段，直接删除后全量追加
+        truncate("dfs://tushare_basic_db","ths_index")
+        pt.append!(select *, now() as update_time from res)
+        print("Success append data for Table " + api)
+    }
+}
+
+def appendThsMember(token, start_date, end_date){
+    pt = loadTable("dfs://tushare_basic_db","ths_member")
+    api = "ths_member" 
+    // 获取数据（静态数据，一次性获取，可根据需要添加 ts_code 参数循环）
+    res = getApiData(token, api, {})
+    if(form(res) == 6 and size(res) > 0){
+        reorderColumns!(res, ["ts_code", "con_code", "con_name"])
+        // 追加数据（按顺序对应，最后添加 update_time）
+        // 由于数据量较小，且无日期字段，直接删除后全量追加
+        truncate("dfs://tushare_basic_db","ths_member")
+        pt.append!(select *, now() as update_time from res)
+        print("Success append data for Table " + api)
+    }
+}
+
+def appendTopInst(token, start_date, end_date){
+    pt = loadTable("dfs://tushare_daily_db","top_inst")
+    dts = getMarketCalendar("XSHG", start_date, end_date)
+    api = "top_inst" 
+    delete from loadTable("dfs://tushare_daily_db","top_inst") where trade_date >= start_date and trade_date <= end_date
+    for(dt in dts){
+        // 获取数据
+        try{
+            res = getApiData(token, api, {"trade_date":dt.temporalFormat("yyyyMMdd")})
+        }catch(ex){
+            print("appendTopInst error: failed to get api data for "+ dt.temporalFormat("yyyyMMdd"))
+            continue
+        }
+        if(res.count() != 0){
+            reorderColumns!(res, ["trade_date","ts_code","exalter","side","buy","buy_rate","sell","sell_rate","net_buy","reason"])
+            replaceColumn!(res, "trade_date", temporalParse(res.trade_date,"yyyyMMdd"))
+            pt.append!(select *, now() as update_time from res)
+            print("Success append data for trade_date: " + dt.temporalFormat("yyyyMMdd"))
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+def appendTopList(token, start_date, end_date){
+    pt = loadTable("dfs://tushare_daily_db","top_list")
+    dts = getMarketCalendar("XSHG", start_date, end_date)
+    api = "top_list" 
+    delete from loadTable("dfs://tushare_daily_db","top_list") where trade_date >= start_date and trade_date <= end_date
+    for(dt in dts){
+        // 获取数据
+        try{
+            res = getApiData(token, api, {"trade_date":dt.temporalFormat("yyyyMMdd")})
+        }catch(ex){
+            print("appendTopList error: failed to get api data for "+ dt.temporalFormat("yyyyMMdd"))
+            continue
+        }
+        if(res.count() != 0){
+            reorderColumns!(res, ["trade_date","ts_code","name","close","pct_change","turnover_rate","amount","l_sell","l_buy","l_amount","net_amount","net_rate","amount_rate","float_values","reason"])
+            replaceColumn!(res, "trade_date", temporalParse(res.trade_date,"yyyyMMdd"))
+            pt.append!(select *, now() as update_time from res)
+            print("Success append data for trade_date: " + dt.temporalFormat("yyyyMMdd"))
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+// 股票-特色数据-20260306相关函数
+def getAllCodes(token) {
+    api = "stock_basic" //接口名称为股票列表
+    p = {"list_status": "L,D"} 
+    cols = ["ts_code"]
+    // 获取数据
+    res = getApiData(token, api, p, cols) 
+    return res.ts_code
+}
+
+/*
+ * @Author: ytxie yating.xie@dolphindb.com
+ * @Date: 2026-03-03 12:00:00
+ * @LastEditors: ytxie yating.xie@dolphindb.com
+ * @LastEditTime: 2026-03-03 12:00:00
+ * @Description: TUSHARE-股票数据-参考数据-卖方盈利预测数据-数据导入
+ */
+def appendReportRc(token, start_date, end_date){
+    // 获取交易日历
+    dts = start_date..end_date
+    
+    dbName = "dfs://tushare_daily_db"
+    tbName = "report_rc"
+    pt = loadTable(dbName, tbName)
+    delete from loadTable(dbName, tbName) where report_date >= start_date and report_date <= end_date
+    for(dt in dts){
+        api = "report_rc" 
+        trade_date_str = dt.format("yyyyMMdd")
+        
+        try {
+            // report_rc 接口支持按报告日期直接查询当日所有研报
+            res = getApiData(token, api, {"report_date": trade_date_str})
+            
+            if(!res.isVoid() and res.rows() > 0){
+                // 1. 显式类型转换
+                replaceColumn!(res, "report_date", temporalParse(res.report_date, "yyyyMMdd"))
+                
+                // 2. 插入更新时间
+                update res set update_time = now()
+
+                // 3. 追加数据
+                pt.append!(res)
+                print("成功导入卖方盈利预测数据 日期: " + trade_date_str + ", 记录数: " + res.rows().string())
+            }
+        } catch(ex) {
+            print("导入日期 " + trade_date_str + " 时发生错误: " + ex)
+        }
+    }
+}
+
+/*
+ * @Author: ytxie yating.xie@dolphindb.com
+ * @Date: 2026-03-03 12:00:00
+ * @LastEditors: ytxie yating.xie@dolphindb.com
+ * @LastEditTime: 2026-03-03 12:00:00
+ * @Description: TUSHARE-股票数据-港股数据-AH股比价-数据导入
+ */
+def appendStkAhComparison(token, start_date, end_date){
+    dts = getMarketCalendar("XSHG", start_date, end_date)
+    dbName = "dfs://tushare_daily_db"
+    tbName = "stk_ah_comparison"
+    pt = loadTable(dbName, tbName)
+    delete from loadTable(dbName, tbName) where trade_date >= start_date and trade_date <= end_date
+    for(dt in dts){
+        api = "stk_ah_comparison" 
+        trade_date_str = dt.format("yyyyMMdd")
+        try {
+            res = getApiData(token, api, {"trade_date": trade_date_str})
+            if(!res.isVoid() and res.rows() > 0){
+                // 1. 数据处理：改名、日期转换及类型显式转换
+                replaceColumn!(res, "trade_date", temporalParse(res.trade_date, "yyyyMMdd"))
+                replaceColumn!(res, "hk_pct_chg", res.hk_pct_chg.double())
+                replaceColumn!(res, "hk_close", res.hk_close.double())
+                replaceColumn!(res, "close", res.close.double())
+                replaceColumn!(res, "pct_chg", res.pct_chg.double())
+                replaceColumn!(res, "ah_comparison", res.ah_comparison.double())
+                replaceColumn!(res, "ah_premium", res.ah_premium.double())
+
+                // 2. 插入更新时间
+                update res set update_time = now()
+
+                // 3. 追加数据
+                pt.append!(res)
+                print("成功导入AH股比价数据 日期: " + trade_date_str + ", 记录数: " + res.rows().string())
+            }
+        } catch(ex) {
+            print("导入日期 " + trade_date_str + " 时发生错误: " + ex)
+        }
+    }
+}
+
+/*
+ * @Author: ytxie yating.xie@dolphindb.com
+ * @Date: 2026-03-03 12:00:00
+ * @LastEditors: ytxie yating.xie@dolphindb.com
+ * @LastEditTime: 2026-03-03 12:00:00
+ * @Description: TUSHARE-股票数据-特色数据-机构调研表-数据导入
+ */
+// TODO: 目前按遍历日期、遍历标的代码来实现，需要优化。一是其实很多票都没有数据，遍历标的非常浪费时间；二是每次只能获取到 400 行，可能有遗漏，因为万一某天某只票超过 400 行呢。
+// def appendStkSurv(token, start_date, end_date){
+//     dts = start_date..end_date
+//     dbName = "dfs://tushare_minute_db"
+//     tbName = "stk_surv"
+//     pt = loadTable(dbName, tbName)
+//     delete from loadTable(dbName, tbName) where trade_date >= start_date and trade_date <= end_date
+    
+//     for(dt in dts){ // dt = 2021.10.24
+//         api = "stk_surv" 
+//         trade_date_str = dt.format("yyyyMMdd")
+//         try {
+//             // 获取所有标的代码
+//             ts_codes = getAllCodes(token)
+//             cnt = 0
+//             for (tscode in ts_codes) { // tscode = "002223.SZ"
+//                 // 获取数据
+//                 res = getApiData(token, api, {"trade_date": trade_date_str, "ts_code": tscode})
+
+//                 if(!res.isVoid() and res.rows() > 0){
+//                     // 1. 数据处理：映射字段名并转换日期
+//                     // 注意：API原始字段名为 surv_date，存入分区列 trade_date
+//                     replaceColumn!(res, "surv_date", temporalParse(res.surv_date, "yyyyMMdd"))
+
+//                     // 2. 插入更新时间
+//                     update res set update_time = now()
+
+//                     // 3. 追加数据
+//                     pt.append!(res)
+//                     cnt += res.rows()
+//                 } else {
+//                     print("日期: " + trade_date_str + " 标的：" + tscode + " 无数据返回。")
+//                 }
+//             }
+//             print("成功导入日期: " + trade_date_str + ", 记录数: " + cnt)
+//         } catch(ex) {
+//             print("导入日期 " + trade_date_str + " 标的：" + tscode + " 时发生错误: " + ex)
+//         }
+//     }
+// }
+
+/*
+ * @Author: ytxie yating.xie@dolphindb.com
+ * @Date: 2026-03-03 12:00:00
+ * @LastEditors: ytxie yating.xie@dolphindb.com
+ * @LastEditTime: 2026-03-03 12:00:00
+ * @Description: TUSHARE-股票数据-特色数据-券商每月荐股-数据导入
+ */
+def appendBrokerRecommend(token, start_date, end_date){
+    // 生成月份序列 (例如 '202101' 到 '202106')
+    ms = start_date.month() .. end_date.month()
+    
+    dbName = "dfs://tushare_basic_db"
+    tbName = "broker_recommend"
+    pt = loadTable(dbName, tbName)
+
+    for(m in ms){
+        delete from loadTable(dbName, tbName) where month = m
+
+         // m = 2026.03M
+        api = "broker_recommend" 
+        // Tushare 接口要求格式为 YYYYMM
+        month_str = m.format("yyyyMM")
+        
+        try {
+            // 获取当月推荐金股
+            res = getApiData(token, api, {"month": month_str})
+            
+            if(!res.isVoid() and res.rows() > 0){
+                // 1. 类型显式转换
+                // 将 YYYYMM 字符串转换为 DolphinDB 的 MONTH 类型
+                replaceColumn!(res, "month", temporalParse(res.month, "yyyyMM"))
+                
+                // 2. 插入更新时间
+                update res set update_time = now()
+
+                current_cnts = exec count(*) from pt where month = m
+                if (current_cnts == 0) {
+                    // 3. 追加数据
+                    pt.append!(res)
+                    print("成功导入券商每月荐股数据 月份: " + month_str + ", 记录数: " + res.rows().string())
+                } 
+                sleep(5000)
+            } else {
+                print("月份: " + month_str + " 无数据返回。")
+            }
+        } catch(ex) {
+            print("导入月份 " + month_str + " 时发生错误: " + ex)
+        }
+    }
+}
+
+def appendCyqPerf(token, start_date, end_date) {
+    // 获取交易日历（以上海证券交易所 XSHG 为准）
+    dts = getMarketCalendar("XSHG", start_date, end_date)
+    
+    dbName = "dfs://tushare_daily_db"
+    tbName = "cyq_perf"
+    
+    // 加载目标分区表
+    pt = loadTable(dbName, tbName)
+    delete from loadTable(dbName, tbName) where trade_date >= start_date and trade_date <= end_date
+    
+    for(dt in dts){
+        api = "cyq_perf" 
+        // 构造 Tushare 参数：日期格式为 yyyyMMdd
+        trade_date_str = dt.format("yyyyMMdd")
+        
+        try {
+            // 从 Tushare 获取数据
+            res = getApiData(token, api, {"trade_date": trade_date_str})
+            
+            // 如果当天有数据返回（防止非交易日或数据未更新导致空表错误）
+            if(!res.isVoid() and res.rows() > 0){
+                // 将字符串日期转换为 DATE 类型
+                replaceColumn!(res, "trade_date", temporalParse(res.trade_date, "yyyyMMdd"))
+                // 注意：由于之前的建表语句中没有 update_time 字段，
+                // 如果您需要记录更新时间，请确保建表时已包含该列。
+                // 如果不需要该列，可以注释掉下面这行：
+                update res set update_time = now()
+                // 将数据追加到分区表中
+                pt.append!(res)
+                print("成功导入日期: " + trade_date_str + ", 记录数: " + res.rows().string())
+            } else {
+                print("日期: " + trade_date_str + " 无数据返回。")
+            }
+        } catch(ex) {
+            print("导入日期 " + trade_date_str + " 时发生错误: " + ex)
+        }
+    }
+}
+
+def appendCyqChips(token, start_date, end_date){  // start_date = 2025.03.01, end_date = 2026.01.05
+    // 获取交易日历
+    dts = getMarketCalendar("XSHG", start_date, end_date)
+
+    // 获取所有标的代码
+    ts_codes = getAllCodes(token)
+    
+    dbName = "dfs://tushare_daily_db"
+    tbName = "cyq_chips"
+    pt = loadTable(dbName, tbName)
+    api = "cyq_chips" 
+    delete from loadTable(dbName, tbName) where trade_date >= start_date and trade_date <= end_date
+    
+    dts = dts.sort!()
+    batchs = size(dts)/5
+
+    for (i in 0..batchs){  // i=41
+        startIndex = i*5
+        endIndex = min((i+1)*5, size(dts))
+        fiveDays = dts[startIndex:endIndex]
+        start_day = temporalFormat(fiveDays[0], "yyyyMMdd")
+        end_day = temporalFormat(fiveDays[size(fiveDays)-1], "yyyyMMdd")
+
+        try {
+            cnt = 0
+            for (tscode in ts_codes) { // tscode = "600000.SH"
+                // 获取数据
+                res = getApiData(token, api, {"start_date": start_day, "end_date": end_day, "ts_code": tscode})
+                
+                if(!res.isVoid() and res.rows() > 0){
+                    // 1. 日期格式转换
+                    replaceColumn!(res, "trade_date", temporalParse(res.trade_date, "yyyyMMdd"))
+                    // 2. 插入更新时间
+                    update res set update_time = now()
+                    // 3. 写入 DFS 表
+                    pt.append!(res)
+                    cnt += res.rows()
+                } else {
+                    print("日期范围: " + start_day + " 至 " + end_day + " 标的：" + tscode + " 无数据返回。")
+                }
+            }
+            print("成功导入日期范围: " + start_day + " 至 " + end_day + ", 记录数: " + cnt)
+        } catch(ex) {
+            print("导入日期范围 " + start_day + " 至 " + end_day + " 标的：" + tscode + " 时发生错误: " + ex)
+        }
+    }
+}
+
+def appendStkFactorPro(token, start_date, end_date){
+    // 获取交易日历
+    dts = getMarketCalendar("XSHG", start_date, end_date)
+    
+    dbName = "dfs://tushare_daily_db"
+    tbName = "stk_factor_pro"
+    pt = loadTable(dbName, tbName)
+    delete from loadTable(dbName, tbName) where trade_date >= start_date and trade_date <= end_date
+    
+    for(dt in dts){ // dt = 2026.03.09
+        api = "stk_factor_pro" 
+        trade_date_str = dt.format("yyyyMMdd")
+        
+        try {
+            // ts_code 为可选参数，直接按日期拉取当天全市场
+            res = getApiData(token, api, {"trade_date": trade_date_str})
+            
+            if(!res.isVoid() and res.rows() > 0){
+                // 1. 日期格式转换
+                replaceColumn!(res, "trade_date", temporalParse(res.trade_date, "yyyyMMdd"))
+                // 2. 插入更新时间
+                update res set update_time = now()
+                // 3. 追加数据
+                pt.append!(res)
+                print("成功导入股票技术面因子(专业版) 日期: " + trade_date_str + ", 记录数: " + res.rows().string())
+            } else {
+                print("日期: " + trade_date_str + " 无数据返回。")
+            }
+        } catch(ex) {
+            print("导入日期 " + trade_date_str + " 时发生错误: " + ex)
+        }
+    }
+}
+
+def appendCcassHold(token, start_date, end_date){
+    dts = getMarketCalendar("XSHG", start_date, end_date)
+    dbName = "dfs://tushare_daily_db"
+    tbName = "ccass_hold"
+    pt = loadTable(dbName, tbName)
+    delete from loadTable(dbName, tbName) where trade_date >= start_date and trade_date <= end_date
+    
+    for(dt in dts){
+        api = "ccass_hold" 
+        trade_date_str = dt.format("yyyyMMdd")
+        try {
+            res = getApiData(token, api, {"trade_date": trade_date_str})
+            if(!res.isVoid() and res.rows() > 0){
+                // 1. 日期格式转换
+                replaceColumn!(res, "trade_date", temporalParse(res.trade_date, "yyyyMMdd"))
+
+                replaceColumn!(res, "shareholding", res.shareholding.long())
+                replaceColumn!(res, "hold_nums", res.hold_nums.int())
+                replaceColumn!(res, "hold_ratio", res.hold_ratio.double())
+
+                // 2. 插入更新时间
+                update res set update_time = now()
+                // 3. 追加数据
+                pt.append!(res)
+                print("成功导入中央结算系统持股汇总 日期: " + trade_date_str + ", 记录数: " + res.rows().string())
+            }
+        } catch(ex) {
+            print("导入日期 " + trade_date_str + " 时发生错误: " + ex)
+        }
+    }
+}
+
+def appendCcassHoldDetail(token, start_date, end_date){
+    dts = getMarketCalendar("XSHG", start_date, end_date)
+    dbName = "dfs://tushare_daily_db"
+    tbName = "ccass_hold_detail"
+    pt = loadTable(dbName, tbName)
+    delete from loadTable(dbName, tbName) where trade_date >= start_date and trade_date <= end_date
+    
+    for(dt in dts){
+        api = "ccass_hold_detail" 
+        trade_date_str = dt.format("yyyyMMdd")
+        try {
+            res = getApiData(token, api, {"trade_date": trade_date_str})
+            if(!res.isVoid() and res.rows() > 0){
+                // 1. 日期格式转换
+                replaceColumn!(res, "trade_date", temporalParse(res.trade_date, "yyyyMMdd"))
+
+                replaceColumn!(res, "col_shareholding", res.col_shareholding.long())
+                replaceColumn!(res, "col_shareholding_percent", res.col_shareholding_percent.double())
+
+                // 2. 插入更新时间
+                update res set update_time = now()
+
+                // 3. 追加数据
+                pt.append!(res)
+                print("成功导入中央结算系统持股明细 日期: " + trade_date_str + ", 记录数: " + res.rows().string())
+            }
+        } catch(ex) {
+            print("导入日期 " + trade_date_str + " 时发生错误: " + ex)
+        }
+    }
+}
+
+def appendHkHold(token, start_date, end_date){
+    dts = getMarketCalendar("XSHG", start_date, end_date)
+    dbName = "dfs://tushare_daily_db"
+    tbName = "hk_hold"
+    pt = loadTable(dbName, tbName)
+    delete from loadTable(dbName, tbName) where trade_date >= start_date and trade_date <= end_date
+    
+    for(dt in dts){
+        api = "hk_hold" 
+        trade_date_str = dt.format("yyyyMMdd")
+        try {
+            res = getApiData(token, api, {"trade_date": trade_date_str})
+            if(!res.isVoid() and res.rows() > 0){
+                // 1. 日期格式转换
+                replaceColumn!(res, "trade_date", temporalParse(res.trade_date, "yyyyMMdd"))
+                replaceColumn!(res, "vol", res.vol.long())
+                replaceColumn!(res, "ratio", res.ratio.double())
+
+                // 2. 插入更新时间
+                update res set update_time = now()
+
+                // 3. 追加数据
+                pt.append!(res)
+                print("成功导入沪深港股通持股明细 日期: " + trade_date_str + ", 记录数: " + res.rows().string())
+            }
+        } catch(ex) {
+            print("导入日期 " + trade_date_str + " 时发生错误: " + ex)
+        }
+    }
+}
+
+def appendStkAuctionO(token, start_date, end_date){
+    dts = getMarketCalendar("XSHG", start_date, end_date)
+    dbName = "dfs://tushare_daily_db"
+    tbName = "stk_auction_o"
+    pt = loadTable(dbName, tbName)
+    delete from loadTable(dbName, tbName) where trade_date >= start_date and trade_date <= end_date
+    
+    for(dt in dts){
+        api = "stk_auction_o" 
+        trade_date_str = dt.format("yyyyMMdd")
+        try {
+            res = getApiData(token, api, {"trade_date": trade_date_str})
+            if(!res.isVoid() and res.rows() > 0){
+                // 1. 类型转换与名称对应 (API 返回 ts_code，我们存入 code)
+                replaceColumn!(res, "trade_date", temporalParse(res.trade_date, "yyyyMMdd"))
+                
+                // 2. 插入更新时间
+                update res set update_time = now()
+                
+                // 3. 追加数据
+                pt.append!(res)
+                print("成功导入股票开盘集合竞价数据 日期: " + trade_date_str + ", 记录数: " + res.rows().string())
+            }
+        } catch(ex) {
+            print("导入日期 " + trade_date_str + " 时发生错误: " + ex)
+        }
+    }
+}
+
+def appendStkAuctionC(token, start_date, end_date){
+    dts = getMarketCalendar("XSHG", start_date, end_date)
+    dbName = "dfs://tushare_daily_db"
+    tbName = "stk_auction_c"
+    pt = loadTable(dbName, tbName)
+    delete from loadTable(dbName, tbName) where trade_date >= start_date and trade_date <= end_date
+    
+    for(dt in dts){
+        api = "stk_auction_c" 
+        trade_date_str = dt.format("yyyyMMdd")
+        try {
+            res = getApiData(token, api, {"trade_date": trade_date_str})
+            if(!res.isVoid() and res.rows() > 0){
+                replaceColumn!(res, "trade_date", temporalParse(res.trade_date, "yyyyMMdd"))
+                update res set update_time = now()
+                pt.append!(res)
+                print("成功导入股票收盘集合竞价数据 日期: " + trade_date_str + ", 记录数: " + res.rows().string())
+            }
+        } catch(ex) {
+            print("导入日期 " + trade_date_str + " 时发生错误: " + ex)
+        }
+    }
+}
+
+def appendStkNineturn(token, start_date, end_date){
+    dts = getMarketCalendar("XSHG", start_date, end_date)
+    dbName = "dfs://tushare_daily_db"
+    tbName = "stk_nineturn"
+    pt = loadTable(dbName, tbName)
+    delete from loadTable(dbName, tbName) where trade_date >= start_date and trade_date <= end_date
+    
+    for(dt in dts){ // dt = 2026.07.22
+        api = "stk_nineturn" 
+        trade_date_str = dt.format("yyyyMMdd")
+        try {
+            // 参数设置：频率默认为 daily
+            res = getApiData(token, api, {"trade_date": trade_date_str, "freq": "daily"})
+            if(!res.isVoid() and res.rows() > 0){
+                // 1. 日期转换（API 返回格式为 YYYY-MM-DD HH:MM:SS）
+                replaceColumn!(res, "trade_date", date(res.trade_date))
+                // 2. 插入更新时间
+                update res set update_time = now()
+                // 3. 追加数据
+                pt.append!(res)
+                print("成功导入神奇九转指标数据 日期: " + trade_date_str + ", 记录数: " + res.rows().string())
+            }
+        } catch(ex) {
+            print("导入日期 " + trade_date_str + " 时发生错误: " + ex)
+        }    
+    }
+}
+
+// 财务数据相关函数
+def appendStockBalancesheet(token, start_date, end_date){
+    api = "balancesheet_vip"
+    supple_cols = ["ts_code", "oth_eq_invest", "oth_illiq_fin_assets", "oth_eq_ppbond", "receiv_financing", "use_right_assets", "lease_liab"]
+
+    days = start_date..end_date
+    delete from loadTable("dfs://tushare_basic_db","stock_balancesheet") where ann_date in days
+
+    for(one_date in days){ // one_date = 2026.07.16
+        //quarter = quarters[0]
+        daystr = temporalFormat(one_date, "yyyyMMdd")
+        p = {"ann_date" : daystr}
+        //获取数据
+        res = getApiData(token, api, p)
+        if(res.count() != 0){
+            res.rename!(`ts_code,`security_id)
+            supple_res = getApiData(token, api, p, supple_cols)
+            res = res.join(supple_res)
+            //数据预处理
+            res.replaceColumn!("ann_date", temporalParse(res.ann_date,"yyyyMMdd"))
+            res.replaceColumn!("f_ann_date", temporalParse(res.f_ann_date,"yyyyMMdd"))
+            res.replaceColumn!("end_date", temporalParse(res.end_date,"yyyyMMdd"))
+            res.replaceColumn!("end_type", string(res.end_type))
+            res.replaceColumn!("security_id", symbol(res.security_id))
+            update res set update_time = now()
+            res.dropColumns!(`ts_code)
+            // res.rename!(`ts_code,`security_id)
+            
+            res.reorderColumns!(loadTable("dfs://tushare_basic_db","stock_balancesheet").columnNames())
+
+            loadTable("dfs://tushare_basic_db","stock_balancesheet").append!(res)
+            print("Success append data for Table " + api + " for date: " + daystr)
+        }
+    }
+}
+
+def appendStockCashflow(token, start_date, end_date){
+    api = "cashflow_vip"
+
+    days = start_date..end_date
+    delete from loadTable("dfs://tushare_basic_db","stock_cashflow") where ann_date in days
+    for(one_date in days){ // one_date = 2026.08.03 
+        daystr = temporalFormat(one_date,"yyyyMMdd")
+        p = {"ann_date":daystr }
+        //获取数据
+        res = getApiData(token, api, p)
+        cur_count_ = res.count()
+        // select * from res where ts_code = "600941.SH" 
+        if(!res.isVoid() and cur_count_ != 0){
+            res.rename!(`ts_code,`security_id)
+            //数据预处理
+            res.replaceColumn!("ann_date", temporalParse(res.ann_date,"yyyyMMdd"))
+            res.replaceColumn!("f_ann_date", temporalParse(res.f_ann_date,"yyyyMMdd"))
+            res.replaceColumn!("end_date", temporalParse(res.end_date,"yyyyMMdd"))
+            update res set update_time = now()
+            
+            res.reorderColumns!(loadTable("dfs://tushare_basic_db","stock_cashflow").columnNames())
+
+            loadTable("dfs://tushare_basic_db","stock_cashflow").append!(res)
+            print("Success append data for Table " + api + " for date: " + daystr+ ",count:"+cur_count_.string())    
+        }
+    }
+}
+
+def appendStockDisclosureDate(token, start_date, end_date){
+
+    api = "disclosure_date"
+    cols = ["ts_code","ann_date","end_date","pre_date","actual_date","modify_date"]
+
+    days = start_date..end_date
+    delete from loadTable("dfs://tushare_basic_db","stock_disclosure_date") where ann_date in days
+    for(one_date in days){
+        daystr = temporalFormat(one_date, "yyyyMMdd")
+        p = {"ann_date" : daystr}
+        //获取数据
+        res = getApiData(token, api, p, cols)
+        if(res.count() != 0){
+            res.rename!(`ts_code,`security_id)
+            //数据预处理
+            res.replaceColumn!("ann_date", temporalParse(res.ann_date.string(),"yyyyMMdd"))
+            res.replaceColumn!("end_date", temporalParse(res.end_date.string(),"yyyyMMdd"))
+            res.replaceColumn!("pre_date", temporalParse(res.pre_date.string(),"yyyyMMdd"))
+            res.replaceColumn!("actual_date", temporalParse(res.actual_date.string(),"yyyyMMdd"))
+            res.replaceColumn!("modify_date", temporalParse(res.modify_date.string(),"yyyyMMdd"))
+            update res set update_time = now()
+            
+            res.reorderColumns!(loadTable("dfs://tushare_basic_db","stock_disclosure_date").columnNames())
+
+            loadTable("dfs://tushare_basic_db","stock_disclosure_date").append!(res)
+            print("Success append data for Table " + api + " for date: " + daystr)
+        }
+    }
+}
+
+def appendStockDividend(token, start_date, end_date){
+    api = "dividend"
+    cols = ["ts_code","end_date","ann_date","div_proc","stk_div","stk_bo_rate","stk_co_rate","cash_div","cash_div_tax","record_date","ex_date","pay_date","div_listdate","imp_ann_date","base_date","base_share"]
+    
+    pos_start = yearBegin(start_date)-1
+    pos_end = yearEnd(end_date)
+
+    delete from loadTable("dfs://tushare_basic_db","stock_dividend") where end_date >= pos_start and end_date <= pos_end 
+
+    for(dt in pos_start..pos_end){
+        dt = temporalFormat(dt, "yyyyMMdd")
+        offset_ = 0
+        prev_count_=0
+        curr_count = 0
+        do {
+            res = getApiData(token, api, {"end_date" : dt,"offset":offset_},cols)
+            if(res.count() != 0){
+                res.rename!(`ts_code,`security_id)
+                //数据预处理
+                res.replaceColumn!("ann_date", temporalParse(res.ann_date.string(),"yyyyMMdd"))
+                res.replaceColumn!("end_date", temporalParse(res.end_date.string(),"yyyyMMdd"))
+                res.replaceColumn!("record_date", temporalParse(res.record_date.string(),"yyyyMMdd"))
+                res.replaceColumn!("ex_date", temporalParse(res.ex_date.string(),"yyyyMMdd"))
+                res.replaceColumn!("pay_date", temporalParse(res.pay_date.string(),"yyyyMMdd"))
+                res.replaceColumn!("div_listdate", temporalParse(res.div_listdate.string(),"yyyyMMdd"))
+                res.replaceColumn!("imp_ann_date", temporalParse(res.imp_ann_date.string(),"yyyyMMdd"))
+                res.replaceColumn!("base_date", temporalParse(res.base_date.string(),"yyyyMMdd"))
+                update res set update_time = now()
+
+                res.reorderColumns!(loadTable("dfs://tushare_basic_db","stock_dividend").columnNames())
+                loadTable("dfs://tushare_basic_db","stock_dividend").append!(res)
+                curr_count = res.count()
+                prev_count_ = prev_count_ + curr_count
+                offset_ = prev_count_ + 1
+            }
+        } while(res.count()!=0)
+    }
+}
+
+def appendStockExpress(token, start_date, end_date){
+    api = "express_vip"
+    cols = ["ts_code", "ann_date", "end_date", "revenue", "operate_profit", "total_profit", "n_income", "total_assets", "total_hldr_eqy_exc_min_int", "diluted_eps", "diluted_roe", "yoy_net_profit", "bps", "yoy_sales", "yoy_op", "yoy_tp", "yoy_dedu_np", "yoy_eps", "yoy_roe", "growth_assets", "yoy_equity", "growth_bps", "or_last_year", "op_last_year", "tp_last_year", "np_last_year", "eps_last_year", "open_net_assets", "open_bps", "perf_summary", "is_audit", "remark"]
+
+    //季度报告，每个季度获取一次
+    days = start_date..end_date // days = 2026.03.10
+    delete from loadTable("dfs://tushare_basic_db","stock_express") where ann_date in days
+    for(one_date in days){
+        daystr = temporalFormat(one_date, "yyyyMMdd")
+        p = {"ann_date" : daystr}
+        //获取数据
+        res = getApiData(token, api, p, cols)
+        if(res.count() != 0){
+            res.rename!(`ts_code,`security_id)
+            //数据预处理
+            res.replaceColumn!("ann_date", temporalParse(res.ann_date,"yyyyMMdd"))
+            res.replaceColumn!("end_date", temporalParse(res.end_date,"yyyyMMdd"))
+            res.replaceColumn!("perf_summary", string(res.perf_summary))
+            res.replaceColumn!("remark", string(res.remark))
+            res.replaceColumn!("is_audit", int(res.is_audit))
+            update res set update_time = now()
+            
+            res.reorderColumns!(loadTable("dfs://tushare_basic_db","stock_express").columnNames())
+
+            loadTable("dfs://tushare_basic_db","stock_express").append!(res)
+            print("Success append data for Table " + api + " for date: " + daystr)
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+def appendStockFinaAudit(token, start_date, end_date){
+    api = "fina_audit"
+    cols = ["ts_code","ann_date","end_date","audit_result","audit_fees","audit_agency","audit_sign"]
+    //按股票代码循环
+    codes = getApiData(token, "stock_basic", {"list_status":"L,D"}, ["ts_code"])
+    codes = codes.ts_code
+    // 先清空再全量导入 
+    truncate("dfs://tushare_basic_db","stock_fina_audit")
+    for(code in codes){
+        // code = codes[0]
+        p = {"ts_code" : code}
+        //获取数据
+        res = getApiData(token, api, p, cols)
+        if (!res.isVoid() and res.rows() > 0) {
+            res.rename!(`ts_code, `security_id)
+            //数据预处理
+            res.replaceColumn!("ann_date", temporalParse(res.ann_date,"yyyyMMdd"))
+            res.replaceColumn!("end_date", temporalParse(res.end_date,"yyyyMMdd"))
+            update res set update_time = now()
+            
+            res.reorderColumns!(loadTable("dfs://tushare_basic_db","stock_fina_audit").columnNames())
+
+            loadTable("dfs://tushare_basic_db","stock_fina_audit").append!(res)
+            print("Success append data for Table " + api + " for code: " + code)
+        } else {
+            print("标的：" + code + " 无数据返回。")
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+def appendStockFinaIndicator(token, start_date, end_date){
+    api = "fina_indicator_vip"
+    cols = ["ts_code", "ann_date", "end_date", "eps", "dt_eps", "total_revenue_ps", "revenue_ps", "capital_rese_ps", "surplus_rese_ps", "undist_profit_ps", "extra_item", "profit_dedt", "gross_margin", "current_ratio", "quick_ratio", "cash_ratio", "invturn_days", "arturn_days", "inv_turn", "ar_turn", "ca_turn", "fa_turn", "assets_turn", "op_income", "valuechange_income", "interst_income", "daa", "ebit", "ebitda", "fcff", "fcfe", "current_exint", "noncurrent_exint", "interestdebt", "netdebt", "tangible_asset", "working_capital", "networking_capital", "invest_capital", "retained_earnings", "diluted2_eps", "bps", "ocfps", "retainedps", "cfps", "ebit_ps", "fcff_ps", "fcfe_ps", "netprofit_margin", "grossprofit_margin", "cogs_of_sales", "expense_of_sales", "profit_to_gr", "saleexp_to_gr", "adminexp_of_gr", "finaexp_of_gr", "impai_ttm", "gc_of_gr", "op_of_gr", "ebit_of_gr", "roe", "roe_waa", "roe_dt", "roa", "npta", "roic", "roe_yearly", "roa2_yearly", "roe_avg", "opincome_of_ebt", "investincome_of_ebt", "n_op_profit_of_ebt", "tax_to_ebt", "dtprofit_to_profit", "salescash_to_or", "ocf_to_or", "ocf_to_opincome", "capitalized_to_da", "debt_to_assets", "assets_to_eqt", "dp_assets_to_eqt", "ca_to_assets", "nca_to_assets", "tbassets_to_totalassets", "int_to_talcap", "eqt_to_talcapital", "currentdebt_to_debt", "longdeb_to_debt", "ocf_to_shortdebt", "debt_to_eqt", "eqt_to_debt", "eqt_to_interestdebt", "tangibleasset_to_debt", "tangasset_to_intdebt", "tangibleasset_to_netdebt", "ocf_to_debt", "ocf_to_interestdebt", "ocf_to_netdebt", "ebit_to_interest", "longdebt_to_workingcapital", "ebitda_to_debt", "turn_days", "roa_yearly", "roa_dp", "fixed_assets", "profit_prefin_exp", "non_op_profit", "op_to_ebt", "nop_to_ebt", "ocf_to_profit", "cash_to_liqdebt", "cash_to_liqdebt_withinterest", "op_to_liqdebt", "op_to_debt", "roic_yearly", "total_fa_trun", "profit_to_op", "q_opincome", "q_investincome", "q_dtprofit", "q_eps", "q_netprofit_margin", "q_gsprofit_margin", "q_exp_to_sales", "q_profit_to_gr", "q_saleexp_to_gr", "q_adminexp_to_gr", "q_finaexp_to_gr", "q_impair_to_gr_ttm", "q_gc_to_gr", "q_op_to_gr", "q_roe", "q_dt_roe", "q_npta", "q_opincome_to_ebt", "q_investincome_to_ebt", "q_dtprofit_to_profit", "q_salescash_to_or", "q_ocf_to_sales", "q_ocf_to_or", "basic_eps_yoy", "dt_eps_yoy", "cfps_yoy", "op_yoy", "ebt_yoy", "netprofit_yoy", "dt_netprofit_yoy", "ocf_yoy", "roe_yoy", "bps_yoy", "assets_yoy", "eqt_yoy", "tr_yoy", "or_yoy", "q_gr_yoy", "q_gr_qoq", "q_sales_yoy", "q_sales_qoq", "q_op_yoy", "q_op_qoq", "q_profit_yoy", "q_profit_qoq", "q_netprofit_yoy", "q_netprofit_qoq", "equity_yoy", "rd_exp", "update_flag"]
+
+    //季度报告，每个季度获取一次
+    days = start_date..end_date
+    delete from loadTable("dfs://tushare_basic_db","stock_fina_indicator") where ann_date in days
+    for(one_date in days){
+        daystr = temporalFormat(one_date, "yyyyMMdd")
+        // report_period = "20260331"
+        p = {"ann_date" : daystr}
+        res = getApiData(token, api, p, cols)
+        if (!res.isVoid() and res.count() != 0) {
+            //数据预处理
+            res.rename!("ts_code", "security_id")
+            res.replaceColumn!("ann_date", temporalParse(res.ann_date,"yyyyMMdd"))
+            res.replaceColumn!("end_date", temporalParse(res.end_date,"yyyyMMdd"))
+            update res set update_time = now()
+            
+            res.reorderColumns!(loadTable("dfs://tushare_basic_db","stock_fina_indicator").columnNames())
+
+            loadTable("dfs://tushare_basic_db","stock_fina_indicator").append!(res)
+            print("Success append data for Table " + api + " for date: " + daystr)
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+ * @Author: DolphinDB Yanyan Xu
+ * @Date: 2026-03-04
+ * @LastEditors: DolphinDB Yanyan Xu
+ * @LastEditTime: 2026-03-05
+ * @Description: tushare 股票数据-财务数据-主营业务构成数据导入
+ */
+def appendStockFinaMainbz(token, start_date, end_date){
+    api = "fina_mainbz_vip"
+    cols = ["ts_code","end_date","bz_item","bz_code","bz_sales","bz_profit","bz_cost","curr_type","update_flag"]
+    //季度报告，每个季度获取一次
+    days = temporalAdd(start_date,-6,"M")..end_date
+    quarters = quarterEnd(days).distinct()
+    // quarters = quarters.at(quarters<=end_date)
+    delete from loadTable("dfs://tushare_basic_db","stock_fina_mainbz") where end_date in quarters
+    for(quarter in quarters){
+        types = ["P","D","I"]
+        for(type in types){
+            // quarter = quarters[3]
+            // type = types[2]
+            report_period = temporalFormat(quarter, "yyyyMMdd")
+            offset_ = 0
+            prev_count_=0
+            curr_count = 0
+            do {
+                res = getApiData(token, api, {"period" : report_period,"type":type,"offset":offset_},cols)
+                if(res.count() != 0){
+                    res.rename!(`ts_code,`security_id)
+                    //数据预处理
+                    res.replaceColumn!("end_date", temporalParse(res.end_date,"yyyyMMdd"))
+                    update res set update_time = now()
+
+                    res.reorderColumns!(loadTable("dfs://tushare_basic_db","stock_fina_mainbz").columnNames())
+
+                    loadTable("dfs://tushare_basic_db","stock_fina_mainbz").append!(res)
+                    curr_count = res.count()
+                    prev_count_ = prev_count_ + curr_count
+                    offset_ = prev_count_ + 1
+                }
+            } while(res.count()!=0)
+        }
+    }
+}
+
+
+def appendStockForecast(token, start_date, end_date){
+    api = "forecast_vip"
+
+    //季度报告，每个季度获取一次
+    days = start_date..end_date
+    delete from loadTable("dfs://tushare_basic_db","stock_forecast") where ann_date in days
+    for(one_date in days){
+        //quarter = 2003.03.31
+        daystr = temporalFormat(one_date, "yyyyMMdd")
+        p = {"ann_date" : daystr}
+        //获取数据
+        res = getApiData(token, api, p)
+        if (!res.isVoid() and res.count() != 0){
+            res.rename!(`ts_code,`security_id)
+            //数据预处理
+            res.replaceColumn!("ann_date", temporalParse(res.ann_date,"yyyyMMdd"))
+            res.replaceColumn!("end_date", temporalParse(res.end_date,"yyyyMMdd"))
+            res.replaceColumn!("first_ann_date", temporalParse(res.first_ann_date,"yyyyMMdd"))
+            res.replaceColumn!("change_reason", string(res.change_reason))
+            update res set update_time = now()
+            
+            res.reorderColumns!(loadTable("dfs://tushare_basic_db","stock_forecast").columnNames())
+
+            loadTable("dfs://tushare_basic_db","stock_forecast").append!(res)
+            print("Success append data for Table " + api + " for date: " + daystr)
+        } else {
+            print("No data for Table " + api + " for date: " + daystr)
+        }
+    }
+}
+
+
+def appendStockIncome(token, start_date, end_date){
+    api = "income_vip"
+    supple_cols = ["ts_code", "net_after_nr_lp_correct", "credit_impa_loss", "net_expo_hedging_benefits", "oth_impair_loss_assets", "total_opcost", "amodcost_fin_assets", "oth_income", "asset_disp_income", "continued_net_profit", "end_net_profit"]
+
+    days = start_date..end_date
+    delete from loadTable("dfs://tushare_basic_db","stock_income") where ann_date in days
+    for(one_date in days){
+        day_str = temporalFormat(one_date, "yyyyMMdd")
+        p = {"ann_date" : day_str}
+        // 获取数据
+        res = getApiData(token, api, p)
+        if (!res.isVoid() and res.count() != 0) {
+            res.rename!(`ts_code,`security_id)
+            supple_res = getApiData(token, api, p, supple_cols)
+            res = res.join(supple_res)
+            //数据预处理
+            res.replaceColumn!("ann_date", temporalParse(res.ann_date,"yyyyMMdd"))
+            res.replaceColumn!("f_ann_date", temporalParse(res.f_ann_date,"yyyyMMdd"))
+            res.replaceColumn!("end_date", temporalParse(res.end_date,"yyyyMMdd"))
+            update res set update_time = now()
+            res.dropColumns!(`ts_code)
+            
+            res.reorderColumns!(loadTable("dfs://tushare_basic_db","stock_income").columnNames())
+            loadTable("dfs://tushare_basic_db","stock_income").append!(res)
+            print("Success append data for Table " + api + " for date: " + day_str)
+        } else {
+            print("No data for Table " + api + " for date: " + day_str)
+        }
+    }
+}
+
+// 资金流向数据相关函数
+
+/*
+*  @FunctionName: appendMoneyflow
+*  @Brief: 追加个股资金流向数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendMoneyflow("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendMoneyflow(token,start_date,end_date){
+    dts = getMarketCalendar("XSHG",start_date,end_date)
+    api = "moneyflow" 
+    delete from loadTable("dfs://tushare_daily_db","moneyflow") where trade_date >= start_date and trade_date <= end_date
+    for(dt in dts){//dt = 2012.09.21
+        
+        // 获取数据
+        try{
+            res = getApiData(token, api, {"trade_date":dt.temporalFormat("yyyyMMdd")})
+        }catch(ex){
+            print(ex)
+        }
+        
+        if(res.count() != 0){
+            replaceColumn!(res,"trade_date",temporalParse(res.trade_date,"yyyyMMdd"))
+            replaceColumn!(res,"buy_sm_vol",long(res.buy_sm_vol))
+            replaceColumn!(res,"sell_sm_vol",long(res.sell_sm_vol))
+            replaceColumn!(res,"buy_md_vol",long(res.buy_md_vol))
+            replaceColumn!(res,"sell_md_vol",long(res.sell_md_vol))
+            replaceColumn!(res,"buy_lg_vol",long(res.buy_lg_vol))
+            replaceColumn!(res,"sell_lg_vol",long(res.sell_lg_vol))
+            replaceColumn!(res,"buy_elg_vol",long(res.buy_elg_vol))
+            replaceColumn!(res,"sell_elg_vol",long(res.sell_elg_vol))
+            replaceColumn!(res,"net_mf_vol",long(res.net_mf_vol))
+
+            update res set update_time = now()
+        
+            loadTable("dfs://tushare_daily_db","moneyflow").append!(res)
+            print("Success append data for Table " + api + " for date: " + dt.temporalFormat("yyyyMMdd"))
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+*  @FunctionName: appendMoneyflowCntThs
+*  @Brief: 追加同花顺概念板块资金流向数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendMoneyflowCntThs("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendMoneyflowCntThs(token,start_date,end_date){
+    dts = getMarketCalendar("XSHG",start_date,end_date)
+    api = "moneyflow_cnt_ths" 
+    delete from loadTable("dfs://tushare_daily_db","moneyflow_cnt_ths") where trade_date >= start_date and trade_date <= end_date
+    for(dt in dts){//dt = dts[0] 
+        // 获取数据
+        try{
+            res = getApiData(token, api, {"trade_date":dt.temporalFormat("yyyyMMdd")})
+        }catch(ex){
+            print(ex)
+        }
+        
+        if(res.count() != 0){
+            replaceColumn!(res,"trade_date",temporalParse(res.trade_date,"yyyyMMdd"))
+            update res set update_time = now()
+        
+            loadTable("dfs://tushare_daily_db","moneyflow_cnt_ths").append!(res)
+            print("Success append data for Table " + api + " for date: " + dt.temporalFormat("yyyyMMdd"))
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+*  @FunctionName: appendMoneyflowDc
+*  @Brief: 追加东方财富个股资金流向数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendMoneyflowDc("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendMoneyflowDc(token,start_date,end_date){
+    dts = getMarketCalendar("XSHG",start_date,end_date)
+    api = "moneyflow_dc"
+    delete from loadTable("dfs://tushare_daily_db","moneyflow_dc") where trade_date >= start_date and trade_date <= end_date
+    for(dt in dts){//dt = dts[0]
+        // 获取数据
+        try{
+            res = getApiData(token, api, {"trade_date":dt.temporalFormat("yyyyMMdd")})
+        }catch(ex){
+            print(ex)
+        }
+        
+        if(res.count() != 0){
+            replaceColumn!(res,"trade_date",temporalParse(res.trade_date,"yyyyMMdd"))
+            update res set update_time = now()
+        
+            loadTable("dfs://tushare_daily_db","moneyflow_dc").append!(res)
+            print("Success append data for Table " + api + " for date: " + dt.temporalFormat("yyyyMMdd"))
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+*  @FunctionName: appendMoneyflowHsgt
+*  @Brief: 追加沪深港通资金流向数据
+*  @Param: token - Tushare API令牌 token = 
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendMoneyflowHsgt("your_token", 2025.01.01, 2025.02.01)
+*/
+// use tushare
+def appendMoneyflowHsgt(token,start_date,end_date){ //start_date = 2025.01.01, end_date =2025.02.01
+    dts = getMarketCalendar("XSHG",start_date,end_date)
+    api = "moneyflow_hsgt"
+    delete from loadTable("dfs://tushare_daily_db","moneyflow_hsgt") where trade_date >= start_date and trade_date <= end_date
+    for(dt in dts){//dt = 2018.01.25
+        // 获取数据
+        try{
+            res = getApiData(token, api, {"trade_date":dt.temporalFormat("yyyyMMdd")})
+        }catch(ex){
+            print(ex)
+        }
+        
+        if(res.count() != 0){
+            replaceColumn!(res,"trade_date",temporalParse(res.trade_date,"yyyyMMdd"))
+            update res set update_time = now()
+
+            str_ght = string(res.hgt)
+            str_north_money = string(res.north_money)
+            str_sgt = string(res.sgt)
+            str_ggt_ss = string(res.ggt_ss)
+            str_south_money = string(res.south_money)
+            str_ggt_sz = string(res.ggt_sz)
+            
+            replaceColumn!(res,"hgt",double(iif(like(str_ght,"%M%"),str_ght.substr(0,str_ght.strlen()-1),str_ght)))
+            replaceColumn!(res,"north_money",double(iif(like(str_north_money,"%M%"),str_north_money.substr(0,str_north_money.strlen()-1),str_north_money)))
+            replaceColumn!(res,"sgt",double(iif(like(str_sgt,"%M%"),str_sgt.substr(0,str_sgt.strlen()-1),str_sgt)))
+            replaceColumn!(res,"ggt_ss",double(iif(like(str_ggt_ss,"%M%"),str_ggt_ss.substr(0,str_ggt_ss.strlen()-1),str_ggt_ss)))
+            replaceColumn!(res,"south_money",double(iif(like(str_south_money,"%M%"),str_south_money.substr(0,str_south_money.strlen()-1),str_south_money)))
+            replaceColumn!(res,"ggt_sz",double(iif(like(str_ggt_sz,"%M%"),str_ggt_sz.substr(0,str_ggt_sz.strlen()-1),str_ggt_sz)))
+
+            loadTable("dfs://tushare_daily_db","moneyflow_hsgt").append!(res)
+            print("Success append data for Table " + api + " for date: " + dt.temporalFormat("yyyyMMdd"))
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+*  @FunctionName: appendMoneyflowIndDc
+*  @Brief: 追加东方财富概念及行业板块资金流向数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendMoneyflowIndDc("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendMoneyflowIndDc(token,start_date,end_date){
+    dts = getMarketCalendar("XSHG",start_date,end_date)
+    api = "moneyflow_ind_dc" 
+    delete from loadTable("dfs://tushare_daily_db","moneyflow_ind_dc") where trade_date >= start_date and trade_date <= end_date
+    for(dt in dts){//dt = dts[0]
+        // 获取数据
+        try{
+            res = getApiData(token, api, {"trade_date":dt.temporalFormat("yyyyMMdd")})
+        }catch(ex){
+            print(ex)
+        }
+        
+        if(res.count() != 0){
+            replaceColumn!(res,"trade_date",temporalParse(res.trade_date,"yyyyMMdd"))
+            replaceColumn!(res,"rank",int(res.rank))
+            update res set update_time = now()
+        
+            loadTable("dfs://tushare_daily_db","moneyflow_ind_dc").append!(res)
+            print("Success append data for Table " + api + " for date: " + dt.temporalFormat("yyyyMMdd"))
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+*  @FunctionName: appendMoneyflowIndThs
+*  @Brief: 追加同花顺行业资金流向数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendMoneyflowIndThs("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendMoneyflowIndThs(token,start_date,end_date){
+    dts = getMarketCalendar("XSHG",start_date,end_date)
+    api = "moneyflow_ind_ths" 
+    delete from loadTable("dfs://tushare_daily_db","moneyflow_ind_ths") where trade_date >= start_date and trade_date <= end_date
+    for(dt in dts){//dt = 2025.01.02
+        // 获取数据
+        try{
+            res = getApiData(token, api, {"trade_date":dt.temporalFormat("yyyyMMdd")})
+        }catch(ex){
+            print(ex)
+        }
+        
+        if(res.count() != 0){
+            replaceColumn!(res,"trade_date",temporalParse(res.trade_date,"yyyyMMdd"))
+            replaceColumn!(res,"company_num",long(res.company_num))
+            update res set update_time = now()
+        
+            loadTable("dfs://tushare_daily_db","moneyflow_ind_ths").append!(res)
+            print("Success append data for Table " + api + " for date: " + dt.temporalFormat("yyyyMMdd"))
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+*  @FunctionName: appendMoneyflowMktDc
+*  @Brief: 追加东方财富大盘资金流向数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendMoneyflowMktDc("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendMoneyflowMktDc(token,start_date,end_date){
+    dts = getMarketCalendar("XSHG",start_date,end_date)
+    api = "moneyflow_mkt_dc" 
+    delete from loadTable("dfs://tushare_daily_db","moneyflow_mkt_dc") where trade_date >= start_date and trade_date <= end_date
+    for(dt in dts){//dt = 2026.01.05
+        // 获取数据
+        try{
+            res = getApiData(token, api, {"trade_date":dt.temporalFormat("yyyyMMdd")})
+        }catch(ex){
+            print(ex)
+        }
+        
+        if(res.count() != 0){
+            replaceColumn!(res,"trade_date",temporalParse(res.trade_date,"yyyyMMdd"))
+            update res set update_time = now()
+        
+            loadTable("dfs://tushare_daily_db","moneyflow_mkt_dc").append!(res)
+            print("Success append data for Table " + api + " for date: " + dt.temporalFormat("yyyyMMdd"))
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+*  @FunctionName: appendMoneyflowThs
+*  @Brief: 追加同花顺个股资金流向数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendMoneyflowThs("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendMoneyflowThs(token,start_date,end_date){
+    dts = getMarketCalendar("XSHG",start_date,end_date)
+    api = "moneyflow_ths"
+    delete from loadTable("dfs://tushare_daily_db","moneyflow_ths") where trade_date >= start_date and trade_date <= end_date
+    res = NULL
+    for(dt in dts){// dt = 2026.07.09
+        // 获取数据
+        try{
+            res = getApiData(token, api, {"trade_date":dt.temporalFormat("yyyyMMdd")})
+        }catch(ex){
+            print(ex)
+        }
+        
+        if(!res.isVoid() and res.count() != 0){
+            replaceColumn!(res,"trade_date",temporalParse(res.trade_date,"yyyyMMdd"))
+            update res set update_time = now()
+        
+            loadTable("dfs://tushare_daily_db","moneyflow_ths").append!(res)
+            print("Success append data for Table " + api + " for date: " + dt.temporalFormat("yyyyMMdd"))
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+ * @Description: 股票每日指标数据导入
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-03 10:52:57
+ * @dev: 
+ * @Author: fangwu
+ */
+// use tushare
+def appendStockSuspend(token,start_date,end_date){ 
+    api = "suspend_d" 
+    cols = ["trade_date", "ts_code", "suspend_timing", "suspend_type"]
+    delete from loadTable("dfs://tushare_daily_db","stock_suspend") where trade_date >= start_date and trade_date <= end_date
+    for (oneDate in getMarketCalendar("SSE", start_date, end_date)){  
+        trade_date = temporalFormat(oneDate, "yyyyMMdd")
+
+        p = {"trade_date": trade_date} 
+    
+        // 获取数据
+        res = getApiData(token, api, p, cols)
+        if (res.count()!=0){
+            res.reorderColumns!(["ts_code", "trade_date","suspend_timing", "suspend_type"])
+        
+            replaceColumn!(res,"trade_date",temporalParse(res.trade_date,"yyyyMMdd"))
+            
+            update res set update_time = now()
+            
+            loadTable("dfs://tushare_daily_db","stock_suspend").append!(res)
+            
+            print("Success append data for Table " + api + " for date: " + trade_date)
+        } else {
+            print("no data for Table " + api + " for date: " + trade_date)
+        }
+    } 
+    print("Success append data for Table " + api)
+}
+
+
+def appendStockDailyBasic(token,start_date,end_date){ 
+    api = "daily_basic" 
+    cols = []
+    delete from loadTable("dfs://tushare_daily_db","stock_daily_basic") where trade_date >= start_date and trade_date <= end_date
+    for (oneDate in getMarketCalendar("XSHG", start_date, end_date)){  
+        trade_date = temporalFormat(oneDate, "yyyyMMdd")
+        p = {"trade_date": trade_date}
+        // 获取数据
+        res = getApiData(token, api, p, cols)
+        if(res.count()!=0){
+        
+            replaceColumn!(res,"trade_date",temporalParse(res.trade_date,"yyyyMMdd"))
+            
+            update res set update_time = now()
+            
+            loadTable("dfs://tushare_daily_db","stock_daily_basic").append!(res)
+            
+            print("Success append data for Table " + api + " for date: " + trade_date)
+        }
+    } 
+    print("Success append data for Table " + api)
+}
+
+// 股票1分钟K线数据导入
+/*
+*  @FunctionName: appendStock1minK
+*  @Brief: 导入股票1分钟K线数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendStock1minK("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendStock1minK(token,start_date,end_date) { // start_date = 2026.01.01, end_date = 2026.03.02
+    api = "stk_mins" 
+    cols = []
+
+    // 先获取全市场所有股票
+    allCodes = getApiData(token, "stock_basic", {"list_status": "L,D"}, ["ts_code"])
+    codes = allCodes.ts_code
+
+    // 处理时间范围，每个股票一个月读取一次
+    days = getMarketCalendar("XSHG",start_date, end_date)
+    // days = 2009.01.01..end_date // 从2009年1月1日开始导入
+    // days = 2026.03.10..2026.03.10 // 从2009年1月1日开始导入
+    delete from loadTable("dfs://tushare_minute_db","stock_1min_k") where date(trade_time) >= start_date and date(trade_time) <= end_date
+    for (one_day in days) { // i=0
+        start_day = temporalFormat(one_day, "yyyy-MM-dd")
+        end_day = temporalFormat(one_day, "yyyy-MM-dd")
+        start_time = start_day + " 09:00:00"
+        end_time = end_day + " 19:00:00"
+
+        codes_batchs = codes.cut(29)
+        for (one_batch in codes_batchs) { // code = "000001.SZ,000002.SZ"
+            codebath_str = one_batch.concat(",")
+            p = {"ts_code": codebath_str, "freq":"1min", "start_date": start_time, "end_date": end_time}
+    
+            // 获取数据
+            res = getApiData(token, api, p, cols)
+            if(res.count()!=0){
+                replaceColumn!(res,"trade_time",timestamp(res.trade_time))
+                res = select 
+                        ts_code, 
+                        trade_time,
+                        open, 
+                        high, 
+                        low, 
+                        close,
+                        vol, 
+                        amount
+                    from res
+                update res set update_time = now()
+                loadTable("dfs://tushare_minute_db","stock_1min_k").append!(res)
+                print("Successfully imported 1min K data for stock " + codebath_str + " from " + start_day + " to " + end_day)
+                sleep(250)
+            }
+        }
+    } 
+    print("Success append data for Table " + api)
+}
+
+// 股票5分钟K线数据导入
+/*
+*  @FunctionName: appendStock5minK
+*  @Brief: 导入股票5分钟K线数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendStock5minK("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendStock5minK(token,start_date,end_date){ 
+    api = "stk_mins" 
+    cols = []
+
+    // 先获取全市场所有股票
+    allCodes = getApiData(token, "stock_basic", {"list_status": "L,D"}, ["ts_code"])
+    codes = allCodes.ts_code
+
+    // 处理时间范围，每个股票一个月读取一次
+    days = getMarketCalendar("XSHG",start_date, end_date)
+    delete from loadTable("dfs://tushare_minute_db","stock_5min_k") where date(trade_time) >= start_date and date(trade_time) <= end_date
+    for (one_day in days) { // i=0
+        start_day = temporalFormat(one_day, "yyyy-MM-dd")
+        end_day = temporalFormat(one_day, "yyyy-MM-dd")
+        start_time = start_day + " 09:00:00"
+        end_time = end_day + " 19:00:00"
+
+        codes_batchs = codes.cut(50)
+        for (one_batch in codes_batchs) { // code = "000001.SZ,000002.SZ"
+            codebath_str = one_batch.concat(",")
+            p = {"ts_code": codebath_str, "freq":"5min", "start_date": start_time, "end_date": end_time}
+
+            // 获取数据
+            res = getApiData(token, api, p, cols)
+            if(res.count()!=0){
+                replaceColumn!(res,"trade_time",timestamp(res.trade_time))
+                res = select 
+                        ts_code, 
+                        trade_time,
+                        open, 
+                        high, 
+                        low, 
+                        close,
+                        vol, 
+                        amount
+                    from res
+                update res set update_time = now()
+                loadTable("dfs://tushare_minute_db","stock_5min_k").append!(res)
+                print("Successfully imported 5min K data for stock " + codebath_str + " from " + start_day + " to " + end_day)
+            } 
+            sleep(250)
+        }
+    } 
+    print("Success append data for Table " + api)
+}
+
+// 股票15分钟K线数据导入
+/*
+*  @FunctionName: appendStock15minK
+*  @Brief: 导入股票15分钟K线数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendStock15minK("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendStock15minK(token,start_date,end_date){ // start_date = 2026.07.26, end_date = 2026.07.26
+    api = "stk_mins" 
+    cols = []
+
+    // 先获取全市场所有股票
+    allCodes = getApiData(token, "stock_basic", {"list_status": "L,D"}, ["ts_code"])
+    codes = allCodes.ts_code
+
+     // 处理时间范围，每个股票一个月读取一次
+    days = getMarketCalendar("XSHG",start_date, end_date)
+    delete from loadTable("dfs://tushare_minute_db","stock_15min_k") where date(trade_time) >= start_date and date(trade_time) <= end_date
+    for (one_day in days) { // one_day = 2026.07.16
+        start_day = temporalFormat(one_day, "yyyy-MM-dd")
+        end_day = temporalFormat(one_day, "yyyy-MM-dd")
+        start_time = start_day + " 09:00:00"
+        end_time = end_day + " 19:00:00"
+
+        codes_batchs = codes.cut(100)
+        for (one_batch in codes_batchs) { // codebath_str = "000001.SZ,000002.SZ"
+            codebath_str = one_batch.concat(",")
+            p = {"ts_code": codebath_str, "freq":"15min", "start_date": start_time, "end_date": end_time}
+    
+            // 获取数据
+            res = getApiData(token, api, p, cols)
+            if(res.count()!=0){
+                replaceColumn!(res,"trade_time",timestamp(res.trade_time))
+                res = select 
+                        ts_code, 
+                        trade_time,
+                        open, 
+                        high, 
+                        low, 
+                        close,
+                        vol, 
+                        amount
+                    from res
+                update res set update_time = now()
+                loadTable("dfs://tushare_minute_db","stock_15min_k").append!(res)
+                print("Successfully imported 15min K data for stock " + codebath_str + " from " + start_day + " to " + end_day)
+            } 
+            sleep(250)
+        }
+    } 
+    print("Success append data for Table " + api)
+}
+
+// 股票30分钟K线数据导入
+/*
+*  @FunctionName: appendStock30minK
+*  @Brief: 导入股票30分钟K线数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendStock30minK("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendStock30minK(token,start_date,end_date){ // start_date = 2026.01.01, end_date = 2026.03.02
+    api = "stk_mins" 
+    cols = []
+
+    // 先获取全市场所有股票
+    allCodes = getApiData(token, "stock_basic", {"list_status": "L,D"}, ["ts_code"])
+    codes = allCodes.ts_code
+    // 处理时间范围，每个股票一个月读取一次
+    days = getMarketCalendar("XSHG",start_date, end_date)
+    delete from loadTable("dfs://tushare_minute_db","stock_30min_k") where date(trade_time) >= start_date and date(trade_time) <= end_date
+    for (one_day in days) { // i=0
+        start_day = temporalFormat(one_day, "yyyy-MM-dd")
+        end_day = temporalFormat(one_day, "yyyy-MM-dd")
+        start_time = start_day + " 09:00:00"
+        end_time = end_day + " 19:00:00"
+
+        codes_batchs = codes.cut(100)
+        for (one_batch in codes_batchs) { // code = "000001.SZ,000002.SZ"
+            codebath_str = one_batch.concat(",")
+            p = {"ts_code": codebath_str, "freq":"30min", "start_date": start_time, "end_date": end_time}
+            // 获取数据
+            res = getApiData(token, api, p, cols)
+            if(res.count()!=0){
+                replaceColumn!(res,"trade_time",timestamp(res.trade_time))
+                res = select 
+                        ts_code, 
+                        trade_time,
+                        open, 
+                        high, 
+                        low, 
+                        close,
+                        vol, 
+                        amount
+                    from res
+                update res set update_time = now()
+                loadTable("dfs://tushare_minute_db","stock_30min_k").append!(res)
+                print("Successfully imported 30min K data for stock " + codebath_str + " from " + start_day + " to " + end_day)
+            } 
+            sleep(250)
+        }
+    } 
+    print("Success append data for Table " + api)
+}
+
+// 股票60分钟K线数据导入
+/*
+*  @FunctionName: appendStock60minK
+*  @Brief: 导入股票60分钟K线数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendStock60minK("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendStock60minK(token,start_date,end_date){ 
+    api = "stk_mins" 
+    cols = []
+
+    // 先获取全市场所有股票
+    allCodes = getApiData(token, "stock_basic", {"list_status": "L,D"}, ["ts_code"])
+    codes = allCodes.ts_code
+
+    // 处理时间范围，每个股票一个月读取一次
+    days = getMarketCalendar("XSHG",start_date, end_date)
+    delete from loadTable("dfs://tushare_minute_db","stock_60min_k") where date(trade_time) >= start_date and date(trade_time) <= end_date
+    for (one_day in days) { // i=0
+        start_day = temporalFormat(one_day, "yyyy-MM-dd")
+        end_day = temporalFormat(one_day, "yyyy-MM-dd")
+        start_time = start_day + " 09:00:00"
+        end_time = end_day + " 19:00:00"
+
+        codes_batchs = codes.cut(100)
+        for (one_batch in codes_batchs) { // code = "000001.SZ,000002.SZ"
+            codebath_str = one_batch.concat(",")
+            p = {"ts_code": codebath_str, "freq":"60min", "start_date": start_time, "end_date": end_time}
+    
+            // 获取数据
+            res = getApiData(token, api, p, cols)
+            if(res.count()!=0){
+                replaceColumn!(res,"trade_time",timestamp(res.trade_time))
+                res = select 
+                        ts_code, 
+                        trade_time,
+                        open, 
+                        high, 
+                        low, 
+                        close,
+                        vol, 
+                        amount
+                    from res
+                update res set update_time = now()
+                loadTable("dfs://tushare_minute_db","stock_60min_k").append!(res)
+                print("Successfully imported 60min K data for stock " + codebath_str + " from " + start_day + " to " + end_day)
+            }
+            sleep(250)
+        }
+    } 
+    print("Success append data for Table " + api)
+}
+
+// 股票复权因子数据导入
+/*
+*  @FunctionName: appendStockAdjFactor
+*  @Brief: 导入股票复权因子数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendStockAdjFactor("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendStockAdjFactor(token,start_date,end_date){ // start_date = 2000.01.01, end_date = 2026.03.02
+    api = "adj_factor" 
+    cols = []
+    delete from loadTable("dfs://tushare_daily_db","stock_adj_factor") where trade_date >= start_date and trade_date <= end_date
+    for (oneDate in getMarketCalendar("SSE", start_date, end_date)){  
+        trade_date = temporalFormat(oneDate, "yyyyMMdd")
+
+        p = {"trade_date": trade_date} 
+    
+        // 获取数据
+        res = getApiData(token, api, p, cols)
+        if(res.count()!=0){
+        
+            replaceColumn!(res,"trade_date",temporalParse(res.trade_date,"yyyyMMdd"))
+            
+            update res set update_time = now()
+            
+            loadTable("dfs://tushare_daily_db","stock_adj_factor").append!(res)
+            print("Successfully imported adj factor data for date " + trade_date)
+        } 
+    }
+    print("Success append data for Table " + api)
+}
+
+// 股票日线数据导入
+/*
+*  @FunctionName: appendStockDaily
+*  @Brief: 导入股票日线数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendStockDaily("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendStockDaily(token,start_date,end_date){ // start_date = 2000.01.01, end_date = 2026.03.02
+    api = "daily" 
+    cols = []
+    delete from loadTable("dfs://tushare_daily_db","stock_daily") where trade_date >= start_date and trade_date <= end_date
+    for (oneDate in getMarketCalendar("SSE", start_date, end_date)){  
+        trade_date = temporalFormat(oneDate, "yyyyMMdd")
+
+        p = {"trade_date": trade_date} 
+    
+        // 获取数据
+        res = getApiData(token, api, p, cols)
+        if(!res.isVoid() and res.count()!=0){
+    
+            replaceColumn!(res,"trade_date",temporalParse(res.trade_date,"yyyyMMdd"))
+            
+            update res set update_time = now()
+            
+            loadTable("dfs://tushare_daily_db","stock_daily").append!(res)
+
+            print("Successfully imported daily data for date " + trade_date + " for count:" + string(res.count()))
+        } else{
+            print("no data for date: " + trade_date)
+        }
+    } 
+    print("Success append data for Table " + api)
+}
+
+def appendStockBakDaily(token,start_date,end_date){ 
+    api = "bak_daily" 
+    cols = []
+    delete from loadTable("dfs://tushare_daily_db","stock_bak_daily") where trade_date >= start_date and trade_date <= end_date
+    for (oneDate in getMarketCalendar("SSE", start_date, end_date)){  
+        trade_date = temporalFormat(oneDate, "yyyyMMdd")
+
+        p = {"trade_date": trade_date} 
+    
+        // 获取数据
+        try{
+            res = getApiData(token, api, p, cols)
+            if(res.count()!=0){
+            replaceColumn!(res,"trade_date",temporalParse(res.trade_date,"yyyyMMdd"))
+        
+            update res set update_time = now()
+            
+            loadTable("dfs://tushare_daily_db","stock_bak_daily").append!(res)
+            }
+        }catch(ex){
+            print("no data for date: " + trade_date)
+        }
+    } 
+    print("Success append data for Table " + api)
+}
+
+
+// 股票日线数据（前复权）导入
+/*
+*  @FunctionName: appendStockDailyPrev
+*  @Brief: 导入股票日线数据（后复权）
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendStockDailyPrev("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendStockDailyPrev(token,start_date1,end_date){ 
+
+    truncate("dfs://tushare_daily_db","stock_daily_prev")
+    // 使用py插件，加载tushare模块
+    ts = py::import("tushare")
+    py::setGlobalConfig("autoConvert", true);
+
+    // 设置tushare的token
+    py::call(ts, "set_token", py::str(token))
+
+    // 初始化 pro 接口
+    pro = py::call(ts, "pro_api",py::str(token));
+
+    field_type_mapping = {
+        "ts_code": STRING,
+        "trade_date": STRING,
+        "open": DOUBLE,
+        "high": DOUBLE,
+        "low": DOUBLE,
+        "close": DOUBLE,
+        "pre_close": DOUBLE,
+        "change": DOUBLE,
+        "pct_chg": DOUBLE,
+        "vol": DOUBLE,
+        "amount": DOUBLE,
+        "turnover_rate": DOUBLE,
+        "volume_ratio": DOUBLE,
+        "adj_factor": DOUBLE,
+        "ma5": DOUBLE,
+        "ma_v_5": DOUBLE,
+        "ma20": DOUBLE,
+        "ma_v_20": DOUBLE,
+        "ma50": DOUBLE,
+        "ma_v_50": DOUBLE
+    }
+
+    basic = py::call(pro, "stock_basic", ["L,D","ts_code"]);
+    allCodes = py::fromPandas(basic);
+    codes = allCodes.ts_code
+    
+    // 处理时间范围，每个股票20年读取一次
+    start_date = 2000.01.01
+    days = start_date..end_date
+    yearBeginDays = yearBegin(days).distinct().sort!()
+    batchs = size(yearBeginDays)/20
+    for (i in 0..batchs){  // i = 0
+        startIndex = i*20
+        endIndex = min((i+1)*20, size(yearBeginDays))
+        yearDays = yearBeginDays[startIndex:endIndex]
+        start_day = temporalFormat(max(yearDays[0], start_date), "yyyyMMdd")
+        end_day = temporalFormat(min(yearEnd(yearDays[size(yearDays)-1]), end_date), "yyyyMMdd")
+
+        for (code in codes) {  // code = "600508.SH"
+           // 获取数据，添加重试逻辑，最多重试10次
+            retry_count = 0
+            max_retries = 10
+            success = false
+            resTemp = NULL
+            // start_day = "20260610"
+            // end_day = "20260610"
+            do{
+                try {
+                    resTemp = py::call(ts, "pro_bar", code,NULL,start_day,end_day,"D","E","","qfq",[5,20,50],["tor","vr"],true);
+                    success = true
+                } catch(ex) {
+                    retry_count = retry_count + 1
+                    print("Retry " + retry_count + " failed for code " + code + ": " + ex)
+                    if(retry_count >= max_retries) {
+                        print("Failed to get data for code " + code + " after " + max_retries + " retries, exiting...")
+                        return
+                    }
+                    sleep(5000)
+                }
+            } while(retry_count < max_retries and !success) 
+    
+            try{
+                res = py::fromPandas(resTemp,field_type_mapping)
+                if(res.count()!=0){
+                    replaceColumn!(res,"trade_date",temporalParse(res.trade_date,"yyyyMMdd"))
+
+                    res.reorderColumns!(["ts_code", "trade_date", "open", "high", "low", "close", "pre_close", "change", "pct_chg", "vol", "amount", "turnover_rate", "volume_ratio", "adj_factor", "ma5", "ma_v_5", "ma20", "ma_v_20", "ma50", "ma_v_50"])
+
+                    update res set update_time = now()
+
+                    print("Successfully imported daily prev data for code " + code+ " for " + start_day + " to " + end_day)
+                    loadTable("dfs://tushare_daily_db","stock_daily_prev").append!(res)
+                }
+            }catch(ex) {}
+        }
+    }
+}
+
+// 股票日线数据（后复权）导入
+/*
+*  @FunctionName: appendStockDailyBack
+*  @Brief: 导入股票日线数据（前复权）
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendStockDailyBack("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendStockDailyBack(token,start_date,end_date){ 
+   
+    // 使用py插件，加载tushare模块
+    ts = py::import("tushare")
+    py::setGlobalConfig("autoConvert", true);
+
+    // 设置tushare的token
+    py::call(ts, "set_token", py::str(token))
+
+    pro = py::call(ts, "pro_api",py::str(token));
+
+    // 获取股票基本信息，主要是为了获取ts_code
+    basic = py::call(pro, "stock_basic", ["L,D","ts_code"]);
+    allCodes = py::fromPandas(basic);
+    codes = allCodes.ts_code
+    delete from loadTable("dfs://tushare_daily_db","stock_daily_back") where trade_date >= start_date and trade_date <= end_date
+
+    field_type_mapping = {
+        "ts_code": STRING,
+        "trade_date": STRING,
+        "open": DOUBLE,
+        "high": DOUBLE,
+        "low": DOUBLE,
+        "close": DOUBLE,
+        "pre_close": DOUBLE,
+        "change": DOUBLE,
+        "pct_chg": DOUBLE,
+        "vol": DOUBLE,
+        "amount": DOUBLE,
+        "turnover_rate": DOUBLE,
+        "volume_ratio": DOUBLE,
+        "adj_factor": DOUBLE,
+        "ma5": DOUBLE,
+        "ma_v_5": DOUBLE,
+        "ma20": DOUBLE,
+        "ma_v_20": DOUBLE,
+        "ma50": DOUBLE,
+        "ma_v_50": DOUBLE
+    }
+
+    // 处理时间范围，每个股票20年读取一次
+    // start_date = 2026.03.10
+    // end_date = 2026.03.10
+    // days = 2026.03.10..2026.03.10
+    days = start_date..end_date
+    yearBeginDays = yearBegin(days).distinct().sort!()
+    batchs = size(yearBeginDays)/20
+    for (i in 0..batchs){   // i=0
+        startIndex = i*20
+        endIndex = min((i+1)*20, size(yearBeginDays))
+        yearDays = yearBeginDays[startIndex:endIndex]
+        start_day = temporalFormat(max(yearDays[0], start_date), "yyyyMMdd")
+        end_day = temporalFormat(min(yearEnd(yearDays[size(yearDays)-1]), end_date), "yyyyMMdd")
+
+        for (code in codes) {  
+            // 获取数据，添加重试逻辑，最多重试10次
+            retry_count = 0
+            max_retries = 10
+            success = false
+            resTemp = NULL
+            
+            do{
+                try {
+                    resTemp = py::call(ts, "pro_bar", code,NULL,start_day,end_day,"D","E","","hfq",[5,20,50],["tor","vr"],true);
+                    success = true
+                } catch(ex) {
+                    retry_count = retry_count + 1
+                    print("Retry " + retry_count + " failed for code " + code + ": " + ex)
+                    if(retry_count >= max_retries) {
+                        print("Failed to get data for code " + code + " after " + max_retries + " retries, exiting...")
+                        return
+                    }
+                    sleep(1000)
+                }
+            } while(retry_count < max_retries and !success) 
+    
+            try{
+                res = py::fromPandas(resTemp,field_type_mapping)
+                if(res.count()!=0){
+                    replaceColumn!(res,"trade_date",temporalParse(res.trade_date,"yyyyMMdd"))
+
+                    res.reorderColumns!(["ts_code", "trade_date", "open", "high", "low", "close", "pre_close", "change", "pct_chg", "vol", "amount", "turnover_rate", "volume_ratio", "adj_factor", "ma5", "ma_v_5", "ma20", "ma_v_20", "ma50", "ma_v_50"])
+
+                    update res set update_time = now()
+                    print("Successfully imported daily back data for code " + code+ " for " + start_day + " to " + end_day)
+                    loadTable("dfs://tushare_daily_db","stock_daily_back").append!(res)
+                }
+            }catch(ex) {}
+        }
+    }
+}
+
+// 股票港股通每日成交数据导入
+/*
+*  @FunctionName: appendStockGgtDaily
+*  @Brief: 导入股票港股通每日成交统计数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendStockGgtDaily("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendStockGgtDaily(token,start_date,end_date){ 
+    api = "ggt_daily" 
+    cols = ["trade_date", "buy_amount", "buy_volume", "sell_amount", "sell_volume"]
+    delete from loadTable("dfs://tushare_daily_db","stock_ggt_daily") where trade_date >= start_date and trade_date <= end_date
+
+    days = start_date..end_date
+    // days = 2026.03.10..2026.03.10
+    yearBeginDays = yearBegin(days).distinct().sort!()
+    len = size(yearBeginDays)
+    for (i in 0..(len-1)) { // i=26
+        start_day = temporalFormat(max(yearBeginDays[i], start_date), "yyyyMMdd")
+        end_day = temporalFormat(min(yearEnd(yearBeginDays[i]), end_date), "yyyyMMdd")
+
+        p = {"start_date": start_day, "end_date": end_day} 
+        // 获取数据
+        res = getApiData(token, api, p, cols)
+        if(res.count()!=0){
+            res.reorderColumns!(cols)
+            
+            replaceColumn!(res,"trade_date",temporalParse(res.trade_date,"yyyyMMdd"))
+            update res set update_time = now()
+            loadTable("dfs://tushare_daily_db","stock_ggt_daily").append!(res)
+            print("Successfully imported ggt daily data from " + start_day + " to " + end_day)
+        }
+    }  
+    
+    print("Success append data for Table " + api)
+}
+
+// 股票港股通月度成交数据导入
+/*
+*  @FunctionName: appendStockGgtMonthly
+*  @Brief: 导入股票港股通每月成交统计数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendStockGgtMonthly("your_token", 2025.01.01, 2025.02.01)
+*/
+/** 
+    建议每次全量导入，不建议增量导入 
+    直接传入日期 2000.01.01 到 today()
+*/
+def appendStockGgtMonthly(token,start_date,end_date){ 
+    api = "ggt_monthly" 
+    cols = ["month", "day_buy_amt", "day_buy_vol", "day_sell_amt", "day_sell_vol","total_buy_amt", "total_buy_vol", "total_sell_amt", "total_sell_vol"]
+
+    // start_date = 2026.01.10
+    // end_date = 2026.03.10
+    days = start_date..end_date
+    yearBeginDays = yearBegin(days).distinct().sort!()
+    delete from loadTable("dfs://tushare_daily_db","stock_ggt_monthly") where trade_date >= start_date and trade_date <= end_date
+    for (oneDate in yearBeginDays){  // oneDate = 2026.01.01
+        start_day = temporalFormat(max(month(oneDate), month(start_date)), "yyyyMM")
+        end_day = temporalFormat(min(month(yearEnd(oneDate)), month(end_date)), "yyyyMM")
+        if (end_date < monthEnd(end_date)) {
+            end_day = temporalFormat(min(month(yearEnd(oneDate)), month(end_date)-1), "yyyyMM")
+        }
+        start_time = start_day
+        end_time = end_day 
+
+        if (start_time <= end_time) {
+            p = {"start_month": start_time, "end_month": end_time} 
+
+        try {
+            res = getApiData(token, api, p, cols)
+            if(res.count()!=0){
+                replaceColumn!(res,"month",temporalParse(res.month,"yyyyMM"))
+            
+                update res set update_time = now()
+                
+                loadTable("dfs://tushare_daily_db","stock_ggt_monthly").append!(res)
+                print("Successfully imported ggt monthly data from " + start_time + " to " + end_time)
+                }
+            } catch(ex) {
+                print("no data for period: " + start_time + " to " + end_time)
+            }
+        }  
+    }  
+    print("Success append data for Table " + api)
+}
+
+// 股票港股通十大成交股数据导入
+/*
+*  @FunctionName: appendStockGgtTop10
+*  @Brief: 导入股票港股通十大成交股数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendStockGgtTop10("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendStockGgtTop10(token,start_date,end_date){ 
+    api = "ggt_top10" 
+    cols = ["trade_date", "ts_code", "name", "close", "p_change", "rank", "market_type", "amount", "net_amount", "sh_amount", "sh_net_amount", "sh_buy", "sh_sell", "sz_amount", "sz_net_amount", "sz_buy", "sz_sell"]
+    
+    delete from loadTable("dfs://tushare_daily_db","stock_ggt_top10") where trade_date >= start_date and trade_date <= end_date
+    for (oneDate in getMarketCalendar("SSE", start_date, end_date)){  
+        trade_date = temporalFormat(oneDate, "yyyyMMdd")
+
+        p = {"trade_date": trade_date} 
+    
+        // 获取数据
+        res = getApiData(token, api, p, cols)
+        if(res.count()!=0){
+        res.reorderColumns!(cols)
+        
+        replaceColumn!(res,"trade_date",temporalParse(res.trade_date,"yyyyMMdd"))
+        replaceColumn!(res,"rank",int(res.rank))
+        replaceColumn!(res,"market_type",string(res.market_type))
+        
+        update res set update_time = now()
+        
+        loadTable("dfs://tushare_daily_db","stock_ggt_top10").append!(res)
+        print("Successfully imported ggt top10 data for date " + trade_date)
+        }
+    } 
+    print("Success append data for Table " + api)
+}
+
+// 股票沪深港通十大成交股数据导入
+/*
+*  @FunctionName: appendStockHsgtTop10
+*  @Brief: 导入股票沪深股通十大成交股数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendStockHsgtTop10("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendStockHsgtTop10(token,start_date,end_date){ 
+    api = "hsgt_top10" 
+    cols = ["trade_date", "ts_code", "name", "close", "change", "rank", "market_type", "amount", "net_amount", "buy", "sell"]
+    delete from loadTable("dfs://tushare_daily_db","stock_hsgt_top10") where trade_date >= start_date and trade_date <= end_date
+    for (oneDate in getMarketCalendar("SSE", start_date, end_date)){  
+        trade_date = temporalFormat(oneDate, "yyyyMMdd")
+
+        p = {"trade_date": trade_date} 
+    
+        // 获取数据
+        res = getApiData(token, api, p, cols)
+        if(!res.isVoid() and res.count() != 0){
+            
+            replaceColumn!(res,"trade_date",temporalParse(res.trade_date,"yyyyMMdd"))
+            replaceColumn!(res,"rank",int(res.rank))
+            replaceColumn!(res,"market_type",string(res.market_type))
+            
+            update res set update_time = now()
+
+            loadTable("dfs://tushare_daily_db","stock_hsgt_top10").append!(res)
+            print("Successfully imported hsgt top10 data for date " + trade_date)
+        } else {
+            print("no data for date: " + trade_date)
+        }
+    } 
+    print("Success append data for Table " + api)
+}
+
+// 股票涨跌停数据导入
+/*
+*  @FunctionName: appendStockLimit
+*  @Brief: 导入股票每日涨跌停价格数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendStockLimit("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendStockLimit(token,start_date,end_date){ 
+    api = "stk_limit" 
+    cols = ["trade_date", "ts_code", "pre_close", "up_limit", "down_limit"]
+    delete from loadTable("dfs://tushare_daily_db","stock_limit") where trade_date >= start_date and trade_date <= end_date
+    for (oneDate in getMarketCalendar("SSE", start_date, end_date)){  
+        trade_date = temporalFormat(oneDate, "yyyyMMdd")
+
+        p = {"trade_date": trade_date} 
+    
+        // 获取数据
+        res = getApiData(token, api, p, cols)
+        if(res.count()!=0){
+            replaceColumn!(res,"trade_date",temporalParse(res.trade_date,"yyyyMMdd"))
+            
+            update res set update_time = now()
+            
+            loadTable("dfs://tushare_daily_db","stock_limit").append!(res)
+            print("Successfully imported limit data for date " + trade_date)
+        }
+    } 
+    print("Success append data for Table " + api)
+}
+
+// 股票周线数据导入
+/*
+*  @FunctionName: appendStockWeekly
+*  @Brief: 导入股票周线数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendStockWeekly("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendStockWeekly(token,start_date,end_date){ 
+    api = "weekly" 
+    cols = []
+    delete from loadTable("dfs://tushare_daily_db","stock_weekly") where trade_date >= start_date and trade_date <= end_date
+    for (oneDate in getMarketCalendar("SSE", start_date, end_date)){  
+
+        if (!isLastTradingDayOfWeek(oneDate, market="XSHG")) {
+            continue
+        }
+        trade_date = temporalFormat(oneDate, "yyyyMMdd")
+
+        p = {"trade_date": trade_date} 
+        
+        try {
+            // 获取数据
+            res = getApiData(token, api, p, cols)
+            if(res.count()!=0){
+                replaceColumn!(res,"trade_date",temporalParse(res.trade_date,"yyyyMMdd"))
+            
+                update res set update_time = now()
+                
+                loadTable("dfs://tushare_daily_db","stock_weekly").append!(res)
+                print("Successfully imported weekly data for date " + trade_date)
+            }
+        } catch(ex) {
+            if (ex[1].endsWith("X can't be an empty tuple.")) {
+                print("No data returned for date " + trade_date + ", skipping.")
+            }
+        }  
+    } 
+    print("Success append data for Table " + api)
+}
+
+// 股票月线数据导入
+/*
+*  @FunctionName: appendStockMonthly
+*  @Brief: 导入股票月线数据
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendStockMonthly("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendStockMonthly(token,start_date,end_date){ 
+    api = "monthly" 
+    cols = []
+    delete from loadTable("dfs://tushare_daily_db","stock_monthly") where trade_date >= start_date and trade_date <= end_date
+    for (oneDate in getMarketCalendar("SSE", start_date, end_date)){  
+        if (!isLastTradingDayOfMonth(oneDate, "XSHG")) {
+            continue
+        }
+
+        trade_date = temporalFormat(oneDate, "yyyyMMdd")
+        p = {"trade_date": trade_date} 
+        
+        try {
+            // 获取数据
+            res = getApiData(token, api, p, cols)
+            if(res.count()!=0){
+            replaceColumn!(res,"trade_date",temporalParse(res.trade_date,"yyyyMMdd"))
+        
+            update res set update_time = now()
+            
+            loadTable("dfs://tushare_daily_db","stock_monthly").append!(res)
+            print("Successfully imported monthly data for date " + trade_date)
+            }
+        } catch(ex) {
+            if (ex[1].endsWith("X can't be an empty tuple.")) {
+                // print("No data returned for date " + trade_date + ", skipping.")
+            }
+        }  
+    } 
+    print("Success append data for Table " + api)
+}
+
+// 股票月线数据（后复权）导入
+/*
+*  @FunctionName: appendStockMonthlyBack
+*  @Brief: 导入股票月线数据（后复权）
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendStockMonthlyBack("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendStockMonthlyBack(token,start_date,end_date){ 
+    delete from loadTable("dfs://tushare_daily_db","stock_monthly_back") where trade_date >= start_date and trade_date <= end_date
+    // 使用py插件，加载tushare模块
+    ts = py::import("tushare")
+    py::setGlobalConfig("autoConvert", true);
+
+    // 设置tushare的token
+    py::call(ts, "set_token", py::str(token))
+
+    // 初始化 pro 接口
+    pro = py::call(ts, "pro_api",py::str(token));
+
+    // 字段
+    field_type_mapping = {
+        "ts_code": STRING,
+        "trade_date": STRING,
+        "open": DOUBLE,
+        "high": DOUBLE,
+        "low": DOUBLE,
+        "close": DOUBLE,
+        "pre_close": DOUBLE,
+        "change": DOUBLE,
+        "pct_chg": DOUBLE,
+        "vol": DOUBLE,
+        "amount": DOUBLE,
+        "adj_factor": DOUBLE,
+        "ma5": DOUBLE,
+        "ma_v_5": DOUBLE,
+        "ma20": DOUBLE,
+        "ma_v_20": DOUBLE,
+        "ma50": DOUBLE,
+        "ma_v_50": DOUBLE
+    }
+
+    basic = py::call(pro, "stock_basic", ["L,D","ts_code"]);
+    allCodes = py::fromPandas(basic);
+    codes = allCodes.ts_code
+
+    // 处理时间范围，每个股票20年读取一次
+    // start_date = 2000.01.01
+    // end_date = 2026.07.22
+    days = start_date..end_date
+    if (size(days) == 1 and !(isLastTradingDayOfMonth(days[0], "XSHG"))) {
+        return 
+    }
+    yearBeginDays = yearBegin(days).distinct().sort!()
+    batchs = size(yearBeginDays)/30
+    for (i in 0..batchs){  // i=0
+        startIndex = i*30
+        endIndex = min((i+1)*30, size(yearBeginDays))
+        yearDays = yearBeginDays[startIndex:endIndex]
+        start_day = temporalFormat(max(yearDays[0], start_date), "yyyyMMdd")
+        end_day = temporalFormat(min(yearEnd(yearDays[size(yearDays)-1]), end_date), "yyyyMMdd")
+
+        for (code in codes) {   // start_day = "20260330"  end_day = "20260330"
+            // 获取数据，添加重试逻辑，最多重试10次
+            // code = "000001.SZ"
+            retry_count = 0
+            max_retries = 10
+            success = false
+            resTemp = NULL
+            
+            do{
+                try {
+                    resTemp = py::call(ts, "pro_bar", code,NULL,start_day,end_day,"M","E","","hfq",[5,20,50],["tor","vr"],true);
+                    success = true
+                } catch(ex) {
+                    retry_count = retry_count + 1
+                    print("Retry " + retry_count + " failed for code " + code + ": " + ex)
+                    if(retry_count >= max_retries) {
+                        print("Failed to get data for code " + code + " after " + max_retries + " retries, exiting...")
+                        return
+                    }
+                    sleep(5000)
+                }
+            } while(retry_count < max_retries and !success) 
+    
+            try{
+                res = py::fromPandas(resTemp,field_type_mapping)
+                if(res.count()!=0){
+                    replaceColumn!(res,"trade_date",temporalParse(res.trade_date,"yyyyMMdd"))
+
+                    res.reorderColumns!(["ts_code", "trade_date", "open", "high", "low", "close", "pre_close", "change", "pct_chg", "vol", "amount", "adj_factor", "ma5", "ma_v_5", "ma20", "ma_v_20", "ma50", "ma_v_50"])
+
+                    update res set update_time = now()
+                    loadTable("dfs://tushare_daily_db","stock_monthly_back").append!(res)
+                }
+            } catch(ex) {
+            }
+        }
+    }
+}
+
+// 股票月线数据（前复权）导入
+/*
+*  @FunctionName: appendStockMonthlyPrev
+*  @Brief: 导入股票月线数据（前复权）
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendStockMonthlyPrev("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendStockMonthlyPrev(token,start_date1,end_date){ 
+    truncate("dfs://tushare_daily_db","stock_monthly_prev")
+    // 使用py插件，加载tushare模块
+    ts = py::import("tushare")
+    py::setGlobalConfig("autoConvert", true);
+
+    // 设置tushare的token
+    py::call(ts, "set_token", py::str(token))
+
+    // 初始化 pro 接口
+    pro = py::call(ts, "pro_api",py::str(token));
+
+    // 获取股票基本信息，主要是为了获取ts_code
+    basic = py::call(pro, "stock_basic", ["L,D","ts_code"]);
+    allCodes = py::fromPandas(basic);
+    codes = allCodes.ts_code
+    
+    // // 先获取全市场所有股票
+    // allCodes = getApiData(token, "stock_basic", {"list_status": "L"}, ["ts_code"])
+    // codes = allCodes.ts_code
+    field_type_mapping = {
+        "ts_code": STRING,
+        "trade_date": STRING,
+        "open": DOUBLE,
+        "high": DOUBLE,
+        "low": DOUBLE,
+        "close": DOUBLE,
+        "pre_close": DOUBLE,
+        "change": DOUBLE,
+        "pct_chg": DOUBLE,
+        "vol": DOUBLE,
+        "amount": DOUBLE,
+        "adj_factor": DOUBLE,
+        "ma5": DOUBLE,
+        "ma_v_5": DOUBLE,
+        "ma20": DOUBLE,
+        "ma_v_20": DOUBLE,
+        "ma50": DOUBLE,
+        "ma_v_50": DOUBLE
+    }
+    // 处理时间范围，每个股票20年读取一次
+    start_date = 2000.01.01
+    days = start_date..end_date
+    if (size(days) == 1 and !(isLastTradingDayOfMonth(days[0], "XSHG"))) {
+        return
+    }
+    yearBeginDays = yearBegin(days).distinct().sort!()
+    batchs = size(yearBeginDays)/30
+    for (i in 0..batchs){  
+        startIndex = i*30
+        endIndex = min((i+1)*30, size(yearBeginDays))
+        yearDays = yearBeginDays[startIndex:endIndex]
+        start_day = temporalFormat(max(yearDays[0], start_date), "yyyyMMdd")
+        end_day = temporalFormat(min(yearEnd(yearDays[size(yearDays)-1]), end_date), "yyyyMMdd") 
+        for (code in codes) {  
+            // 获取数据，添加重试逻辑，最多重试10次
+            retry_count = 0
+            max_retries = 10
+            success = false
+            resTemp = NULL
+            
+            do{
+                try {
+                    resTemp = py::call(ts, "pro_bar", code,NULL,start_day,end_day,"M","E","","qfq",[5,20,50],["tor","vr"],true);
+                    success = true
+                } catch(ex) {
+                    retry_count = retry_count + 1
+                    print("Retry " + retry_count + " failed for code " + code + ": " + ex)
+                    if(retry_count >= max_retries) {
+                        print("Failed to get data for code " + code + " after " + max_retries + " retries, exiting...")
+                        return
+                    }
+                    sleep(1000)
+                }
+            } while(retry_count < max_retries and !success) 
+    
+            try{
+                res = py::fromPandas(resTemp,field_type_mapping)
+                if(res.count()!=0){
+                    replaceColumn!(res,"trade_date",temporalParse(res.trade_date,"yyyyMMdd"))
+
+                    res.reorderColumns!(["ts_code", "trade_date", "open", "high", "low", "close", "pre_close", "change", "pct_chg", "vol", "amount", "adj_factor", "ma5", "ma_v_5", "ma20", "ma_v_20", "ma50", "ma_v_50"])
+
+                    update res set update_time = now()
+                    print("Successfully imported monthly prev data for code " + code+ " for " + start_day + " to " + end_day)
+                    loadTable("dfs://tushare_daily_db","stock_monthly_prev").append!(res)
+                }
+            }catch(ex){
+                // print("Error: " + ex)
+            }
+        }
+    }
+}
+
+// 股票周线数据（后复权）导入
+/*
+*  @FunctionName: appendStockWeeklyBack
+*  @Brief: 导入股票周线数据（后复权）
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendStockWeeklyBack("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendStockWeeklyBack(token,start_date,end_date){ 
+    delete from loadTable("dfs://tushare_daily_db","stock_weekly_back") where trade_date >= start_date and trade_date <= end_date
+    // 使用py插件，加载tushare模块
+    ts = py::import("tushare")
+    py::setGlobalConfig("autoConvert", true);
+
+    // 设置tushare的token
+    py::call(ts, "set_token", py::str(token))
+
+    // 初始化 pro 接口
+    pro = py::call(ts, "pro_api",py::str(token));
+
+    field_type_mapping = {
+        "ts_code": STRING,
+        "trade_date": STRING,
+        "open": DOUBLE,
+        "high": DOUBLE,
+        "low": DOUBLE,
+        "close": DOUBLE,
+        "pre_close": DOUBLE,
+        "change": DOUBLE,
+        "pct_chg": DOUBLE,
+        "vol": DOUBLE,
+        "amount": DOUBLE,
+        "adj_factor": DOUBLE,
+        "ma5": DOUBLE,
+        "ma_v_5": DOUBLE,
+        "ma20": DOUBLE,
+        "ma_v_20": DOUBLE,
+        "ma50": DOUBLE,
+        "ma_v_50": DOUBLE
+    }
+
+
+    basic = py::call(pro, "stock_basic", ["L,D","ts_code"]);
+
+    allCodes = py::fromPandas(basic);
+    codes = allCodes.ts_code
+
+    // 处理时间范围，每个股票20年读取一次
+    days = start_date..end_date
+    if (size(days) == 1 and !(isLastTradingDayOfWeek(days[0], "XSHG"))) {
+        return
+    }
+    yearBeginDays = yearBegin(days).distinct().sort!()
+    batchs = size(yearBeginDays)/30
+    for (i in 0..batchs){  
+        startIndex = i*30
+        endIndex = min((i+1)*30, size(yearBeginDays))
+        yearDays = yearBeginDays[startIndex:endIndex]
+        start_day = temporalFormat(max(yearDays[0], start_date), "yyyyMMdd")
+        end_day = temporalFormat(min(yearEnd(yearDays[size(yearDays)-1]), end_date), "yyyyMMdd")
+
+        for (code in codes) {  
+            // 获取数据，添加重试逻辑，最多重试10次
+            retry_count = 0
+            max_retries = 10
+            success = false
+            resTemp = NULL
+            
+            do{
+                try {
+                    resTemp = py::call(ts, "pro_bar", code,NULL,start_day,end_day,"W","E","","hfq",[5,20,50],["tor","vr"],true);
+                    sleep(50)
+                    success = true
+                } catch(ex) {
+                    retry_count = retry_count + 1
+                    print("Retry " + retry_count + " failed for code " + code + ": " + ex)
+                    if(retry_count >= max_retries) {
+                        print("Failed to get data for code " + code + " after " + max_retries + " retries, exiting...")
+                        return
+                    }
+                    sleep(5000)
+                }
+            } while(retry_count < max_retries and !success) 
+    
+            try{
+                res = py::fromPandas(resTemp,field_type_mapping)
+                if(res.count()!=0){
+                    replaceColumn!(res,"trade_date",temporalParse(res.trade_date,"yyyyMMdd"))
+
+                    res.reorderColumns!(["ts_code", "trade_date", "open", "high", "low", "close", "pre_close", "change", "pct_chg", "vol", "amount", "adj_factor", "ma5", "ma_v_5", "ma20", "ma_v_20", "ma50", "ma_v_50"])
+
+                    update res set update_time = now()
+                    print("Successfully imported weekly back data for code " + code+ " for " + start_day + " to " + end_day)
+                    loadTable("dfs://tushare_daily_db","stock_weekly_back").append!(res)
+                }
+            }catch(ex){
+                // print("Error: " + ex)
+            }
+        }
+    }
+}
+
+// 股票周线数据（前复权）导入
+/*
+*  @FunctionName: appendStockWeeklyPrev
+*  @Brief: 导入股票周线数据（前复权）
+*  @Param: token - Tushare API令牌
+*  @Param: start_date - 开始日期，格式为YYYY.MM.DD
+*  @Param: end_date - 结束日期，格式为YYYY.MM.DD
+*  @Return: None
+*  @SampleUsage: appendStockWeeklyPrev("your_token", 2025.01.01, 2025.02.01)
+*/
+def appendStockWeeklyPrev(token,start_date1,end_date){ 
+
+    truncate("dfs://tushare_daily_db","stock_weekly_prev")
+
+    // 使用py插件，加载tushare模块
+    ts = py::import("tushare")
+    py::setGlobalConfig("autoConvert", true);
+
+    // 设置tushare的token
+    py::call(ts, "set_token", py::str(token))
+
+    // 初始化 pro 接口
+    pro = py::call(ts, "pro_api",py::str(token));
+    // 获取股票基本信息，主要是为了获取ts_code
+    basic = py::call(pro, "stock_basic", ["L,D","ts_code"]);
+    allCodes = py::fromPandas(basic);
+    codes = allCodes.ts_code
+
+    field_type_mapping = {
+        "ts_code": STRING,
+        "trade_date": STRING,
+        "open": DOUBLE,
+        "high": DOUBLE,
+        "low": DOUBLE,
+        "close": DOUBLE,
+        "pre_close": DOUBLE,
+        "change": DOUBLE,
+        "pct_chg": DOUBLE,
+        "vol": DOUBLE,
+        "amount": DOUBLE,
+        "adj_factor": DOUBLE,
+        "ma5": DOUBLE,
+        "ma_v_5": DOUBLE,
+        "ma20": DOUBLE,
+        "ma_v_20": DOUBLE,
+        "ma50": DOUBLE,
+        "ma_v_50": DOUBLE
+    }
+    // 处理时间范围，每个股票20年读取一次
+    // days = 2026.07.14..2026.07.14
+    // start_date = 2026.07.14
+    // end_date = 2026.07.14
+    start_date = 2000.01.01
+    days = start_date..end_date
+    if (size(days) == 1 and !(isLastTradingDayOfWeek(days[0], "XSHG"))) {
+        continue
+    }
+    yearBeginDays = yearBegin(days).distinct().sort!()
+    batchs = size(yearBeginDays)/30
+    for (i in 0..batchs){  // i=0
+        startIndex = i*30
+        endIndex = min((i+1)*30, size(yearBeginDays))
+        yearDays = yearBeginDays[startIndex:endIndex]
+        start_day = temporalFormat(max(yearDays[0], start_date), "yyyyMMdd")
+        end_day = temporalFormat(min(yearEnd(yearDays[size(yearDays)-1]), end_date), "yyyyMMdd")
+
+        for (code in codes) {  // code = "000001.SZ"
+            // 获取数据，添加重试逻辑，最多重试10次
+            retry_count = 0
+            max_retries = 10
+            success = false
+            resTemp = NULL
+            
+            do{
+                try {
+                    resTemp = py::call(ts, "pro_bar", code,NULL,start_day,end_day,"W","E","","qfq",[5,20,50],["tor","vr"],true);
+                    success = true
+                } catch(ex) {
+                    retry_count = retry_count + 1
+                    print("Retry " + retry_count + " failed for code " + code + ": " + ex)
+                    if(retry_count >= max_retries) {
+                        print("Failed to get data for code " + code + " after " + max_retries + " retries, exiting...")
+                        return
+                    }
+                    sleep(5000)
+                }
+            } while(retry_count < max_retries and !success) 
+            
+    
+            try {
+                res = py::fromPandas(resTemp,field_type_mapping)
+
+                if(res.count()!=0){
+                    replaceColumn!(res,"trade_date",temporalParse(res.trade_date,"yyyyMMdd"))
+
+                    res.reorderColumns!(["ts_code", "trade_date", "open", "high", "low", "close", "pre_close", "change", "pct_chg", "vol", "amount", "adj_factor", "ma5", "ma_v_5", "ma20", "ma_v_20", "ma50", "ma_v_50"])
+
+                    update res set update_time = now()
+                    print("Successfully imported weekly prev data for code " + code+ " for " + start_day + " to " + end_day)
+                    loadTable("dfs://tushare_daily_db","stock_weekly_prev").append!(res)
+                }
+            } catch (ex) {
+            }  
+        }
+    }
+}
+
+
+// 股票参考数据
+/*
+*  @FunctionName: appendBlockTrade
+*  @Brief: Pull tushare api [block_trade] and append to block_trade
+*  @Param: token, start_date, end_date
+*  @Return: appended row count
+*  @SampleUsage: appendBlockTrade(token, start_date, end_date)
+*/
+
+def appendBlockTrade(token, start_date, end_date){
+    dbName = "dfs://tushare_basic_db"
+    tableName = "block_trade"
+    api = "block_trade"
+    pt = loadTable(dbName, tableName)
+    delete from pt where trade_date >= start_date and trade_date <= end_date
+
+    n = 0
+    p = {"trade_date":"20240101"}
+    for(dt in start_date..end_date){
+        p["trade_date"] = temporalFormat(dt,"yyyyMMdd")
+        print("query block_trade for "+ p["trade_date"])
+        try{
+            raw = getApiData(token, api, p)
+        }catch(ex){
+            print("appendBlockTrade error: failed to get api data for "+ p["trade_date"])
+            continue
+        }
+        if(typestr(raw) like "%TABLE%" and raw.size()>0){
+            replaceColumn!(raw, "trade_date", temporalParse(raw.trade_date,"yyyyMMdd"))
+            replaceColumn!(raw, "price", double(raw.price))
+            replaceColumn!(raw, "vol", double(raw.vol))
+            replaceColumn!(raw, "amount", double(raw.amount))
+            replaceColumn!(raw, "buyer", string(raw.buyer))
+            replaceColumn!(raw, "seller", string(raw.seller))
+            rename!(raw, `ts_code, `security_id)
+            reorderColumns!(raw, ["security_id","trade_date","price","vol","amount","buyer","seller"])
+            update raw set update_time = now()
+            pt.append!(raw)
+            n = n + size(raw)
+        } else {
+            print("no data for "+ p["trade_date"])
+        }
+    }
+    print("appendBlockTrade done, appended "+ string(n) + " rows")
+}
+
+/* @test
+start_date = 2024.01.01
+end_date = 2024.12.31
+appendBlockTrade(token, start_date, end_date)
+select * from loadTable("dfs://tushare_basic_db", "block_trade") limit 10
+select count(*) from loadTable("dfs://tushare_basic_db", "block_trade") group by trade_date
+*/
+/*
+*  @FunctionName: appendPledgeDetail
+*  @Brief: Pull tushare api [pledge_detail] and append to pledge_detail
+*  @Param: token
+*  @Return: appended row count
+*  @SampleUsage: appendPledgeDetail(token)
+*/
+
+def appendPledgeDetail(token,start_date,end_date){
+    dbName = "dfs://tushare_basic_db"
+    tableName = "pledge_detail"
+    api = "pledge_detail"
+    pt = loadTable(dbName, tableName)
+    delete from pt where ann_date >= start_date and ann_date <= end_date
+
+    for(dt in start_date..end_date){
+        // dt = 2026.07.06
+        dt = temporalFormat(dt,"yyyyMMdd")
+        offset_ = 0
+        prev_count_=0
+        curr_count = 0
+        do {
+            raw = getApiData(token, api, {"ann_date": dt, "offset": offset_})
+            cur_count_ = raw.count()
+            
+            if(!raw.isVoid() and cur_count_ != 0){
+                replaceColumn!(raw, "ann_date", temporalParse(string(raw.ann_date),"yyyyMMdd"))
+                replaceColumn!(raw, "start_date", temporalParse(string(raw.start_date),"yyyyMMdd"))
+                replaceColumn!(raw, "end_date", temporalParse(string(raw.end_date),"yyyyMMdd"))
+                replaceColumn!(raw, "release_date", temporalParse(string(raw.release_date),"yyyyMMdd"))
+                replaceColumn!(raw, "pledgor", string(raw.pledgor))
+                replaceColumn!(raw, "is_release", string(raw.is_release))
+                replaceColumn!(raw, "is_buyback", string(raw.is_buyback))
+                replaceColumn!(raw, "pledge_amount", double(raw.pledge_amount))
+                replaceColumn!(raw, "holding_amount", double(raw.holding_amount))
+                replaceColumn!(raw, "pledged_amount", double(raw.pledged_amount))
+                replaceColumn!(raw, "p_total_ratio", double(raw.p_total_ratio))
+                replaceColumn!(raw, "h_total_ratio", double(raw.h_total_ratio))
+                rename!(raw, `ts_code, `code)
+                reorderColumns!(raw, ["code","ann_date","holder_name","pledge_amount","start_date","end_date","is_release","release_date","pledgor","holding_amount","pledged_amount","p_total_ratio","h_total_ratio","is_buyback"])
+                update raw set update_time = now()
+                pt.append!(raw)
+                offset_ = prev_count_ + cur_count_ + 1
+                prev_count_ = prev_count_ + cur_count_
+                sleep(100)
+            }else {
+                break
+            }
+        } while(true)
+        print("Success append data for Table " + api +  ",dt:"+dt.string())
+    }
+
+}
+
+/* @test
+appendPledgeDetail(token)
+select * from loadTable("dfs://tushare_basic_db", "pledge_detail") limit 10
+select count(*) from loadTable("dfs://tushare_basic_db", "pledge_detail") group by ann_date
+*/
+/*
+*  @FunctionName: appendPledgeStat
+*  @Brief: Pull tushare api [pledge_stat] and append to pledge_stat
+*  @Param: token, start_date, end_date
+*  @Return: appended row count
+*  @SampleUsage: appendPledgeStat(token, start_date, end_date)
+*/
+
+def appendPledgeStat(token, start_date, end_date){
+    // 获取要写入dfs表的信息
+    dbName = "dfs://tushare_basic_db"
+    tableName = "pledge_stat"
+    api = "pledge_stat"
+    pt = loadTable(dbName, tableName)
+    // 遍历日期, 调用 pledge_stat 接口获取数据
+    n = 0
+    p = {"end_date":"20260306"}
+    days = start_date..end_date
+    delete from pt where end_date in days
+    for(dt in days){      // dt = 2026.07.24
+        p["end_date"] = temporalFormat(dt,"yyyyMMdd")
+        print("query pledge_stat for "+ p["end_date"])
+        try{
+            raw = getApiData(token, api, p)
+        }catch(ex){
+            print("appendTop10Floatholders error: failed to get api data for "+ p["ts_code"])
+            continue
+        }
+        if(typestr(raw) like "%TABLE%" and raw.size()>0){
+            n = n + size(raw)
+            // 类型转换
+            replaceColumn!(raw, "end_date", temporalParse(raw.end_date,"yyyyMMdd"))
+            replaceColumn!(raw, "pledge_count", int(raw.pledge_count))
+            rename!(raw, `ts_code, `code)
+            // 列顺序重排
+            reorderColumns!(raw, ["code","end_date", "pledge_count", "unrest_pledge", "rest_pledge", "total_share", "pledge_ratio"])
+            // 记录更新时间
+            update raw set update_time = now()
+            // 追加数据
+            pt.append!(raw)
+        } else {
+            print("no data for " + p["end_date"])
+        }
+    }
+    print("appendPledgeStat done, appended "+ string(n) + " rows")
+}
+
+/* @test
+start_date = 2024.01.01
+end_date = 2024.12.31
+appendPledgeStat(token, start_date, end_date)
+select * from loadTable("dfs://tushare_basic_db", "pledge_stat") limit 10
+select count(*) from loadTable("dfs://tushare_basic_db", "pledge_stat") group by end_date
+*//*
+*  @FunctionName: appendRepurchase
+*  @Brief: Pull tushare api [repurchase] and append to repurchase
+*  @Param: token, start_date, end_date
+*  @Return: appended row count
+*  @SampleUsage: appendRepurchase(token, start_date, end_date)
+*/
+def appendRepurchase(token, start_date, end_date){
+    dbName = "dfs://tushare_basic_db"
+    tableName = "repurchase"
+    api = "repurchase"
+    pt = loadTable(dbName, tableName)
+
+    n = 0
+    p = {"ann_date":"20240101"}
+    days = start_date..end_date
+    delete from pt where ann_date in days
+    for(dt in days){ // dt = 2026.04.21
+        p["ann_date"] = temporalFormat(dt,"yyyyMMdd")
+        print("query repurchase for "+ p["ann_date"])
+        try{
+            raw = getApiData(token, api, p)
+        }catch(ex){
+            print("appendRepurchase error: failed to get api data for "+ p["ann_date"])
+            continue
+        }
+        if(typestr(raw) like "%TABLE%" and raw.size()>0){
+            replaceColumn!(raw, "ann_date", temporalParse(raw.ann_date,"yyyyMMdd"))
+            replaceColumn!(raw, "end_date", temporalParse(string(raw.end_date),"yyyyMMdd"))
+            replaceColumn!(raw, "exp_date", temporalParse(string(raw.exp_date),"yyyyMMdd"))
+            replaceColumn!(raw, "proc", symbol(raw.proc))
+            replaceColumn!(raw, "vol", double(raw.vol))
+            replaceColumn!(raw, "amount", double(raw.amount))
+            replaceColumn!(raw, "high_limit", double(raw.high_limit))
+            replaceColumn!(raw, "low_limit", double(raw.low_limit))
+            rename!(raw, `ts_code, `code)
+            reorderColumns!(raw, ["code","ann_date","end_date","proc","exp_date","vol","amount","high_limit","low_limit"])
+            update raw set update_time = now()
+            pt.append!(raw)
+            n = n + size(raw)
+        } else {
+            print("no data for " + p["ann_date"])
+        }
+    }
+    print("appendRepurchase done, appended "+ string(n) + " rows")
+}
+
+/* @test
+start_date = 2024.01.01
+end_date = 2024.12.31
+appendRepurchase(token, start_date, end_date)
+select * from loadTable("dfs://tushare_basic_db", "repurchase") limit 10
+select count(*) from loadTable("dfs://tushare_basic_db", "repurchase") group by ann_date
+*/
+/*
+*  @FunctionName: appendShareFloat
+*  @Brief: Pull tushare api [share_float] and append to share_float
+*  @Param: token, start_date, end_date
+*  @Return: appended row count
+*  @SampleUsage: appendShareFloat(token, start_date, end_date)
+*/
+
+def appendShareFloat(token, start_date, end_date){
+    dbName = "dfs://tushare_basic_db"
+    tableName = "share_float"
+    api = "share_float"
+    pt = loadTable(dbName, tableName)
+
+    n = 0
+    p = {"ann_date":"20240101"}
+    delete from pt where ann_date >= start_date and ann_date <= end_date
+    for(dt in start_date..end_date){
+        p["ann_date"] = temporalFormat(dt,"yyyyMMdd")
+        print("query share_float for "+ p["ann_date"])
+        try{
+            raw = getApiData(token, api, p)
+        }catch(ex){
+            print("appendShareFloat error: failed to get api data for "+ p["ann_date"])
+            continue
+        }
+        if(typestr(raw) like "%TABLE%" and raw.size()>0){
+            replaceColumn!(raw, "ann_date", temporalParse(raw.ann_date,"yyyyMMdd"))
+            replaceColumn!(raw, "float_date", temporalParse(raw.float_date,"yyyyMMdd"))
+            replaceColumn!(raw, "float_share", double(raw.float_share))
+            replaceColumn!(raw, "float_ratio", double(raw.float_ratio))
+            replaceColumn!(raw, "holder_name", string(raw.holder_name))
+            replaceColumn!(raw, "share_type", symbol(raw.share_type))
+            rename!(raw, `ts_code, `code)
+            reorderColumns!(raw, ["code","ann_date","float_date","float_share","float_ratio","holder_name","share_type"])
+            update raw set update_time = now()
+            pt.append!(raw)
+            n = n + size(raw)
+        } else {
+            print("no data for " + p["ann_date"])
+        }
+    }
+    print("appendShareFloat done, appended "+ string(n) + " rows")
+}
+
+/* @test
+start_date = 2024.01.01
+end_date = 2024.12.31
+appendShareFloat(token, start_date, end_date)
+select * from loadTable("dfs://tushare_basic_db", "share_float") limit 10
+select count(*) from loadTable("dfs://tushare_basic_db", "share_float") group by ann_date
+*/
+
+/*
+*  @FunctionName: appendStkAccount
+*  @Brief: Pull tushare api [stk_account] and append to stk_account
+*  @Param: token, start_date, end_date
+*  @Return: appended row count
+*  @SampleUsage: appendStkAccount(token, start_date, end_date)
+*/
+
+def appendStkAccount(token, start_date, end_date){
+    dbName = "dfs://tushare_basic_db"
+    tableName = "stk_account"
+    api = "stk_account"
+    pt = loadTable(dbName, tableName)
+    n = 0
+    p = {"start_date":temporalFormat(start_date,"yyyyMMdd"),
+        "end_date":temporalFormat(end_date,"yyyyMMdd")}
+    delete from pt where date >= start_date and date <= end_date
+    print("query stk_account for "+ p["start_date"] + " to " + p["end_date"])
+    try{
+        raw = getApiData(token, api, p)
+    }catch(ex){
+        print("appendStkAccount error: failed to get api data for "+ p["start_date"] + " to " + p["end_date"])
+        return 
+    }
+    if(typestr(raw) like "%TABLE%" and raw.size()>0){
+        replaceColumn!(raw, "date", temporalParse(raw.date,"yyyyMMdd"))
+        replaceColumn!(raw, "weekly_new", double(raw.weekly_new))
+        replaceColumn!(raw, "total", double(raw.total))
+        replaceColumn!(raw, "weekly_hold", double(raw.weekly_hold))
+        replaceColumn!(raw, "weekly_trade", double(raw.weekly_trade))
+        reorderColumns!(raw, ["date","weekly_new","total","weekly_hold","weekly_trade"])
+        update raw set update_time = now()
+        pt.append!(raw)
+        n = size(raw)
+    } else {
+        print("no data for " + p["date"])
+    } 
+
+    print("appendStkAccount done, appended "+ string(n) + " rows")
+}
+
+/* @test
+start_date = 2018.01.01
+end_date = 2018.12.31
+appendStkAccount(token, start_date, end_date)
+select * from loadTable("dfs://tushare_basic_db", "stk_account") limit 10
+select count(*) from loadTable("dfs://tushare_basic_db", "stk_account") group by date
+*/
+/*
+*  @FunctionName: appendStkAccountOld
+*  @Brief: Pull tushare api [stk_account_old] and append to stk_account_old
+*  @Param: token, start_date, end_date
+*  @Return: appended row count
+*  @SampleUsage: appendStkAccountOld(token, start_date, end_date)
+*/
+
+def appendStkAccountOld(token, start_date, end_date){
+    dbName = "dfs://tushare_basic_db"
+    tableName = "stk_account_old"
+    api = "stk_account_old"
+    pt = loadTable(dbName, tableName)
+    // pt.schema()
+    // delete from pt where date >= start_date and date <= end_date
+    n = 0
+    p = {"start_date":temporalFormat(start_date,"yyyyMMdd"),
+        "end_date":temporalFormat(end_date,"yyyyMMdd")}
+    
+    print("query stk_account_old for "+ p["start_date"] + " to "+ p["end_date"])
+    try{
+        raw = getApiData(token, api, p)
+    }catch(ex){
+        print("appendStkAccountOld error: failed to get api data for "+ p["start_date"] + " to "+ p["end_date"])
+        return
+    }
+    if(typestr(raw) like "%TABLE%" and raw.size()>0){
+        replaceColumn!(raw, "date", temporalParse(raw.date,"yyyyMMdd"))
+        replaceColumn!(raw, "new_sh", int(raw.new_sh))
+        replaceColumn!(raw, "new_sz", int(raw.new_sz))
+        replaceColumn!(raw, "active_sh", double(raw.active_sh))
+        replaceColumn!(raw, "active_sz", double(raw.active_sz))
+        replaceColumn!(raw, "total_sh", double(raw.total_sh))
+        replaceColumn!(raw, "total_sz", double(raw.total_sz))
+        replaceColumn!(raw, "trade_sh", double(raw.trade_sh))
+        replaceColumn!(raw, "trade_sz", double(raw.trade_sz))
+        reorderColumns!(raw, ["date","new_sh","new_sz","active_sh","active_sz","total_sh","total_sz","trade_sh","trade_sz"])
+        update raw set update_time = now()
+        pt.append!(raw)
+        n = size(raw)
+    } else {
+        print("no data for " + p["start_date"] + " to "+ p["end_date"] )
+    }
+    print("appendStkAccountOld done, appended "+ string(n) + " rows")
+}
+
+/* @test
+start_date = 2014.01.01
+end_date = 2014.12.31
+appendStkAccountOld(token, start_date, end_date)
+select * from loadTable("dfs://tushare_basic_db", "stk_account_old") limit 10
+select count(*) from loadTable("dfs://tushare_basic_db", "stk_account_old") group by date
+*/
+/*
+*  @FunctionName: appendStkHoldernumber
+*  @Brief: Pull tushare api [stk_holdernumber] and append to stk_holdernumber
+*  @Param: token, start_date, end_date
+*  @Return: appended row count
+*  @SampleUsage: appendStkHoldernumber(token, start_date, end_date)
+*/
+
+def appendStkHoldernumber(token, start_date, end_date){
+    dbName = "dfs://tushare_basic_db"
+    tableName = "stk_holdernumber"
+    api = "stk_holdernumber"
+    pt = loadTable(dbName, tableName)
+
+    n = 0
+    p = {"ann_date":"20240101"}
+    days = start_date..end_date
+    delete from pt where ann_date in days
+    for(dt in days){
+        p["ann_date"] = temporalFormat(dt,"yyyyMMdd")
+        print("query stk_holdernumber for "+ p["ann_date"])
+        try{
+            raw = getApiData(token, api, p)
+        }catch(ex){
+            print("appendStkHoldernumber error: failed to get api data for "+ p["ann_date"])
+            continue
+        }
+        if(typestr(raw) like "%TABLE%" and raw.size()>0){
+            replaceColumn!(raw, "ann_date", temporalParse(raw.ann_date,"yyyyMMdd"))
+            replaceColumn!(raw, "end_date", temporalParse(raw.end_date,"yyyyMMdd"))
+            replaceColumn!(raw, "holder_num", int(raw.holder_num))
+            rename!(raw, `ts_code, `code)
+            reorderColumns!(raw, ["code","ann_date","end_date","holder_num"])
+            update raw set update_time = now()
+            pt.append!(raw)
+            n = n + size(raw)
+        } else {
+            print("no data for "+ p["ann_date"])
+        }
+    }
+    print("appendStkHoldernumber done, appended "+ string(n) + " rows")
+}
+
+/* @test
+start_date = 2024.01.01
+end_date = 2024.12.31
+appendStkHoldernumber(token, start_date, end_date)
+select * from loadTable("dfs://tushare_basic_db", "stk_holdernumber") limit 10
+select count(*) from loadTable("dfs://tushare_basic_db", "stk_holdernumber") group by ann_date
+*/
+/*
+*  @FunctionName: appendStkHoldertrade
+*  @Brief: Pull tushare api [stk_holdertrade] and append to stk_holdertrade
+*  @Param: token, start_date, end_date
+*  @Return: appended row count
+*  @SampleUsage: appendStkHoldertrade(token, start_date, end_date)
+*/
+
+def appendStkHoldertrade(token, start_date, end_date){
+    dbName = "dfs://tushare_basic_db"
+    tableName = "stk_holdertrade"
+    api = "stk_holdertrade"
+    pt = loadTable(dbName, tableName)
+    
+    n = 0
+    p = {"ann_date":"20240101"}
+    cols = ["ts_code","ann_date","holder_name","holder_type","in_de","change_vol","change_ratio","after_share","after_ratio","avg_price","total_share","begin_date","close_date"]
+    delete from pt where ann_date >= start_date and ann_date <= end_date
+    for(dt in start_date..end_date){    // dt = 2024.01.02
+        p["ann_date"] = temporalFormat(dt,"yyyyMMdd")
+        print("query stk_holdertrade for "+ p["ann_date"])
+        try{
+            raw = getApiData(token, api, p, cols)
+        }catch(ex){
+            print("appendStkHoldertrade error: failed to get api data for "+ p["ann_date"])
+            continue
+        }
+        if(typestr(raw) like "%TABLE%" and raw.size()>0){
+            replaceColumn!(raw, "ann_date", temporalParse(raw.ann_date,"yyyyMMdd"))
+            replaceColumn!(raw, "holder_type", symbol(raw.holder_type))
+            replaceColumn!(raw, "in_de", symbol(raw.in_de))
+            replaceColumn!(raw, "change_vol", double(raw.change_vol))
+            replaceColumn!(raw, "change_ratio", double(raw.change_ratio))
+            replaceColumn!(raw, "after_share", double(raw.after_share))
+            replaceColumn!(raw, "after_ratio", double(raw.after_ratio))
+            replaceColumn!(raw, "avg_price", double(raw.avg_price))
+            replaceColumn!(raw, "total_share", double(raw.total_share))
+            replaceColumn!(raw, "begin_date", temporalParse(string(raw.begin_date),"yyyyMMdd"))
+            replaceColumn!(raw, "close_date", temporalParse(string(raw.close_date),"yyyyMMdd"))
+            rename!(raw, `ts_code, `code)
+            reorderColumns!(raw, ["code","ann_date","holder_name","holder_type","in_de","change_vol","change_ratio","after_share","after_ratio","avg_price","total_share","begin_date","close_date"])
+            update raw set update_time = now()
+            pt.append!(raw)
+            n = n + size(raw)
+        } else {
+            print("no data for " + p["ann_date"])
+        }
+    }
+    print("appendStkHoldertrade done, appended "+ string(n) + " rows")
+}
+
+/* @test
+start_date = 2024.01.01
+end_date = 2024.12.31
+appendStkHoldertrade(token, start_date, end_date)
+select * from loadTable("dfs://tushare_basic_db", "stk_holdertrade") limit 10
+select count(*) from loadTable("dfs://tushare_basic_db", "stk_holdertrade") group by ann_date
+*/
+/*
+*  @FunctionName: appendTop10Floatholders
+*  @Brief: Pull tushare api [top10_floatholders] and append to top10_floatholders
+*  @Param: token, start_date, end_date
+*  @Return: appended row count
+*  @SampleUsage: appendTop10Floatholders(token, start_date, end_date)
+*/
+
+def appendTop10Floatholders(token, start_date, end_date){
+    // 获取要写入dfs表的信息
+    dbName = "dfs://tushare_basic_db"
+    tableName = "top10_floatholders"
+    api = "top10_floatholders"
+    pt = loadTable(dbName, tableName)
+    // 遍历 ts_code 列表, 调用 top10_floatholders 接口获取数据
+    end_date_ = end_date
+    delete from pt where ann_date >= start_date and ann_date <= end_date_
+    for (one_date in start_date..end_date) { // one_date = 2025.04.29
+        dateText = temporalFormat(one_date,"yyyyMMdd")
+        offset_ = 0 
+        prev_count_ = 0
+        do {
+            res = getApiData(token, api, {"ann_date":dateText,"offset":offset_})
+            cur_count_ = res.count()
+           
+            if(!res.isVoid() and cur_count_ != 0){
+                replaceColumn!(res, "ann_date", temporalParse(res.ann_date,"yyyyMMdd"))
+                replaceColumn!(res, "end_date", temporalParse(res.end_date,"yyyyMMdd"))
+                rename!(res, `ts_code, `code)
+                // 列顺序重排
+                reorderColumns!(res, ["code","ann_date","end_date","holder_name","hold_amount","hold_ratio","hold_float_ratio","hold_change","holder_type"])
+                // 记录更新时间
+                update res set update_time = now()
+                // 追加数据
+                pt.append!(res)
+                offset_ = prev_count_ + cur_count_ + 1
+                prev_count_ = prev_count_ + cur_count_
+                print("Success append data for Table " + api + " for date: " + dateText+ ",count:"+cur_count_.string())
+            }else {
+                break
+            }
+        } while(true)
+    }
+    print("appendTop10Floatholders done")
+}
+
+
+/* @test
+start_date = 2024.01.01
+end_date = 2024.12.31
+appendTop10Floatholders(token, start_date, end_date)
+select * from loadTable("dfs://tushare_basic_db", "top10_floatholders") limit 10
+select count(*) from loadTable("dfs://tushare_basic_db", "top10_floatholders") group by ann_date
+*//*
+*  @FunctionName: appendTop10Holders
+*  @Brief: Pull tushare api [top10_holders] and append to top10_holders
+*  @Param: token, start_date, end_date
+*  @Return: appended row count
+*  @SampleUsage: appendTop10Holders(token, start_date, end_date)
+*/
+
+def appendTop10Holders(token, start_date, end_date){
+    // 对于 ts_code 是必选的接口, 先使用 stock_basic 获取数据 ts_code 列表
+    // 获取要写入dfs表的信息
+    dbName = "dfs://tushare_basic_db"
+    tableName = "top10_holders"
+    api = "top10_holders"
+    pt = loadTable(dbName, tableName)
+    days = start_date..end_date
+    delete from pt where ann_date in days
+    for(one_date in days){ // i = 0
+        dateText = temporalFormat(one_date,"yyyyMMdd")
+        offset_ = 0 
+        prev_count_ = 0
+        do {
+            res = getApiData(token, api, {"ann_date":dateText,"offset":offset_})
+            cur_count_ = res.count()
+           
+            if(!res.isVoid() and cur_count_ != 0){
+                // 类型转换
+                replaceColumn!(res, "ann_date", temporalParse(res.ann_date,"yyyyMMdd"))
+                replaceColumn!(res, "end_date", temporalParse(res.end_date,"yyyyMMdd"))
+                rename!(res, `ts_code, `code)
+                // 列顺序重排
+                reorderColumns!(res, ["code","ann_date","end_date","holder_name","hold_amount","hold_ratio","hold_float_ratio","hold_change","holder_type"])
+                // 记录更新时间
+                update res set update_time = now()
+                // 追加数据
+                pt.append!(res)
+                offset_ = prev_count_ + cur_count_ + 1
+                prev_count_ = prev_count_ + cur_count_
+                print("Success append data for Table " + api + " for date: " + dateText+ ",count:"+cur_count_.string())
+            }else {
+                break
+            }
+        } while(true)
+        
+    }
+    print("appendTop10Holders done")
+}

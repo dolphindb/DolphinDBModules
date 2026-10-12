@@ -1,0 +1,2505 @@
+module MockData 
+
+
+/*
+*  @FunctionName: module_info
+*  @Brief: 模块信息,一个相同模块dir下的每个dos都需要有moduleInfo函数,且是相同的
+*  @Param: None
+*  @Return: dict
+*  @SampleUsage: module_info()
+*/
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "MockData"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+
+/**
+ * @ Function Name:simulateDataLog
+ * @ Brief: Throwing a simulation data module error
+ * @ Param funcName: The name of the Function
+ * @ Param msg: Error message
+ * @ Return: A error
+ * @ Sample Usage: simulateDataLog(funcName, "The inputParam must be date type")
+ */
+def simulateDataLog(funcName, msg) {
+	formattedMsg = stringFormat("[DolphinDBModules::simulateData::%W] : [ERRORINFO]: %W", funcName, msg)
+	throw(formattedMsg)
+}
+
+/**
+ * @ Function Name:validateDateAndScalarParam
+ * @ Brief: Verify if the parameter is a date type and if it is a scalar.
+ * @ Param funcName: The name of the Function
+ * @ Param param: The input parameter
+ * @ Return: A error or A parameter
+ * @ Sample Usage: startDate = validateDateAndScalarParam(funcName, startDate)
+ */
+def validateDateAndScalarParam(funcName, param) {
+	if( form(param) == 0 ){
+		if( type(param) in [6] ){
+			return param
+		}else{
+			simulateDataLog(funcName, "The inputParam must be date type")
+		}
+	}else{
+		simulateDataLog(funcName, "The inputParam must be scalar")
+		return
+	}
+}
+
+
+/**
+ * @ Function Name:validateIntAndScalarParam
+ * @ Brief: Verify if the parameter is a int type and if it is a scalar.
+ * @ Param funcName: The name of the Function
+ * @ Param param: The input parameter
+ * @ Return: A error or A parameter
+ * @ Sample Usage: SecurityIDNumber = validateIntAndScalarParam(funcName, securityNumber) 
+ */
+def validateIntAndScalarParam(funcName, param) {
+	if( form(param) in [0] ){
+		if( type(param) in [4] ){
+			return param
+		}else{
+			simulateDataLog(funcName, "The inputParam must be int type")
+		}
+	}else{
+		simulateDataLog(funcName, "The inputParam  must be scalar")
+		return
+	}
+}
+
+/**
+ * @ Function Name:validateStringAndScalarParam
+ * @ Brief: Verify if the parameter is a string type and if it is a scalar.
+ * @ Param funcName: The name of the Function
+ * @ Param param: The input parameter
+ * @ Return: A error or A parameter
+ * @ Sample Usage: newdbName = validateStringAndScalarParam(funcName, dbName)
+ */
+def validateStringAndScalarParam(funcName, param) {
+	if( form(param) in [0] ){
+		if( type(param) in [18] ){
+			return param
+		}else{
+			simulateDataLog(funcName, "The inputParam must be string type")
+		}
+	}else{
+		simulateDataLog(funcName, "The inputParam  must be scalar")
+		return
+	}
+}
+
+/**
+ * @ Function Name:stockMinuteKLine
+ * @ Brief: Generate  minute K Line simulate data for a stock.
+ * @ Param startDate: Start date for the daily K Line data.
+ * @ Param endDate: End date for the daily K Line data.
+ * @ Param securityNumber: The number of the SecurityID
+ * @ Return: Daily K Line data
+ * @ Sample Usage: minuteKLineData = stockMinuteKLine(startDate=2020.09.05, endDate=2021.01.07, securityNumber=1000)
+ */
+def stockMinuteKLine(startDate, endDate, securityNumber){
+	//校验日期参数入参是否为标量，是否为日期类型
+	funcName = "stockOneMinuteKLine"
+	validateDateAndScalarParam(funcName, startDate)
+	validateDateAndScalarParam(funcName, endDate)
+	//校验入参股票是否为STRING或者SYMBOL
+	SecurityIDNumber = validateIntAndScalarParam(funcName, securityNumber) 
+    SecurityID = lpad(string(1..SecurityIDNumber),6,"000000")$SYMBOL
+	//校验开始日期小于等于结束日期
+	if( endDate - startDate < 0 ){
+		simulateDataLog(funcName, "the endDate must after startDate")
+	}
+	//每天每股一分钟一条数据, 成交时间,股票id
+	tradeDate = table(getMarketCalendar("XSHG", startDate , endDate) as tradeDate)
+    daySize = size(tradeDate)
+	tradeMin = table((09:30:00.000+0..120*60*1000) join (13:00:00.000+0..120*60*1000) as tradeMin)
+	tradetime = select concatDateTime(tradeDate,tradeMin) as tradetime from cj(tradeDate,tradeMin)
+	oneMinuteDataCount=(tradetime.size())
+	tmpTable = cj(table(SecurityID as securityid),tradetime)
+	//高, 开, 低, 收, 成交量, 成交额, vwap字段
+    open = array(DOUBLE, 0)
+    high = array(DOUBLE, 0)
+	low = array(DOUBLE, 0)
+	close = array(DOUBLE, 0)
+	vol = array(INT, 0)
+	val = array(DOUBLE, 0)
+	vwap = array(DOUBLE, 0)
+    if (oneMinuteDataCount != 0){
+        for(id in 1..SecurityIDNumber){
+            for(day in 1..daySize){
+                for(i in 1..121){
+                    openItem = rand(100.0, 1)
+                    highItem = openItem + rand(1.0, 1)
+                    lowItem = highItem - rand(2.0, 1)
+                    closeItem = openItem + norm(0,2, 1)
+                    volItem = rand (100000, 1)
+                    valItem = closeItem*volItem
+                    vwapItem = closeItem
+                    open.append!(take(openItem, 2))
+                    high.append!(take(highItem, 2))
+                    low.append!(take(lowItem, 2))
+                    close.append!(take(closeItem, 2))
+                    vol.append!(take(volItem, 2))
+                    val.append!(take(valItem, 2))
+                    vwap.append!(take(vwapItem, 2))
+                }
+            }
+        }
+    }
+	//返回最终数据
+	resTable = tmpTable join table(open,close, high, low, vol, val, vwap)
+	return resTable				
+}
+
+/**
+ * @ Function Name: stockDailyKLine
+ * @ Brief: Generates daily K Line simulated data for a stock.
+ * @ Param startDate: Startdate for the daily K Line data.
+ * @ Param endDate: Enddate for the daily K Line data.
+ * @ Param securityNumber: The number of the security/stock.
+ * @ Return: Daily K Line data
+ * @ Sample Usage: dailyKLineData = stockDailyKLine(startDate=2015.01.01, endDate=2021.01.30, securityNumber=1000)
+ */
+def stockDailyKLine(startDate, endDate, securityNumber){
+	//校验日期参数入参是否为标量，是否为日期类型
+	funcName = "stockDailyKLine"
+	validateDateAndScalarParam(funcName, startDate)
+	validateDateAndScalarParam(funcName, endDate)
+	//校验入参股票是否为STRING或者SYMBOL
+	SecurityIDNumber = validateIntAndScalarParam(funcName, securityNumber) 
+    SecurityID = lpad(string(1..SecurityIDNumber),6,"000000")$SYMBOL
+	//校验开始日期小于等于结束日期
+	if( endDate - startDate < 0 ){
+		simulateDataLog(funcName, "the endDate must after startDate")
+	}
+    marketDays = getMarketCalendar("XSHG", startDate , endDate)
+    if (size(marketDays) ==0) {
+        return table(1:0, `securityid`tradeTime`open`close`high`low`vol`val`vwap,[SYMBOL,DATE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,INT,DOUBLE,DOUBLE])
+    } 
+	//每天每股一分钟一条数据, 成交时间,股票id
+	tradetime = table(getMarketCalendar("XSHG", startDate , endDate) as tradeTime)
+	DataCount=(tradetime.size())
+	tmpTable = cj(table(SecurityID as securityid),tradetime)
+	//高, 开, 低, 收, 成交量, 成交额, vwap字段
+	open = rand(100.0, size(tmpTable))
+	high = open + rand(1.0,size(tmpTable))
+	low = high -  rand(2.0,size(tmpTable))
+	close = open + norm(0,2,size(tmpTable))
+	vol = rand(100000,size(tmpTable))
+	val = close*vol
+	vwap = close
+	//返回最终数据
+	resTable = tmpTable join table(open,close, high, low, vol, val, vwap)
+	return resTable				
+}
+
+/**
+ * @Function Name: stockEntrust
+ * @Brief: Generates one-day entrust data for a stock.
+ * @Param tradeDate: tradeDate for the entrust data.
+ * @Param securityNumber: The number of the security/stock.
+ * @Return: One-day entrust data
+ * @Sample Usage: entrustData = stockEntrust(tradeDate=2020.01.06, securityNumber=1000)
+ */
+def stockEntrust(tradeDate, securityNumber){
+	//校验日期参数入参是否为标量，是否为日期类型
+	funcName = "stockEntrust"
+	validateDateAndScalarParam(funcName, tradeDate)
+	//校验入参股票是否为STRING或者SYMBOL
+    SecurityIDNumber = validateIntAndScalarParam(funcName, securityNumber) 
+    if (size(getMarketCalendar("XSHG", tradeDate , tradeDate)) == 0){
+        colName = `ChannelNo`ApplSeqNum`MDStreamID`SecurityID`SecurityIDSource`Price`OrderQty`Side`TradeDate`TradeTime`OrderType`LocalTime`SeqNo`OrderNO`DataStatus`BizIndex
+        colType = [INT,LONG,SYMBOL,SYMBOL,SYMBOL,DOUBLE,LONG,SYMBOL,DATE,TIME,SYMBOL,TIME,LONG,LONG,INT,LONG]
+        return table(1:0, colName, colType)
+    } 
+    SecurityID = lpad(string(1..SecurityIDNumber),6,"000000")$SYMBOL
+	//每天每股tick个数，每秒2个
+	tradeMin = table((09:30:00.000+0..14400*500) join (13:00:00.000+0..14400*500) as tradeMin)
+	//第二列，时刻，按范围造
+	tmpTable = cj(table(SecurityID as securityid),tradeMin as tradeMin)
+	oneDayOrderCount=tmpTable.size()
+	TimeList = exec tradeMin from tradeMin
+	TimeSize = size TimeList
+	TimeList = 885 + time(TimeList)
+    
+    
+
+	//第三列，成交手数，按p=0.5二项分布的右半边造
+	volumeRand=randBinomial(30,0.5,oneDayOrderCount)-15//要正数的右半边
+	volumePool=volumeRand[volumeRand>0]//只取正数的
+	volumes=rand(volumePool,oneDayOrderCount)//按手数池子取随机数
+	stockVolumes=volumes*100//手数*100=股数
+	allOrderPool=rand(1 .. oneDayOrderCount,oneDayOrderCount) //单号池子
+	modes=allOrderPool%2
+	oddNumbers=allOrderPool[bool(modes)]//奇数作为买单号池子
+	buyOrderPool=oddNumbers
+	LocalTime = array(TIME, 0)
+	randBuyNo=rand(buyOrderPool,oneDayOrderCount)
+	daySize = rows(tradeMin)
+	priceSeries = array(DOUBLE, 0)
+	ChannelNo = array(INT, 0)
+	PriceList = 190..210/100.0
+
+
+	for(i in SecurityID){
+		for(j in 1..72){
+			No = rand(50, 1) + 2000
+			ChannelNo.append!(take(No, 400))
+		}
+		No = rand(50, 1) + 2000
+		ChannelNo.append!(take(No, 2))
+	}
+	for(i in SecurityID){
+		for(j in 1..360){
+			Price = rand(PriceList, 1)
+			priceSeries.append!(take(Price, 80))
+		}
+		Price = rand(PriceList, 1)
+		priceSeries.append!(take(Price, 2))
+	}
+    for(i in SecurityID){
+		LocalTime.append!(TimeList)
+	}
+    undef `tradeMin
+	//返回最终数据
+	onedayEntrsutTable=select 
+				ChannelNo,
+				long((rand(100, oneDayOrderCount) + 100)).sort!() as ApplSeqNum,
+				take("011", oneDayOrderCount) as MDStreamID,
+				securityid as SecurityID,
+				take("102", oneDayOrderCount) as SecurityIDSource,
+				priceSeries as Price,
+				long((rand(200, oneDayOrderCount) * 100)) as OrderQty,
+				rand(`B`S, oneDayOrderCount) as Side,
+				take(tradeDate, oneDayOrderCount) as TradeDate,
+				tradeMin as TradeTime, 
+				rand(`A`D,oneDayOrderCount) as OrderType,
+				LocalTime,
+				long(rand(1.. oneDayOrderCount,oneDayOrderCount)).sort!() as SeqNo,   
+				long(rand(1.. oneDayOrderCount,oneDayOrderCount)).sort!() as OrderNo,
+				take(0, oneDayOrderCount) as DataStatus, 	     
+				long(rand(1 .. oneDayOrderCount,oneDayOrderCount)).sort!() as BizIndex
+				from tmpTable
+	return onedayEntrsutTable			
+}
+
+/**
+ * @Function Name: stockTrade
+ * @Brief: Generates one-day trade data for a stock.
+ * @Param tradeDate: Date for the trade data 
+ * @Param securityNumber: The number of the security/stock.
+ * @Return: One-day trade data 
+ * @Sample Usage: tradeData = stockTrade(tradeDate=2020.01.06, securityNumber=1000)
+ */
+def stockTrade(tradeDate, securityNumber){
+	//校验日期参数入参是否为标量，是否为日期类型
+	funcName = "stockTrade"
+	validateDateAndScalarParam(funcName, tradeDate)
+	//校验入参股票是否为STRING或者SYMBOL
+    SecurityIDNumber = validateIntAndScalarParam(funcName, securityNumber)
+    if (size(getMarketCalendar("XSHG", tradeDate , tradeDate)) == 0){
+        colName = `ChannelNo`ApplSeqNum`MDStreamID`BidApplSeqNum`OfferApplSeqNum`SecurityID`SecurityIDSource`TradePrice`TradeQty`ExecType`TradeDate`TradeTime`LocalTime`SeqNo`DataStatus`TradeMoney`TradeBSFlag`BizIndex`OrderKind
+	    colType = [INT,LONG,SYMBOL,LONG,LONG,SYMBOL,SYMBOL,DOUBLE,LONG,SYMBOL,DATE,TIME,TIME,LONG,INT,DOUBLE,SYMBOL,LONG,SYMBOL]
+        return table(1:0, colName, colType)
+    }  
+    SecurityID = lpad(string(1..SecurityIDNumber),6,"000000")$SYMBOL
+	//每天每股tick个数，每秒2个
+	tradeMin = table((09:30:00.000+0..14400*500) join (13:00:00.000+0..14400*500) as tradeMin)
+	//第二列，时刻，按范围造
+	tmpTable = cj(table(SecurityID as SecurityID),tradeMin as TradeTime)
+
+	oneDayTickCount = tmpTable.size()
+	TimeList = exec tradeMin from tradeMin
+	TimeSize = size TimeList
+	TimeList = 885 + time(TimeList) 
+	//第三列，成交手数，按p=0.5二项分布的右半边造
+	volumeRand=randBinomial(30,0.5,oneDayTickCount)-15//要正数的右半边
+	volumePool=volumeRand[volumeRand>0]//只取正数的
+	volumes=rand(volumePool,oneDayTickCount)//按手数池子取随机数
+	stockVolumes=long(volumes*100) //手数*100=股数
+	//plot(volumes,tradetime,"testing")
+	sellSideOrderRefCount=oneDayTickCount/4 //卖单号张数
+	buySideOrderRefCount=sellSideOrderRefCount //买单号张数
+	daySize = rows(tradeMin)
+	ChannelNo = array(INT, 0)
+	BidApplSeqNum = array(LONG, 0)
+	OfferApplSeqNum = array(LONG, 0)
+	priceSeries = array(DOUBLE, 0)
+
+	LocalTime = array(TIME, 0)
+	ApplSeqNumList = [0,0,0,0,0,0,0,0,49873,238323,155732,102520,237993,223132]
+	PriceList = 190..210/100.0
+	for(i in SecurityID){
+		for(j in 1..72){
+			No = rand(50, 1) + 2000
+			ChannelNo.append!(take(No, 400))
+		}
+		No = rand(50, 1) + 2000
+		ChannelNo.append!(take(No, 2))
+	}
+	for(i in SecurityID){
+		for(j in 1..72){
+			SeqNum = rand(ApplSeqNumList, 5)
+			BidApplSeqNum.append!(take(SeqNum, 400))
+		}
+		SeqNum = rand(ApplSeqNumList, 1)
+		BidApplSeqNum.append!(take(SeqNum, 2))
+	}
+	for(i in SecurityID){
+		for(j in 1..72){
+			SeqNum = rand(ApplSeqNumList, 5)
+			OfferApplSeqNum.append!(take(SeqNum, 400))
+		}
+		SeqNum = rand(ApplSeqNumList, 1)
+		OfferApplSeqNum.append!(take(SeqNum, 2))
+	}
+	for(i in SecurityID){
+		for(j in 1..360){
+			Price = rand(PriceList, 1)
+			priceSeries.append!(take(Price, 80))
+		}
+		Price = rand(PriceList, 1)
+		priceSeries.append!(take(Price, 2))
+	}
+	for(i in SecurityID){
+		LocalTime.append!(TimeList)
+	}
+	//返回最终数据
+	onedayTradeTable = select 
+			ChannelNo,
+			long(rand(10000, oneDayTickCount).sort!()) as ApplSeqNum,
+			take("011", oneDayTickCount) as MDStreamID,
+			BidApplSeqNum,
+			OfferApplSeqNum,
+			Securityid,
+			take("", oneDayTickCount) as SecurityIDSource,
+			priceSeries as TradePrice,
+			stockVolumes as TradeQty,
+			take("", oneDayTickCount) as ExecType,
+			take(tradeDate, oneDayTickCount) as TradeDate,
+			tradeMin as TradeTime,
+			LocalTime,
+			long(rand(1000, oneDayTickCount) + 10000) as SeqNo,
+			take(0, oneDayTickCount) as DataStatus,	
+			round(rand(200.0, oneDayTickCount) + 1000, 1) as TradeMoney,
+			rand(`S`B,oneDayTickCount) as TradeBSFlag,                     
+			long(take(0, oneDayTickCount)) as BizIndex,
+			take("", oneDayTickCount) as OrderKind
+			from tmpTable
+	return onedayTradeTable
+}
+
+/**
+ * @Function Name: stockSnapshot
+ * @Brief: Generates one-day snapshot data for a stock.
+ * @Param tradeDate: Date for the snapshot data.
+ * @Param securityNumber: The number of the security/stock.
+ * @Return: One-day snapshot data
+ * @Sample Usage: snapshotData = stockSnapshot(tradeDate=2020.01.06, securityNumber=10)
+ */
+def stockSnapshot(tradeDate, securityNumber){
+	//校验日期参数入参是否为标量，是否为日期类型
+	funcName = "stockSnapshot"
+	validateDateAndScalarParam(funcName, tradeDate)
+	//校验入参股票是否为STRING或者SYMBOL
+    SecurityIDNumber = validateIntAndScalarParam(funcName, securityNumber) 
+    SecurityIDs = lpad(string(1..SecurityIDNumber),6,"000000")$SYMBOL
+    if (size(getMarketCalendar("XSHG", tradeDate , tradeDate)) == 0){
+        colName = `TradeDate`TradeTime`MDStreamID`SecurityID`SecurityIDSource`TradingPhaseCode`ImageStatus`PreCloPrice`NumTrades`TotalVolumeTrade`TotalValueTrade`LastPrice`OpenPrice`HighPrice`LowPrice`ClosePrice`DifPrice1`DifPrice2`PE1`PE2`PreCloseIOPV`IOPV`TotalBidQty`WeightedAvgBidPx`AltWAvgBidPri`TotalOfferQty`WeightedAvgOfferPx`AltWAvgAskPri`UpLimitPx`DownLimitPx`OpenInt`OptPremiumRatio`OfferPrice`BidPrice`OfferOrderQty`BidOrderQty`BidNumOrders`OfferNumOrders`ETFBuyNumber`ETFBuyAmount`ETFBuyMoney`ETFSellNumber`ETFSellAmount`ETFSellMoney`YieldToMatu`TotWarExNum`WithdrawBuyNumber`WithdrawBuyAmount`WithdrawBuyMoney`WithdrawSellNumber`WithdrawSellAmount`WithdrawSellMoney`TotalBidNumber`TotalOfferNumber`MaxBidDur`MaxSellDur`BidNum`SellNum`LocalTime`SeqNo`OfferOrders`BidOrders 
+        colType = [DATE,TIME,SYMBOL,SYMBOL,SYMBOL,SYMBOL,INT,DOUBLE,LONG,LONG,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,LONG,DOUBLE,DOUBLE,LONG,DOUBLE,DOUBLE,DOUBLE,DOUBLE,INT,DOUBLE,DOUBLE[],DOUBLE[],LONG[],LONG[],INT[],INT[],INT,LONG,DOUBLE,INT,LONG,DOUBLE,DOUBLE,DOUBLE,INT,LONG,DOUBLE,INT,LONG,DOUBLE,INT,INT,INT,INT,INT,INT,TIME,INT,LONG[],LONG[]]
+        return table(1:0, colName, colType)
+    }  
+	//每天每股snapshot个数，每3秒1个
+	tradeMin = table((09:30:00.000+0..2400*3*1000) join (13:00:00.000+0..2400*3*1000) as tradeMin)
+	daySize = rows(tradeMin)
+	StockSize = size SecurityIDs
+	PreCloPrice = array(DOUBLE, 0)
+	price = round((rand(0.5, 1) + 1), 3)
+	for(i in SecurityIDs){
+		PreCloPrice.append!(take(price, daySize))
+	}
+	tmpTable = cj(table(SecurityIDs as Securityid), tradeMin as tradetime)
+	oneDaySnapshotCount = tmpTable.size()
+	OfferPrice = array(DOUBLE[], 0)
+	BidPrice = array(DOUBLE[], 0)
+	OfferOrderQty = array(LONG[], 0)
+	BidOrderQty = array(LONG[], 0)
+	BidNumOrders = array(INT[], 0)
+	OfferNumOrders = array(INT[], 0)
+	OfferOrder = array(LONG[], 0)
+	BidOrder = array(LONG[], 0)
+	TotalBidNumber = array(INT, 0)
+	TotalOfferNumber = array(INT, 0)
+	MaxBidDur = array(INT, 0)
+	MaxSellDur = array(INT, 0)	
+	BidNum = array(INT, 0)
+	SellNum = array(INT, 0)
+	NumTrades = array(LONG, 0)
+	TotalVolumeTrade = array(LONG, 0)
+	TotalValueTrade = array(DOUBLE, 0)
+	TotalBidQty = array(LONG, 0)
+	TotalOfferQty = array(LONG, 0)
+	WithdrawBuyAmount = array(LONG, 0)
+	WithdrawBuyMoney = array(DOUBLE, 0)	
+	WithdrawSellNumber = array(INT, 0)	
+	WithdrawSellAmount = array(LONG, 0)
+	WithdrawSellMoney = array(DOUBLE, 0)
+	Pricelist = 710..690/100.0
+	OrderQtyList = 35..55 * 900
+	NumOrders = 10..20
+	Orders = [0,0,,5900,15600,12400,3500,100,5200,1400,3600,0,13500, 3900]
+	for(i in SecurityIDs){
+		Bid = rand(Pricelist, 10).sort!(false)
+		BidPrice.append!(take([Bid], daySize))
+	}
+	for(i in SecurityIDs){
+		Offer = rand(Pricelist, 10).sort!()
+		OfferPrice.append!(take([Offer], daySize))
+	}
+	for(i in SecurityIDs){
+		Offer = rand(OrderQtyList, 10).sort!()
+		OfferOrderQty.append!(take([Offer], daySize))
+	}
+	for(i in SecurityIDs){
+		Bid = rand(OrderQtyList, 10).sort!(false)
+		BidOrderQty.append!(take([Bid], daySize))
+	}
+	for(i in SecurityIDs){
+		Offer = rand(NumOrders, 10).sort!()
+		OfferNumOrders.append!(take([Offer], daySize))
+	}
+	for(i in SecurityIDs){
+		Bid = rand(NumOrders, 10).sort!(false)
+		BidNumOrders.append!(take([Bid], daySize))
+	}
+	for(i in SecurityIDs){
+		for(j in 1..48){
+			Offer = rand(Orders, 10).sort!()
+			OfferOrder.append!(take([Offer], 100))
+		}
+		Offer = rand(Orders, 10).sort!()
+		OfferOrder.append!(take([Offer], 2))
+	}
+	for(i in SecurityIDs){
+		for(j in 1..48){
+			Bid = rand(Orders, 10).sort!()
+			BidOrder.append!(take([Bid], 100))
+		}
+		Bid = rand(Orders, 10).sort!()
+		BidOrder.append!(take([Bid], 2))
+	}
+	for(i in SecurityIDs){
+		for(j in 1..960){
+			BidNumber = rand(50, 1) + 200
+			TotalBidNumber.append!(take(BidNumber, 5))
+		}
+		BidNumber = rand(50, 1) + 200
+		TotalBidNumber.append!(take(BidNumber, 2))
+	}
+	for(i in SecurityIDs){
+		for(j in 1..960){
+			OfferNumber = rand(50, 1) + 200
+			TotalOfferNumber.append!(take(OfferNumber, 5))
+		}
+		OfferNumber = rand(50, 1) + 200
+		TotalOfferNumber.append!(take(OfferNumber, 2))
+	}
+	for(i in SecurityIDs){
+		for(j in 1..960){
+			BidDur = rand(50, 1) + 200
+			MaxBidDur.append!(take(BidDur, 5))
+		}
+		BidDur = rand(50, 1) + 200
+		MaxBidDur.append!(take(BidDur, 2))
+	}
+	for(i in SecurityIDs){
+		for(j in 1..960){
+			SellDur = rand(50, 1) + 200
+			MaxSellDur.append!(take(SellDur, 5))
+		}
+		SellDur = rand(50, 1) + 200
+		MaxSellDur.append!(take(SellDur, 2))
+	}
+	for(i in SecurityIDs){
+		for(j in 1..960){
+			BNum = rand(50, 1) + 200
+			BidNum.append!(take(BNum, 5))
+		}
+		BNum = rand(50, 1) + 200
+		BidNum.append!(take(BNum, 2))
+	}
+	for(i in SecurityIDs){
+		for(j in 1..960){
+			SNum = rand(50, 1) + 200
+			SellNum.append!(take(SNum, 5))
+		}
+		SNum = rand(50, 1) + 200
+		SellNum.append!(take(SNum, 2))
+	}
+	for(i in 1..daySize){
+		Trades = rand(100, 1) + 1
+		NumTrades.append!(take(Trades, StockSize))
+	}
+	for(i in 1..daySize){
+		VolumeTrade = rand(200, 1) * 100
+		TotalVolumeTrade.append!(take(VolumeTrade, StockSize))
+	}
+	for(i in 1..daySize){
+		ValueTrade = round(rand(5000.0, 1), 1) + 10000.0
+		TotalValueTrade.append!(take(ValueTrade, StockSize))
+	}
+	for(i in 1..daySize){
+		BidQty = (rand(100, 1) + 1) * 100 + 20000
+		TotalBidQty.append!(take(BidQty, StockSize))
+	}
+	for(i in 1..daySize){
+		OfferQty = (rand(30, 1) + 100) * 100
+		TotalOfferQty.append!(take(OfferQty, StockSize))
+	}
+	for(i in 1..daySize){
+		Amount = (rand(20, 1) + 1) * 1000
+		WithdrawBuyAmount.append!(take(Amount, StockSize))
+	}
+	for(i in 1..daySize){
+		Money = round((rand(20.0, 1) + 1) * 1000, 1)
+		WithdrawBuyMoney.append!(take(Money, StockSize))
+	}
+	for(i in 1..daySize){
+		Number = rand(20, 1) * 10
+		WithdrawSellNumber.append!(take(Number, StockSize))
+	}
+	for(i in 1..daySize){
+		Amount = (rand(50, 1) + 1) * 1000
+		WithdrawSellAmount.append!(take(Amount, StockSize))
+	}
+	for(i in 1..daySize){
+		Money = round((rand(60.0, 1) + 1) * 1000, 1)
+		WithdrawSellMoney.append!(take(Money, StockSize))
+	}
+	TradingPhaseCodeList = `START`OCALL`TRADE
+	TimeList = (09:30:00.000+0..2400*3*1000) join (13:00:00.000+0..2400*3*1000)
+	n = size tmpTable
+	snapshotTable = select 
+				take(tradeDate, n) as TradeDate,
+				tradeMin as TradeTime,
+				symbol(take(" ", n)) as MDStreamID,
+				Securityid,
+				symbol(take(" ", n)) as SecurityIDSource,
+				rand(TradingPhaseCodeList, n) as TradingPhaseCode,
+				(rand(3, n) + 1) as ImageStatus,
+				PreCloPrice,
+				NumTrades,
+				TotalVolumeTrade.sort!() as TotalVolumeTrade,
+				TotalValueTrade.sort!() as TotalValueTrade,
+				(round(rand(0.3, n), 1) + 1.3) as LastPrice, 
+				1 + round(rand(0.8, n), 3) as OpenPrice,
+				1 + round(rand(0.8, n), 3) as HighPrice, 
+				1 + round(rand(0.8, n), 3) as LowPrice,
+				take(0.0, n) as ClosePrice,
+				take(0.0, n) as DifPrice1,
+				take(0.0, n) as DifPrice2,
+				take(0.0, n) as PE1, 
+				take(0.0, n) as PE2,
+				take(0.0, n) as PreCloseIOPV,
+				take(0.0, n) as IOPV,
+				TotalBidQty,
+				(round(rand(0.003, n), 3) + 7) as WeightedAvgBidPx,
+				take(0.0, n) as AltWAvgBidPri,
+				TotalOfferQty,	
+				(round(rand(0.003, n), 3) + 7) as WeightedAvgOfferPx,
+				take(0.0, n) as AltWAvgAskPri,
+				take(0.0, n) as UpLimitPx,
+				take(0.0, n) as DownLimitPx,
+				take(0, n) as OpenInt,	
+				take(0.0, n) as OptPremiumRatio,
+				OfferPrice,
+				BidPrice,		
+				OfferOrderQty, 
+				BidOrderQty, 
+				BidNumOrders, 
+				OfferNumOrders, 
+				take(0, n) as ETFBuyNumber,
+				long(take(0, n)) as ETFBuyAmount,
+				take(0.0, n) as ETFBuyMoney,
+				take(0, n) as ETFSellNumber,
+				long(take(0, n)) as ETFSellAmount,
+				take(0.0, n) as ETFSellMoney,
+				take(0.0, n) as YieldToMatu,
+				take(0.0, n) as TotWarExNum,
+				rand(5, n) as WithdrawBuyNumber,
+				WithdrawBuyAmount,
+				WithdrawBuyMoney,
+				WithdrawSellNumber,
+				WithdrawSellAmount, 
+				WithdrawSellMoney,
+				TotalBidNumber,
+				TotalOfferNumber,	
+				MaxBidDur,	
+				MaxSellDur,	
+				BidNum,	
+				SellNum,
+				rand(TimeList, n) as LocalTime, 
+				take(1..n, n) as SeqNo,
+				OfferOrder, 
+				BidOrder
+		from  tmpTable
+	return snapshotTable
+}
+
+/**
+ * @Function Name: optionsSnapshot
+ * @Brief: Generates one-day options snapshot data.
+ * @Param tradeDate: Date for the options snapshot data.
+ * @Param instrumentNumber: The number of the instrument/option (default: 14000).
+ * @Return: One-day options snapshot data.
+ * @Sample Usage: optionsSnapshotData = optionsSnapshot(tradeDate=2020.01.06, instrumentNumber=14000)
+ */
+def optionsSnapshot(tradeDate, instrumentNumber=14000){
+    // 确定交易数量
+    funcName = "optionsSnapshot"
+	validateDateAndScalarParam(funcName, tradeDate)
+    InstrumentIDNumber = validateIntAndScalarParam(funcName, instrumentNumber)
+    if (size(getMarketCalendar("XSHG", tradeDate , tradeDate)) == 0){
+        colName = `TradingDay`ExchangeID`LastPrice`PreSettlementPrice`PreClosePrice`PreOpenInterest`OpenPrice`HighestPrice`LowestPrice`Volume`Turnover`OpenInterest`ClosePrice`SettlementPrice`UpperLimitPrice`LowerLimitPrice`PreDelta`CurrDelta`UpdateTime`UpdateMillisec`BidPrice`BidVolume`AskPrice`AskVolume`AveragePrice`ActionDay`InstrumentID`ExchangeInstID`BandingUpperPrice`BandingLowerPrice`TradeTime`ReceivedTime`PerPenetrationTime
+	    colType = [DATE,SYMBOL,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,INT,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,SECOND,INT,DOUBLE[],INT[],DOUBLE[],INT[],DOUBLE,DATE,SYMBOL,SYMBOL,DOUBLE,DOUBLE,TIME,NANOTIMESTAMP,LONG]
+        return table(1:0, colName, colType)
+    }   
+    eachTradeNum = 900
+    n = InstrumentIDNumber * eachTradeNum
+    characterSet = char(65..(65+25))
+    InstrumentIDs = array(SYMBOL, 0)
+    for(i in 1..InstrumentIDNumber){
+        InstrumentIDs.append!(concat(rand(characterSet, 2)) + string(rand(899,1)[0] + 100) + rand(`C`P,1)[0] + string(rand(899,1)[0] + 100))
+    }
+    TimeList = (09:30:00.000 + 0..(2 * 60 * 60) * 1000) join (13:00:00.000+0..((2 * 60 + 30) * 60) * 1000)
+    tradeTimeList = cutPoints(TimeList, eachTradeNum-1)
+    receivedTime = table(concatDateTime(tradeDate, nanotime(tradeTimeList)) as receivedTime)
+    tmpTable = cj(table(InstrumentIDs as InstrumentID ),receivedTime as receivedTime)
+    LastPrice = array(DOUBLE, 0)
+    PreSettlementPrice = array(DOUBLE, 0)
+    PreClosePrice = array(DOUBLE, 0)
+    PreOpenInterest = array(DOUBLE, 0)
+    OpenPrice = array(DOUBLE, 0)
+    HighestPrice = array(DOUBLE, 0)
+    LowestPrice = array(DOUBLE, 0)
+    Volume = array(INT, 0)
+    Turnover = array(DOUBLE, 0)
+    OpenInterest = array(DOUBLE, 0)
+    UpperLimitPrice = array(DOUBLE, 0)
+    BidPrice = array(DOUBLE[], 0)
+    AskPrice = array(DOUBLE[], 0)
+    BidVolume = array(INT[], 0)
+    AskVolume = array(INT[], 0)
+    Pricelist = 710..690/100.0
+	VolumeList = 35..55 * 900
+    tradeTime = time(exec receivedTime from tmpTable) - 20
+    UpdateTime = second(tradeTime)
+    for(i in 1 .. InstrumentIDNumber){
+        for(j in 1..9){
+            LastPrice.append!(take(rand(1000, 1) + 1000, 100))
+        }
+    }
+    for(i in 1 .. InstrumentIDNumber){
+        PreSettlementPrice.append!(take(rand(1000, 1) + 1000, eachTradeNum))
+    }
+    for(i in 1 .. InstrumentIDNumber){
+        PreClosePrice.append!(take(rand(1000, 1) + 1000, eachTradeNum))
+    }
+    for(i in 1 .. InstrumentIDNumber){
+        PreOpenInterest.append!(take(rand(1000, 1) + 1000, eachTradeNum))
+    }
+    for(i in 1 .. InstrumentIDNumber){
+        OpenPrice.append!(take(rand(1000, 1) + 1000, eachTradeNum))
+    }
+    for(i in 1 .. InstrumentIDNumber){
+        for(j in 1..9){
+            HighestPrice.append!(take(rand(1000, 1) + 1000, 100))
+        }
+    }
+    for(i in 1 .. InstrumentIDNumber){
+        for(j in 1..9){
+            LowestPrice.append!(take(rand(1000, 1) + 1000, 100))
+        }
+    }
+    for(i in 1 .. InstrumentIDNumber){
+        for(j in 1..9){
+            Volume.append!(take(rand(100, 1) + 200, 100))
+        }
+    }
+    for(i in 1 .. InstrumentIDNumber){
+        for(j in 1..9){
+            Turnover.append!(take(rand(1000, 1) + 8000, 100))
+        }
+    }
+    for(i in 1 .. InstrumentIDNumber){
+        OpenInterest.append!(take(rand(1000, 1) + 1000, eachTradeNum))
+    }
+    for(i in 1 .. InstrumentIDNumber){
+        UpperLimitPrice.append!(take(rand(1000, 1) + 1000, eachTradeNum))
+    }
+    for(i in 1 .. InstrumentIDNumber){
+		Bid = rand(Pricelist, 5).sort!(false)
+		BidPrice.append!(take([Bid], eachTradeNum))
+	}
+    for(i in 1 .. InstrumentIDNumber){
+		Ask = rand(Pricelist, 5).sort!()
+		AskPrice.append!(take([Ask], eachTradeNum))
+	}
+    for(i in 1 .. InstrumentIDNumber){
+		Bid = rand(VolumeList, 5).sort!(false)
+		BidVolume.append!(take([Bid], eachTradeNum))
+	}
+    for(i in 1 .. InstrumentIDNumber){
+		Ask = rand(VolumeList, 5).sort!()
+		AskVolume.append!(take([Ask], eachTradeNum))
+	}
+
+	//返回最终数据
+	onedayOptionsTable=select take(tradeDate, n) as TradingDay,
+                take("", n) as ExchangeID,
+                LastPrice,
+                PreSettlementPrice,
+                PreClosePrice,
+                PreOpenInterest,
+                OpenPrice,
+                HighestPrice,
+                LowestPrice,
+                Volume,
+                Turnover,
+                OpenInterest,
+                take(0.0, n) as ClosePrice,
+                take(0.0, n) as SettlementPrice,
+                UpperLimitPrice,
+                take(1.0, n) as LowerLimitPrice,
+                take(0.0, n) as PreDelta,
+                take(0.0, n) as CurrDelta,
+                UpdateTime,
+                take(0, n) as UpdateMillisec,
+                BidPrice,
+                BidVolume,
+                AskPrice,
+                AskVolume,
+                rand(20.0, n).sort!() as AveragePrice,
+                take(tradeDate, n) as ActionDay,
+                InstrumentID,
+                take("", n) as ExchangeInstID,
+                take(0.0, n) as BandingUpperPrice, 
+                take(0.0, n) as BandingLowerPrice,
+                tradeTime,
+                receivedTime,
+                rand(60000, n) + 10000 as perPenetrationTime
+				from tmpTable
+	return onedayOptionsTable			
+}
+
+/**
+ * @Function Name: futuresSnapshot
+ * @Brief: Generates one-day futures snapshot data.
+ * @Param tradeDate: Date for the snapshot data .
+ * @Param instrumentNumber: The number of the instrument/future (default: 2000).
+ * @Return: One-day futures snapshot data.
+ * @Sample Usage: futuresSnapshotData = futuresSnapshot(tradeDate=2020.01.06, instrumentNumber=2000)
+ */
+def futuresSnapshot(tradeDate, instrumentNumber=2000){
+    // 确定交易数量
+    funcName = "futuresSnapshot"
+	validateDateAndScalarParam(funcName, tradeDate)
+    InstrumentIDNumber = validateIntAndScalarParam(funcName, instrumentNumber)
+    if (size(getMarketCalendar("XSHG", tradeDate , tradeDate)) == 0){
+        colName = `TradingDay`ExchangeID`LastPrice`PreSettlementPrice`PreClosePrice`PreOpenInterest`OpenPrice`HighestPrice`LowestPrice`Volume`Turnover`OpenInterest`ClosePrice`SettlementPrice`UpperLimitPrice`LowerLimitPrice`PreDelta`CurrDelta`UpdateTime`UpdateMillisec`BidPrice`BidVolume`AskPrice`AskVolume`AveragePrice`ActionDay`InstrumentID`ExchangeInstID`BandingUpperPrice`BandingLowerPrice`TradeTime`ReceivedTime`PerPenetrationTime
+	    colType = [DATE,SYMBOL,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,INT,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,SECOND,INT,DOUBLE[],INT[],DOUBLE[],INT[],DOUBLE,DATE,SYMBOL,SYMBOL,DOUBLE,DOUBLE,TIME,NANOTIMESTAMP,LONG]
+        return table(1:0, colName, colType)
+    }  
+    eachTradeNum = 2000
+    n = InstrumentIDNumber * eachTradeNum
+    characterSet = char(65..(65+25))
+    InstrumentIDs = array(SYMBOL, 0)
+    for(i in 1..InstrumentIDNumber){
+        InstrumentIDs.append!(concat(rand(characterSet, 2)) + string(rand(899,1)[0] + 100))
+    }
+    TimeList = (09:30:00.000 + 0..(2 * 60 * 60) * 1000) join (13:00:00.000+0..((2 * 60 + 30) * 60) * 1000)
+    tradeTimeList = cutPoints(TimeList, eachTradeNum-1)
+    receivedTime = table(concatDateTime(tradeDate, nanotime(tradeTimeList)) as receivedTime)
+    tmpTable = cj(table(InstrumentIDs as InstrumentID ),receivedTime as receivedTime)
+    LastPrice = array(DOUBLE, 0)
+    PreSettlementPrice = array(DOUBLE, 0)
+    PreClosePrice = array(DOUBLE, 0)
+    PreOpenInterest = array(DOUBLE, 0)
+    OpenPrice = array(DOUBLE, 0)
+    HighestPrice = array(DOUBLE, 0)
+    LowestPrice = array(DOUBLE, 0)
+    Volume = array(INT, 0)
+    Turnover = array(DOUBLE, 0)
+    OpenInterest = array(DOUBLE, 0)
+    UpperLimitPrice = array(DOUBLE, 0)
+    BidPrice = array(DOUBLE[], 0)
+    AskPrice = array(DOUBLE[], 0)
+    BidVolume = array(INT[], 0)
+    AskVolume = array(INT[], 0)
+    Pricelist = 710..690/100.0
+	VolumeList = 35..55 * 900
+
+    tradeTime = time(exec receivedTime from tmpTable) - 20
+    UpdateTime = second(tradeTime)
+    for(i in 1 .. InstrumentIDNumber){
+        for(j in 1..20){
+            LastPrice.append!(take(rand(1000, 1) + 1000, 100))
+        }
+    }
+    for(i in 1 .. InstrumentIDNumber){
+        PreSettlementPrice.append!(take(rand(1000, 1) + 1000, eachTradeNum))
+    }
+    for(i in 1 .. InstrumentIDNumber){
+        PreClosePrice.append!(take(rand(1000, 1) + 1000, eachTradeNum))
+    }
+    for(i in 1 .. InstrumentIDNumber){
+        PreOpenInterest.append!(take(rand(1000, 1) + 1000, eachTradeNum))
+    }
+    for(i in 1 .. InstrumentIDNumber){
+        OpenPrice.append!(take(rand(1000, 1) + 1000, eachTradeNum))
+    }
+    for(i in 1 .. InstrumentIDNumber){
+        for(j in 1..20){
+            HighestPrice.append!(take(rand(1000, 1) + 1000, 100))
+        }
+    }
+    for(i in 1 .. InstrumentIDNumber){
+        for(j in 1..20){
+            LowestPrice.append!(take(rand(1000, 1) + 1000, 100))
+        }
+    }
+    for(i in 1 .. InstrumentIDNumber){
+        for(j in 1..20){
+            Volume.append!(take(rand(100, 1) + 200, 100))
+        }
+    }
+    for(i in 1 .. InstrumentIDNumber){
+        for(j in 1..20){
+            Turnover.append!(take(rand(1000, 1) + 8000, 100))
+        }
+    }
+    for(i in 1 .. InstrumentIDNumber){
+        OpenInterest.append!(take(rand(1000, 1) + 1000, eachTradeNum))
+    }
+    for(i in 1 .. InstrumentIDNumber){
+        UpperLimitPrice.append!(take(rand(1000, 1) + 1000, eachTradeNum))
+    }
+
+    for(i in 1 .. InstrumentIDNumber){
+		Bid = rand(Pricelist, 5).sort!(false)
+		BidPrice.append!(take([Bid], eachTradeNum))
+	}
+    for(i in 1 .. InstrumentIDNumber){
+		Ask = rand(Pricelist, 5).sort!()
+		AskPrice.append!(take([Ask], eachTradeNum))
+	}
+    for(i in 1 .. InstrumentIDNumber){
+		Bid = rand(VolumeList, 5).sort!(false)
+		BidVolume.append!(take([Bid], eachTradeNum))
+	}
+    for(i in 1 .. InstrumentIDNumber){
+		Ask = rand(VolumeList, 5).sort!()
+		AskVolume.append!(take([Ask], eachTradeNum))
+	}
+
+	//返回最终数据
+	onedayFuturesTable=select take(tradeDate, n) as TradingDay,
+                take("", n) as ExchangeID,
+                LastPrice,
+                PreSettlementPrice,
+                PreClosePrice,
+                PreOpenInterest,
+                OpenPrice,
+                HighestPrice,
+                LowestPrice,
+                Volume,
+                Turnover,
+                OpenInterest,
+                take(0.0, n) as ClosePrice,
+                take(0.0, n) as SettlementPrice,
+                UpperLimitPrice,
+                take(1.0, n) as LowerLimitPrice,
+                take(0.0, n) as PreDelta,
+                take(0.0, n) as CurrDelta,
+                UpdateTime,
+                take(0, n) as UpdateMillisec,
+                BidPrice,
+                BidVolume,
+                AskPrice,
+                AskVolume,
+                rand(20.0, n).sort!() as AveragePrice,
+                take(tradeDate, n) as ActionDay,
+                InstrumentID,
+                take("", n) as ExchangeInstID,
+                take(0.0, n) as BandingUpperPrice, 
+                take(0.0, n) as BandingLowerPrice,
+                tradeTime,
+                receivedTime,
+                rand(60000, n) + 10000 as perPenetrationTime
+				from tmpTable
+	return onedayFuturesTable				
+}
+
+/**
+ * @Function Name: ESPDepth
+ * @Brief: Generates one-day ESP depth data.
+ * @Param tradeDate: Date for the ESPDepth data.
+ * @Param securityNumber: The number of the security (default: 4000).
+ * @Return: One-day ESP depth data.
+ * @Sample Usage: ESPDepthData = ESPDepth(tradeDate=2020.01.06, securityNumber=4000)
+ */
+def ESPDepth(tradeDate, securityNumber=4000){
+    // 确定交易数量
+    funcName = "ESPDepthData"
+	validateDateAndScalarParam(funcName, tradeDate)
+    SecurityIDNumber = validateIntAndScalarParam(funcName, securityNumber)
+    if (size(getMarketCalendar("XSHG", tradeDate , tradeDate)) == 0){
+        colName = `tradeDate`createTime`bondCodeVal`marketDepth`marketIndicator`mdBookType`mdSubBookType`messageId`messageSource`msgSeqNum`msgType`askclearingMethod`bidclearingMethod`askdeliveryType`biddeliveryType`askinitAccountNumSixCode`bidinitAccountNumSixCode`asklastPx`bidlastPx`askmdEntryDate`bidmdEntryDate`askmdEntrySize`bidmdEntrySize`askmdEntryTime`bidmdEntryTime`askmdQuoteType`bidmdQuoteType`askquoteEntryID`bidquoteEntryID`asksettlType`bidsettlType`askyield`bidyield`ask1initPartyTradeCode`bid1initPartyTradeCode`ask2initPartyTradeCode`bid2initPartyTradeCode`ask3initPartyTradeCode`bid3initPartyTradeCode`ask4initPartyTradeCode`bid4initPartyTradeCode`ask5initPartyTradeCode`bid5initPartyTradeCode`ask6initPartyTradeCode`bid6initPartyTradeCode`ask7initPartyTradeCode`bid7initPartyTradeCode`ask8initPartyTradeCode`bid8initPartyTradeCode`ask9initPartyTradeCode`bid9initPartyTradeCode`ask10initPartyTradeCode`bid10initPartyTradeCode`securityID`securityType`senderCompID`senderSubID`sendingTime`symbol
+        colType = [DATE,TIME,SYMBOL,LONG,LONG,LONG,LONG,LONG,SYMBOL,LONG,SYMBOL,LONG[],LONG[],LONG[],LONG[],LONG[],LONG[],DOUBLE[],DOUBLE[],DATE[],DATE[],LONG[],LONG[],TIME[],TIME[],LONG[],LONG[],LONG[],LONG[],LONG[],LONG[],DOUBLE[],DOUBLE[],SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,TIMESTAMP,SYMBOL]
+        return table(1:0, colName, colType)
+    }   
+    eachTradeNum = 80
+    SecurityID = lpad(string(1..SecurityIDNumber),6,"800000")$SYMBOL
+	TimeList = (09:30:00.000 + 0..(2 * 60 * 60) * 1000) join (13:00:00.000+0..((2 * 60 + 30) * 60) * 1000)
+    CreateTime = table(cutPoints(TimeList, eachTradeNum-1) as CreateTime) 
+	tmpTable = cj(table(SecurityID as SecurityID),CreateTime as CreateTime)
+    n = size(tmpTable)
+    marketDepth = array(LONG, 0)
+    marketIndicator = array(LONG, 0)
+    mdBookType = array(LONG, 0)
+    mdSubBookType = array(LONG, 0)
+    messageId = array(LONG, 0)
+    messageSource = array(SYMBOL, 0)
+    msgSeqNum = array(LONG, 0)
+    msgType = array(SYMBOL, 0)
+    askclearingMethod = array(LONG[], 0)
+    bidclearingMethod = array(LONG[], 0)
+    askdeliveryType = array(LONG[], 0)
+    biddeliveryType = array(LONG[], 0)
+    askinitAccountNumSixCode = array(LONG[], 0)
+    bidinitAccountNumSixCode = array(LONG[], 0)
+    asklastPx = array(DOUBLE[], 0)
+    bidlastPx = array(DOUBLE[], 0)
+    askmdEntryDate = array(DATE[], 0) 
+    bidmdEntryDate = array(DATE[], 0) 
+    askmdEntrySize = array(LONG[], 0)
+    bidmdEntrySize = array(LONG[], 0)
+    askmdEntryTime = array(TIME[], 0) 
+    bidmdEntryTime = array(TIME[], 0) 
+    askmdQuoteType = array(LONG[], 0)
+    bidmdQuoteType = array(LONG[], 0)
+    askquoteEntryID = array(LONG[], 0)
+    bidquoteEntryID = array(LONG[], 0)
+    asksettlType = array(LONG[], 0)
+    bidsettlType = array(LONG[], 0)
+    askyield = array(DOUBLE[], 0)
+    bidyield = array(DOUBLE[], 0)
+    ask1initPartyTradeCode = array(SYMBOL, 0)
+    ask2initPartyTradeCode = array(SYMBOL, 0)
+    bid2initPartyTradeCode = array(SYMBOL, 0)
+    ask3initPartyTradeCode = array(SYMBOL, 0)
+    bid3initPartyTradeCode = array(SYMBOL, 0)
+    ask4initPartyTradeCode = array(SYMBOL, 0)
+    bid4initPartyTradeCode = array(SYMBOL, 0)
+    ask5initPartyTradeCode = array(SYMBOL, 0)
+    bid5initPartyTradeCode = array(SYMBOL, 0)
+    ask6initPartyTradeCode = array(SYMBOL, 0)
+    bid6initPartyTradeCode = array(SYMBOL, 0)
+    ask7initPartyTradeCode = array(SYMBOL, 0)
+    bid7initPartyTradeCode = array(SYMBOL, 0)
+    ask8initPartyTradeCode = array(SYMBOL, 0)
+    bid8initPartyTradeCode = array(SYMBOL, 0)
+    ask9initPartyTradeCode = array(SYMBOL, 0)
+    bid9initPartyTradeCode = array(SYMBOL, 0)
+    ask10initPartyTradeCode = array(SYMBOL, 0)
+    bid10initPartyTradeCode = array(SYMBOL, 0)
+    securityType = array(SYMBOL, 0)
+    senderCompID = array(SYMBOL, 0)
+    senderSubID = array(SYMBOL, 0)
+    sendingTime = array(TIMESTAMP, 0) 
+    symbol =array(SYMBOL, 0)
+
+    TradeCodeList = `chenyuhang`fuyitian1`miidi`mszq89`chenyh`hongye`qww0001`zhengmm`caohanjing1`shenxiaokai`zyang001`qc57147`wu7`015810`HYMJACK`lihanjun`ht019311`zoeyxuyao`dp6428`gonghaibo`wangxu`guyuexin`luhaoyu`liudash`lianghx`liangx`xulz`tanglin`chengsirui`mengjc`renztcicc`luye`teslaman`ZhangHuimin`zhangweixin`CZHY`chenxit`QQZZ`douyuewen`186111`cyao`volcano`wanglingyu`LEILINGXIAO`liyongzhen`7085`fjy5094`015967`songyuning`yiyh`wut`shgmfd`R622894`hzp`sczqwyp`pengchengye`wuhaimeng`shgmhy`liuyicheng2`linxuan`guanwenhui`XWZ2023`cheny1`chenghaizhuo`ADELA`liumm02`shgchengongyin`WANGJIAQING`046977`yuyunyu`zhangxiangheng`170193`ZHANGYIFEI`wanggezi`ZQZHANG
+    SecurityType = `ABS`CD`MTN`TB`GBAB`CORP`CP`Other`SCP`PFB
+    symbolList = ["21上海13","21成都国投PPN001","21上海18","21宁波债16","21湖南61","21陕西50","21四川46","23农业银行CD168","21广东95","21广东100","21广东102","21广东103","22云南债01","23中信银行CD172","21广东104","20吉林债05","23交通银行CD215"]
+    marketDepth.append!(take(10,n))
+    marketIndicator.append!(take(4,n))
+    mdBookType.append!(take(2, n))
+    mdSubBookType.append!(take(123, n))
+    for(id in 1..SecurityIDNumber){
+        for(i in 1..5){
+            messageId.append!(take(rand(458779427231252481, 1), 16)) 
+        }
+    }
+    messageSource.append!(take("cfets", n))
+    for(id in 1..SecurityIDNumber){
+        for(i in 1..5){
+            msgSeqNum.append!(take(rand(410000, 1), 16)) 
+        }
+    }
+    msgType.append!(take(`W, n))
+    askclearingMethod.append!(take([[54,,,,,,,,,],[15,,,,,,,,,] ,[13,,,,,,,,,]], n))
+    bidclearingMethod.append!(take([[54,,,,,,,,,],[15,,,,,,,,,] ,[13,,,,,,,,,]], n))
+    askdeliveryType.append!(take([[0,,,,,,,,,],[0,,,,,,,,,] ,[0,,,,,,,,,]], n))
+    biddeliveryType.append!(take([[0,,,,,,,,,],[0,,,,,,,,,] ,[0,,,,,,,,,]], n))
+    askinitAccountNumSixCode.append!(take([[100010,,,,,,,,,],[100008,,,,,,,,,] ,[100003,,,,,,,,,]], n))
+    bidinitAccountNumSixCode.append!(take([[100010,,,,,,,,,],[100008,,,,,,,,,] ,[100003,,,,,,,,,]], n))
+    asklastPx.append!(take([[111.7687,,,,,,,,,],[99.9418,,,,,,,,,] ,[99.9400,,,,,,,,,]], n))
+    bidlastPx.append!(take([[113.0295,,,,,,,,,],[100.0146,,,,,,,,,] ,[99.9911,,,,,,,,,]], n))
+    askmdEntryDate.append!(take([[2023.09.18,,,,,,,,,]], n))
+    bidmdEntryDate.append!(take([[2023.09.18,,,,,,,,,]], n))
+    askmdEntrySize.append!(take([[10000000,,,,,,,,,]], n))
+    bidmdEntrySize.append!(take([[10000000,,,,,,,,,]], n))
+    askmdEntryTime.append!(take([[09:06:11.455,,,,,,,,,]], n))
+    bidmdEntryTime.append!(take([[09:06:11.455,,,,,,,,,]], n))
+    askmdQuoteType.append!(take([[107,,,,,,,,,]], n))
+    bidmdQuoteType.append!(take([[107,,,,,,,,,]], n))
+    askquoteEntryID.append!(take([[230918020410022684l,,,,,,,,,]], n))
+    bidquoteEntryID.append!(take([[230918020410004415l,,,,,,,,,]], n))
+    asksettlType.append!(take([[2,,,,,,,,,]], n))
+    bidsettlType.append!(take([[2,,,,,,,,,]], n))
+    askyield.append!(take([[2.915,,,,,,,,,]], n))
+    bidyield.append!(take([[2.755,,,,,,,,,]], n))
+    for(id in 1..SecurityIDNumber){
+        for(i in 1..5){
+            ask1initPartyTradeCode.append!(take(rand(TradeCodeList, 1), 16)) 
+        }
+    }
+    bid1initPartyTradeCode = ask1initPartyTradeCode
+    ask2initPartyTradeCode.append!(take("", n))
+    bid2initPartyTradeCode.append!(take("", n))
+    ask3initPartyTradeCode.append!(take("", n))
+    bid3initPartyTradeCode.append!(take("", n))
+    ask4initPartyTradeCode.append!(take("", n))
+    bid4initPartyTradeCode.append!(take("", n))
+    ask5initPartyTradeCode.append!(take("", n))
+    bid5initPartyTradeCode.append!(take("", n))
+    ask6initPartyTradeCode.append!(take("", n))
+    bid6initPartyTradeCode.append!(take("", n))
+    ask7initPartyTradeCode.append!(take("", n))
+    bid7initPartyTradeCode.append!(take("", n))
+    ask8initPartyTradeCode.append!(take("", n))
+    bid8initPartyTradeCode.append!(take("", n))
+    ask9initPartyTradeCode.append!(take("", n))
+    bid9initPartyTradeCode.append!(take("", n))
+    ask10initPartyTradeCode.append!(take("", n))
+    bid10initPartyTradeCode.append!(take("", n))
+    for(id in 1..SecurityIDNumber){
+        for(i in 1..5){
+            securityType.append!(take(rand(SecurityType, 1), 16)) 
+        }
+    }
+    senderCompID.append!(take("CFETS-MD-INFI-1", n))
+    senderSubID.append!(take("QDM-ESP", n))
+
+    for(id in 1..SecurityIDNumber){
+        for(i in 1..5){
+            symbol.append!(take(rand(symbolList, 1), 16)) 
+        }
+    }
+    for(id in 1..SecurityIDNumber){
+        sendingTime.append!(concatDateTime(tradeDate, exec * from CreateTime)-115) 
+    }
+    
+    
+	//返回最终数据
+	onedayESPDepthTable=select take(tradeDate, n) as tradeDate,
+                CreateTime,
+                SecurityID as bondCodeVal,
+                marketDepth,
+                marketIndicator,
+                mdBookType,
+                mdSubBookType,
+                messageId,
+                messageSource,
+                msgSeqNum,
+                msgType,
+                askclearingMethod,
+                bidclearingMethod,
+                askdeliveryType,
+                biddeliveryType,
+                askinitAccountNumSixCode,
+                bidinitAccountNumSixCode,
+                asklastPx,
+                bidlastPx,
+                askmdEntryDate,
+                bidmdEntryDate,
+                askmdEntrySize,
+                bidmdEntrySize,
+                askmdEntryTime,
+                bidmdEntryTime,
+                askmdQuoteType,
+                bidmdQuoteType,
+                askquoteEntryID,
+                bidquoteEntryID,
+                asksettlType,
+                bidsettlType,
+                askyield,
+                bidyield,
+                ask1initPartyTradeCode,
+                bid1initPartyTradeCode,
+                ask2initPartyTradeCode,
+                bid2initPartyTradeCode,
+                ask3initPartyTradeCode,
+                bid3initPartyTradeCode,
+                ask4initPartyTradeCode,
+                bid4initPartyTradeCode,
+                ask5initPartyTradeCode,
+                bid5initPartyTradeCode,
+                ask6initPartyTradeCode,
+                bid6initPartyTradeCode,
+                ask7initPartyTradeCode,
+                bid7initPartyTradeCode,
+                ask8initPartyTradeCode,
+                bid8initPartyTradeCode,
+                ask9initPartyTradeCode,
+                bid9initPartyTradeCode,
+                ask10initPartyTradeCode,
+                bid10initPartyTradeCode,
+                SecurityID,
+                securityType,
+                senderCompID,
+                senderSubID,
+                sendingTime,
+                symbol
+				from tmpTable
+	return onedayESPDepthTable			
+}
+
+/**
+ * @Function Name: ESPTrade
+ * @Brief: Generates one-day ESP trade data.
+ * @Param tradeDate: Date for the ESP trade data.
+ * @Param securityNumber: The number of the security (default: 3000).
+ * @Return: One-day ESP trade data.
+ * @Sample Usage: ESPTradeData = ESPTrade(tradeDate=2020.06.01, securityNumber=3000)
+ */
+def ESPTrade(tradeDate, securityNumber=3000){
+    // 确定交易数量
+    funcName = "ESPTradeData"
+	validateDateAndScalarParam(funcName, tradeDate)
+    SecurityIDNumber = validateIntAndScalarParam(funcName, securityNumber)
+    if (size(getMarketCalendar("XSHG", tradeDate , tradeDate)) == 0){
+        colName = `createDate`createTime`securityID`execId`execType`lastQty`marketIndicator`messageSource`msgSeqNum`msgType`price`senderCompID`stipulationType`stipulationValue`symbol`tradeDate`tradeMethod`tradeTime`tradeType`transactTime
+	    colType = [DATE,TIME,SYMBOL,SYMBOL,SYMBOL,LONG,LONG,SYMBOL,LONG,SYMBOL,DOUBLE,SYMBOL,SYMBOL,DOUBLE,SYMBOL,DATE,LONG,TIME,LONG,TIMESTAMP]
+        return table(1:0, colName, colType)
+    }    
+    eachTradeNum = 10
+    SecurityID = lpad(string(1..SecurityIDNumber),9,"012280000")$SYMBOL
+	TimeList = (09:30:00.000 + 0..(2 * 60 * 60) * 1000) join (13:00:00.000+0..((2 * 60 + 30) * 60) * 1000)
+    CreateTime = table(cutPoints(TimeList, eachTradeNum-1) as CreateTime) 
+	tmpTable = cj(table(SecurityID as SecurityID),CreateTime as CreateTime)
+    n = size(tmpTable)
+    symbolList = ["23乐清国投CP001", "23长沙银行CD172", "23广西北部湾银行CD281", "23广西北部湾银行CD282", "23广西北部湾银行CD283", "23江苏江南农村商业银行CD101", "23沪机场股SCP004", "21昆山国创PPN004", "23深圳农商银行CD102", "21广安控股MTN001", "23台州金投PPN001", "23东莞农村商业银行CD165", "23绍兴银行CD069", "23津保投SCP013", "22浦发银行CD163", "23长沙农商银行CD086", "22民生银行01", "23瑞穗银行CD010", "23泉州银行CD095", "21宁波轨交GN001(碳中和债)", "19渝水投MTN001", "23成都银行CD195", "23天台农商银行CD005", "21国开13", "23中原银行CD325"]
+    execId = array(SYMBOL,0)
+    execType = array(SYMBOL,0)
+    lastQty = array(LONG,0)
+    marketIndicator = array(LONG,0)
+    messageSource = array(SYMBOL,0)
+    msgSeqNum = array(LONG,0)
+    msgType = array(SYMBOL,0)
+    price = array(DOUBLE,0)
+    senderCompID = array(SYMBOL,0)
+    stipulationType = array(SYMBOL,0)
+    stipulationValue = array(DOUBLE,0)
+    symbol = array(SYMBOL,0)
+    Date = array(DATE,0)
+    tradeMethod = array(LONG,0)
+    tradeType = array(LONG,0)
+    for(id in 1..SecurityIDNumber){
+        for(i in 1..2){
+            execId.append!(take(("CBT" + string(tradeDate).strReplace(".","") + string(rand(899999,1)+100000)), 5)) 
+        }
+    }
+    execType.append!(take("F", n))
+    for(id in 1..SecurityIDNumber){
+        for(i in 1..2){
+            lastQty.append!(take((rand(200,1)*1000000), 5)) 
+        }
+    }
+    marketIndicator.append!(take(52, n))
+    messageSource.append!(take("cfets", n))
+    for(id in 1..SecurityIDNumber){
+        msgSeqNum.append!(rand(400000,10).sort!()) 
+    }
+    msgType.append!(take("8", n))
+    for(id in 1..SecurityIDNumber){
+        price.append!((rand(1.0,10) +100).sort!()) 
+    }
+    senderCompID.append!(take("CMDS", n))
+    stipulationType.append!(take("Yield2", n))
+    for(id in 1..SecurityIDNumber){
+        stipulationValue.append!((rand(1.0,10) + 2).sort!()) 
+    }
+    for(id in 1..SecurityIDNumber){
+        for(i in 1..2){
+            symbol.append!(take((rand(symbolList,1)), 5)) 
+        }
+    }
+    Date.append!(take(tradeDate, n))
+    for(id in 1..SecurityIDNumber){
+        for(i in 1..2){
+            tradeMethod.append!(take((rand(1..4,1)), 5)) 
+        }
+    }
+    for(id in 1..SecurityIDNumber){
+        for(i in 1..2){
+            tradeType.append!(take((rand([4,5,1],1)), 5)) 
+        }
+    }
+    tradeTime = exec CreateTime from tmpTable
+    tradeTime += 300
+    transactTime = concatDateTime(tradeDate ,tradeTime)
+	//返回最终数据
+	onedayESPTradeTable=select take(tradeDate, n) as createDate,
+                CreateTime,
+                SecurityID,
+                execId,
+                execType,
+                lastQty,
+                marketIndicator,
+                messageSource,
+                msgSeqNum,	
+                msgType,	
+                price,	
+                senderCompID,	
+                stipulationType,	
+                stipulationValue,	
+                symbol,	
+                Date as tradeDate,	
+                tradeMethod,	
+                tradeTime,	
+                tradeType,	
+                transactTime
+				from tmpTable
+	return onedayESPTradeTable			
+}
+
+/**
+ * @Function Name: XBondDepth
+ * @Brief: Generates one-day XBond depth data.
+ * @Param tradeDate: Date for the XBond depth data.
+ * @Param securityNumber: The number of the security (default: 200).
+ * @Return: One-day XBond depth data.
+ * @Sample Usage: XBondDepthData = XBondDepth(tradeDate=2020.06.01, securityNumber=200)
+ */
+def XBondDepth(tradeDate, securityNumber=200){
+    // 确定交易数量
+    funcName = "XBondDepth"
+	validateDateAndScalarParam(funcName, tradeDate)
+    SecurityIDNumber = validateIntAndScalarParam(funcName, securityNumber) 
+    if (size(getMarketCalendar("XSHG", tradeDate , tradeDate)) == 0){
+        colName = `bondCodeVal`tradeDate`createTime`marketDepth`mdBookType`messageId`messageSource`msgSeqNum`msgType`bidmdEntryPrice`offermdEntryPrice`bidmdEntrySize`offermdEntrySize`bidsettlType`offersettlType`bidyield`offeryield`bid1yieldType`offer1yieldType`bid2yieldType`offer2yieldType`bid3yieldType`offer3yieldType`bid4yieldType`offer4yieldType`bid5yieldType`offer5yieldType`bid6yieldType`offer6yieldType`securityID`senderCompID`senderSubID`sendingTime
+	    colType = [SYMBOL,DATE,TIME,LONG,LONG,LONG,SYMBOL,LONG,SYMBOL,DOUBLE[],DOUBLE[],LONG[],LONG[],LONG[],LONG[],DOUBLE[],DOUBLE[],SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,TIMESTAMP]
+        return table(1:0, colName, colType)
+    } 
+    eachTradeNum = 1000
+    SecurityID = lpad(string(1..SecurityIDNumber),6,"220000")$SYMBOL
+	TimeList = (09:30:00.000 + 0..(2 * 60 * 60) * 1000) join (13:00:00.000+0..((2 * 60 + 30) * 60) * 1000)
+    CreateTime = table(cutPoints(TimeList, eachTradeNum-1) as CreateTime) 
+	tmpTable = cj(table(SecurityID as SecurityID),CreateTime as CreateTime)
+    n = size(tmpTable)
+    marketDepth = array(LONG, 0)
+    mdBookType = array(LONG, 0)
+    messageId = array(LONG, 0)
+    messageSource = array(STRING, 0)
+    msgSeqNum = array(LONG, 0)
+    msgType = array(STRING, 0)
+    bidmdEntryPrice = array(DOUBLE[], 0)
+    offermdEntryPrice = array(DOUBLE[], 0)
+    bidmdEntrySize = array(LONG[], 0)
+    offermdEntrySize = array(LONG[], 0)
+    bidsettlType = array(LONG[], 0)
+    offersettlType = array(LONG[], 0)
+    bidyield = array(DOUBLE[], 0)
+    offeryield = array(DOUBLE[], 0)
+    bid1yieldType = array(STRING, 0)
+    offer1yieldType = array(STRING, 0)
+    bid2yieldType = array(STRING, 0)
+    offer2yieldType = array(STRING, 0)
+    bid3yieldType = array(STRING, 0)
+    offer3yieldType = array(STRING, 0)
+    bid4yieldType = array(STRING, 0)
+    offer4yieldType = array(STRING, 0)
+    bid5yieldType = array(STRING, 0)
+    offer5yieldType = array(STRING, 0)
+    bid6yieldType = array(STRING, 0)
+    offer6yieldType = array(STRING, 0)
+    senderCompID = array(STRING, 0)
+    senderSubID = array(STRING, 0)
+    sendingTime = array(TIMESTAMP, 0)
+    marketDepth.append!(take(6, n))
+    mdBookType.append!(take(2, n))
+
+    messageId.append!(rand(458779427231252481, n)) 
+    messageSource.append!(take("cfets", n))
+    msgSeqNum.append!(rand(410000, n)) 
+    msgType.append!(take(`W, n))
+    bidmdEntryPrice.append!(take([[102.2155, 102.2155, 102.0319, , , ]], n))
+    offermdEntryPrice.append!(take([[102.6646, 102.6646, 102.7223, , , ]], n))
+    bidmdEntrySize.append!(take([[30,000,000, 30,000,000, 100,000,000, , , ]], n))
+    offermdEntrySize.append!(take([[10,000,000, 30,000,000, 100,000,000, , , ]], n))
+    bidsettlType.append!(take([[2, 2, 2, , , ]], n))
+    offersettlType.append!(take([[2, 2, 2, , , ]], n))
+    bidyield.append!(take([[2.7, 2.7, 2.74, , , ]], n))
+    offeryield.append!(take([[2.6025, 2.6025, 2.59, , , ]], n))
+    bid1yieldType.append!(take("MATURITY", n))
+    offer1yieldType.append!(take("MATURITY", n))
+    bid2yieldType.append!(take("MATURITY", n))
+    offer2yieldType.append!(take("MATURITY", n))
+    bid3yieldType.append!(take("MATURITY", n))
+    offer3yieldType.append!(take("MATURITY", n))
+    bid4yieldType.append!(take("", n))
+    offer4yieldType.append!(take("", n))
+    bid5yieldType.append!(take("", n))
+    offer5yieldType.append!(take("", n))
+    bid6yieldType.append!(take("", n))
+    offer6yieldType.append!(take("", n))
+    senderCompID.append!(take("CFETS-MD-INFI-1", n))
+    senderSubID.append!(take("ODM", n))
+    for(id in 1..SecurityIDNumber){
+        sendingTime.append!(concatDateTime(tradeDate, exec * from CreateTime)-115) 
+    }
+	//返回最终数据
+	onedayXBondDepthTable=select SecurityID as bondCodeVal,
+                take(tradeDate, n) as tradeDate,
+                CreateTime,
+                marketDepth,
+                mdBookType,
+                messageId,
+                messageSource,
+                msgSeqNum,
+                msgType,
+                bidmdEntryPrice,
+                offermdEntryPrice,
+                bidmdEntrySize,
+                offermdEntrySize,
+                bidsettlType,
+                offersettlType,
+                bidyield,
+                offeryield,
+                bid1yieldType,
+                offer1yieldType,
+                bid2yieldType,
+                offer2yieldType,
+                bid3yieldType,
+                offer3yieldType,
+                bid4yieldType,
+                offer4yieldType,
+                bid5yieldType,
+                offer5yieldType,
+                bid6yieldType,
+                offer6yieldType,
+                SecurityID,
+                senderCompID,
+                senderSubID,
+                sendingTime
+				from tmpTable
+	return onedayXBondDepthTable			
+}
+
+/**
+ * @Function Name: XBondTrade
+ * @Brief: Generates one-day XBond trade data.
+ * @Param tradeDate: Date for the XBond trade data.
+ * @Param securityNumber: The number of the security (default: 200).
+ * @Return: One-day XBond trade data.
+ * @Sample Usage: XBondTradeData = XBondTrade(tradeDate=2020.06.01, securityNumber=200)
+ */
+def XBondTrade(tradeDate, securityNumber=200){
+    // 确定交易数量
+    funcName = "XBondTrade"
+	validateDateAndScalarParam(funcName, tradeDate)
+    SecurityIDNumber = validateIntAndScalarParam(funcName, securityNumber)
+    if (size(getMarketCalendar("XSHG", tradeDate , tradeDate)) == 0){
+        colName = `tradeDate`createTime`securityID`beforeClosingPrice`beforeClosingYield`beforeWeightedAveragePrice`beforeWeightedAverageYield`fillSide`highestPrice`highestYield`lowestPrice`lowestYield`marketIndicator`mdSubType`mdType`messageId`messageSource`msgSeqNum`msgType`openingValence`openingYield`priceRiseFallAmplitude`senderCompID`sendingTime`settlType`symbol`tradeMethod`transactTime`transactionNumber`uniqueOutputKey`upToDatePrice`upToDateYield`weightedAveragePrice`weightedAverageYield`yieldRiseFall
+	    colType = [DATE,TIME,SYMBOL,DOUBLE,DOUBLE,DOUBLE,DOUBLE,LONG,DOUBLE,DOUBLE,DOUBLE,DOUBLE,LONG,LONG,LONG,LONG,SYMBOL,LONG,SYMBOL,DOUBLE,DOUBLE,DOUBLE,SYMBOL,TIMESTAMP,LONG,SYMBOL,LONG,TIMESTAMP,LONG,LONG,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE]
+        return table(1:0, colName, colType)
+    } 
+    eachTradeNum = 120
+    SecurityID = lpad(string(1..SecurityIDNumber),6,"220000")$SYMBOL
+	TimeList = (09:30:00.000 + 0..(2 * 60 * 60) * 1000) join (13:00:00.000+0..((2 * 60 + 30) * 60) * 1000)
+    CreateTime = table(cutPoints(TimeList, eachTradeNum-1) as CreateTime) 
+	tmpTable = cj(table(SecurityID as SecurityID),CreateTime as CreateTime)
+    n = size(tmpTable)
+    symbolList = ["22国开05", "22国开02", "22附息国债25", "22附息国债24", "22附息国债19", "22附息国债17", "21浦发银行02", "21农发02", "22进出11", "21进出13", "21进出10", "21进出05", "21国开15", "21国开03", "21附息国债04", "20农发10", "20农发04", "20进出10", "20进出05", "20国开12", "19农发06", "18附息国债23", "15国开18", "23农业银行CD203", "22农发清发03"]
+    beforeClosingPrice = array(DOUBLE, 0)
+    beforeClosingYield = array(DOUBLE, 0)
+    beforeWeightedAveragePrice = array(DOUBLE, 0)
+    beforeWeightedAverageYield = array(DOUBLE, 0)
+    fillSide = array(LONG, 0)
+    highestPrice = array(DOUBLE, 0)
+    highestYield = array(DOUBLE, 0)
+    lowestPrice = array(DOUBLE, 0)
+    lowestYield = array(DOUBLE, 0)
+    marketIndicator = array(LONG, 0)
+    mdSubType = array(LONG, 0)
+    mdType = array(LONG, 0)
+    messageId = array(LONG, 0)
+    messageSource = array(SYMBOL, 0)
+    msgSeqNum = array(LONG, 0)
+    msgType = array(SYMBOL, 0)
+    openingValence = array(DOUBLE, 0)
+    openingYield = array(DOUBLE, 0)
+    priceRiseFallAmplitude = array(DOUBLE, 0)
+    senderCompID = array(SYMBOL, 0)
+    sendingTime = array(TIMESTAMP, 0)
+    settlType = array(LONG, 0)
+    symbol = array(SYMBOL, 0)
+    tradeMethod = array(LONG, 0)
+    transactTime = array(TIMESTAMP, 0)
+    transactionNumber = array(LONG, 0)
+    uniqueOutputKey = array(LONG, 0)
+    upToDatePrice = array(DOUBLE, 0)
+    upToDateYield = array(DOUBLE, 0)
+    weightedAveragePrice = array(DOUBLE, 0)
+    weightedAverageYield = array(DOUBLE, 0)
+    yieldRiseFall = array(DOUBLE, 0)
+    for(id in 1..SecurityIDNumber){
+        for(i in 1..3){
+            beforeClosingPrice.append!(take(rand(4.0,1)+100, 40))
+        }
+    }
+    for(id in 1..SecurityIDNumber){
+        for(i in 1..3){
+            beforeClosingYield.append!(take(rand(0.5,1)+2, 40))
+        }
+    }
+    for(id in 1..SecurityIDNumber){
+        for(i in 1..3){
+            beforeWeightedAveragePrice.append!(take(rand(3.0,1)+100, 40))
+        }
+    }
+    for(id in 1..SecurityIDNumber){
+        for(i in 1..3){
+            beforeWeightedAverageYield.append!(take(rand(0.5,1)+2, 40))
+        }
+    }
+    fillSide.append!(rand(1..2, n))
+    for(id in 1..SecurityIDNumber){
+        for(i in 1..6){
+            highestPrice.append!(take(rand(3.0,1)+100, 20))
+        }
+    }
+    for(id in 1..SecurityIDNumber){
+        for(i in 1..6){
+            highestYield.append!(take(rand(0.5,1)+2, 20))
+        }
+    }
+    for(id in 1..SecurityIDNumber){
+        for(i in 1..6){
+            lowestPrice.append!(take(rand(3.0,1)+100, 20))
+        }
+    }
+    for(id in 1..SecurityIDNumber){
+        for(i in 1..6){
+            lowestYield.append!(take(rand(0.5,1)+2, 20))
+        }
+    }
+    marketIndicator.append!(take(4, n))
+    mdSubType.append!(take(0, n))
+    mdType.append!(take(0, n))
+    messageId.append!(rand(458779427231252481, n)) 
+    messageSource.append!(take(`cfets, n))
+    msgSeqNum.append!(rand(410000, n)) 
+    msgType.append!(take(`W, n))
+    for(id in 1..SecurityIDNumber){
+        for(i in 1..6){
+            openingValence.append!(take(rand(2.0,1)+100, 20))
+        }
+    }
+    for(id in 1..SecurityIDNumber){
+        for(i in 1..6){
+            openingYield.append!(take(rand(0.5,1)+2, 20))
+        }
+    }
+    priceRiseFallAmplitude.append!(-1*rand(0.5,n))
+    senderCompID.append!(take("CMDS", n))
+    for(id in 1..SecurityIDNumber){
+        sendingTime.append!(concatDateTime(tradeDate, exec * from CreateTime)-115) 
+    }
+    settlType.append!(take(2, n))
+    for(id in 1..SecurityIDNumber){
+        for(i in 1..6){
+            symbol.append!(take(rand(symbolList,1), 20))
+        }
+    }
+    tradeMethod.append!(take(3, n))
+    transactTime = sendingTime - rand(1000, n)
+    transactionNumber.append!(rand(240, n)*1000000)
+    for(id in 1..SecurityIDNumber){
+        for(i in 1..6){
+            uniqueOutputKey.append!(take(rand(958779427231252481l,1),20))
+        }
+    }
+    for(id in 1..SecurityIDNumber){
+        for(i in 1..6){
+            upToDatePrice.append!(take(rand(2.0,1)+100, 20))
+        }
+    }
+    for(id in 1..SecurityIDNumber){
+        for(i in 1..6){
+            upToDateYield.append!(take(rand(2.0,1)+1, 20))
+        }
+    }
+    for(id in 1..SecurityIDNumber){
+        for(i in 1..6){
+            weightedAveragePrice.append!(take(rand(2.0,1)+100, 20))
+        }
+    }
+    for(id in 1..SecurityIDNumber){
+        for(i in 1..6){
+            weightedAverageYield.append!(take(rand(2.0,1)+1, 20))
+        }
+    }
+    yieldRiseFall.append!(rand(5.0, n))
+	//返回最终数据
+	onedayXBondTradeTable=select 
+                take(tradeDate, n) as tradeDate,
+                CreateTime,
+                SecurityID,
+                beforeClosingPrice,
+                beforeClosingYield,	
+                beforeWeightedAveragePrice,	
+                beforeWeightedAverageYield,	
+                fillSide,	
+                highestPrice,	
+                highestYield,	
+                lowestPrice,	
+                lowestYield,	
+                marketIndicator,	
+                mdSubType,	
+                mdType,	
+                messageId,
+                messageSource,
+                msgSeqNum,
+                msgType,
+                openingValence,
+                openingYield,
+                priceRiseFallAmplitude,
+                senderCompID,
+                sendingTime,
+                settlType,
+                symbol,
+                tradeMethod,
+                transactTime,
+                transactionNumber,
+                uniqueOutputKey,
+                upToDatePrice,
+                upToDateYield,
+                weightedAveragePrice,
+                weightedAverageYield,
+                yieldRiseFall
+				from tmpTable
+	return onedayXBondTradeTable			
+}
+
+/**
+ * @Function Name: dailyFactor
+ * @Brief: Generates Daily factor data for a partial security within a date range.
+ * @Param startDate: Start date for the factor data.
+ * @Param endDate: End date for the factor data.
+ * @Param securityNumber: The number of the security.
+ * @Param factorNumber: The number of the factor.
+ * @Return: Partial stock factor data
+ * @Sample Usage: dailyFactorData = dailyFactor(startDate=2016.01.01,endDate=2021.12.31,securityNumber=500, factorNumber=100)
+ */
+def dailyFactor(startDate, endDate, securityNumber, factorNumber){
+    funcName = "dailyFactor"
+	validateDateAndScalarParam(funcName, startDate)
+    validateDateAndScalarParam(funcName, endDate)
+    SecurityIDNumber = validateIntAndScalarParam(funcName, securityNumber) 
+    factorNum = validateIntAndScalarParam(funcName, factorNumber)
+    if( endDate - startDate < 0 ){
+		simulateDataLog(funcName, "The endDate must after startDate")
+	}
+	tradedates = getMarketCalendar("XSHG", startDate, endDate)
+ 	securityid = lpad(string(1..SecurityIDNumber),6,"000000")$SYMBOL
+	factorValueRand = rand(1.0, 1000)
+    factorNames = lpad(string(1..factorNum),6,"f00000")$SYMBOL
+    if(size(tradedates) == 0){
+        return table(1:0, `tradetime`securityid`value`factorname, [DATE, SYMBOL, DOUBLE, SYMBOL])
+    }
+	yearBeginDates = groupby(min,  tradedates, year(tradedates))[`min_tradedates]
+	indexes = tradedates.binsrch(yearBeginDates)
+	yearDates = tradedates.cut(indexes)
+    pt = table(1:0, `tradetime`securityid`value`factorname, [DATE, SYMBOL, DOUBLE, SYMBOL])
+ 	for(year in yearDates){
+		for(name in factorNames){
+			tmp = cj(table(year), table(securityid))
+			numValue = size(year) * size(securityid)
+			valueTmp = rand(factorValueRand, numValue)
+			tmpTB = table(tmp[`year] as `tradetime, tmp[`securityid], valueTmp as `value, take(name, numValue)$SYMBOL as `factorname)
+			pt.append!(tmpTB)
+		}
+	}
+    return pt
+}
+
+def halfHourTimeList(startDate,endDate){
+	morning = minute(10:00:00)+0..3*30
+	afternoon = minute(13:30:00) + 0..3*30
+	minuteDay = morning.append!(afternoon)	
+	totalTimeRange = []
+    tradedates = getMarketCalendar("XSHG", startDate, endDate)
+    if (size(tradedates) == 0){
+        return totalTimeRange
+    }
+	yearBeginDates = groupby(min,  tradedates, year(tradedates))[`min_tradedates]
+	indexes = tradedates.binsrch(yearBeginDates)
+	yearDates = tradedates.cut(indexes)
+	for(year in yearDates){
+        timeRange = []
+        for(date in year){
+			for(x in minuteDay){
+				timeRange.append!(string(date)+'T'+string(second(x)))
+			}
+        }
+        timeRange = datetime(timeRange.flatten())
+        totalTimeRange.append!(timeRange)
+		}
+	return totalTimeRange
+}
+
+/**
+ * @Function Name: halfHourFactor
+ * @Brief: Generates half-hour factor data for a partial security within a date range.
+ * @Param startDate: Start date for the factor data.
+ * @Param endDate: End date for the factor data.
+ * @Param securityNumber: The number of the security.
+ * @Param factorNumber: The number of the factor.
+ * @Return: Half-hour factor data
+ * @Sample Usage: halfHourFactorData = halfHourFactor(startDate=2021.06.01,endDate=2021.12.31,securityNumber=500, factorNumber=100)
+ */
+def halfHourFactor(startDate, endDate, securityNumber, factorNumber){
+    funcName = "halfHourFactor"
+	validateDateAndScalarParam(funcName, startDate)
+    validateDateAndScalarParam(funcName, endDate)
+    securityidNum = validateIntAndScalarParam(funcName, securityNumber) 
+    factorNum = validateIntAndScalarParam(funcName, factorNumber)
+    if( endDate - startDate < 0 ){
+		simulateDataLog(funcName, "The endDate must after startDate")
+	} 
+	totalTimeRange = halfHourTimeList(startDate,endDate)
+    if(size(totalTimeRange) == 0){
+        return table(1:0, `tradetime`securityid`value`factorname, [TIMESTAMP, SYMBOL, DOUBLE, SYMBOL])
+    }
+ 	securityid = lpad(string(1..securityidNum),6,"000000")	
+    factorNames = lpad(string(1..factorNum),6,"f00000")$SYMBOL
+    pt = table(1:0, `tradetime`securityid`value`factorname, [TIMESTAMP, SYMBOL, DOUBLE, SYMBOL])
+	for(j in 0..(totalTimeRange.size()-1)){  
+		for(factorname in factorNames){
+            numRow = securityid.size()*totalTimeRange[j].size()
+            colNames,colTypes = ["tradetime","securityid","value","factorname"],[TIMESTAMP,SYMBOL,DOUBLE,SYMBOL]
+            t = table(numRow:numRow,colNames,colTypes)
+            t["tradetime"] = stretch(totalTimeRange[j],numRow)
+            t["securityid"] = take(securityid,numRow)
+            t["value"] = rand(1.0,numRow)
+            t["factorname"] = take(factorname,numRow)
+            pt.append!(t)
+		}
+	}
+    return pt
+}
+
+def tenMinutesTimeList(startDate,endDate){
+	morning = minute(09:40:00)+0..11*10
+	afternoon = minute(13:10:00) + 0..11*10
+	minuteDay = morning.append!(afternoon)	
+	totalTimeRange = []
+	tradedates = getMarketCalendar("XSHG", startDate, endDate)
+    if(size(tradedates) == 0){
+        return totalTimeRange
+    }
+	monthBeginDates = groupby(min,  tradedates, month(tradedates))[`min_tradedates]
+	indexes = tradedates.binsrch(monthBeginDates)
+	monthDates = tradedates.cut(indexes)
+	for(month in monthDates){
+        timeRange = []
+        for(date in month){
+			for(x in minuteDay){
+				timeRange.append!(string(date)+'T'+string(second(x)))
+			}
+        }
+        timeRange = datetime(timeRange.flatten())
+        totalTimeRange.append!(timeRange)
+		}
+	return totalTimeRange
+}
+
+/**
+ * @Function Name: tenMinutesFactor
+ * @Brief: Generates ten-minute factor data for a partial security within a date range.
+ * @Param startDate: Start date for the factor data.
+ * @Param endDate: End date for the factor data.
+ * @Param securityNumber: The number of the security.
+ * @Param factorNumber: The number of the factor.
+ * @Return: Ten-minute factor data
+ * @Sample Usage: tenMinutesFactorData = tenMinutesFactor(startDate=2021.09.01,endDate=2021.12.31,securityNumber=500, factorNumber=100)
+ */
+def tenMinutesFactor(startDate,endDate,securityNumber, factorNumber){
+    funcName = "tenMinutesFactor"
+	validateDateAndScalarParam(funcName, startDate)
+    validateDateAndScalarParam(funcName, endDate)
+    securityidNum = validateIntAndScalarParam(funcName, securityNumber) 
+    factorNum = validateIntAndScalarParam(funcName, factorNumber) 
+    if( endDate - startDate < 0 ){
+		simulateDataLog(funcName, "The endDate must after startDate")
+	}
+	totalTimeRange = tenMinutesTimeList(startDate,endDate)
+    if(size(totalTimeRange) == 0){
+        return table(1:0, `tradetime`securityid`value`factorname, [TIMESTAMP, SYMBOL, DOUBLE, SYMBOL])
+    }
+ 	securityid = lpad(string(1..securityidNum),6,"000000")
+    factorNames = lpad(string(1..factorNum),6,"f00000")$SYMBOL
+    pt = table(1:0, `tradetime`securityid`value`factorname, [TIMESTAMP, SYMBOL, DOUBLE, SYMBOL])	
+	for(j in 0..(totalTimeRange.size()-1)){  
+		for(factorname in factorNames){
+            numRow = securityid.size()*totalTimeRange[j].size()
+            colNames,colTypes = ["tradetime","securityid","value","factorname"],[TIMESTAMP,SYMBOL,DOUBLE,SYMBOL]
+            t = table(numRow:numRow,colNames,colTypes)
+            t["tradetime"] = stretch(totalTimeRange[j],numRow)
+            t["securityid"] = take(securityid,numRow)
+            t["value"] = rand(1.0,numRow)
+            t["factorname"] = take(factorname,numRow)
+            pt.append!(t)
+		}
+	}
+    return pt
+}
+
+def minuteTimeList(start_date, end_date){
+	morning = minute(09:31:00)+0..119
+	afternoon = minute(13:01:00) + 0..119
+	minute_day = morning.append!(afternoon)	
+	total_time_range = []
+    tradedates = getMarketCalendar("XSHG", start_date, end_date)
+    if(size(tradedates) == 0){
+        return total_time_range
+    }
+	for(Date in tradedates){
+		time_range = []
+		for(x in minute_day){
+			time_range.append!(string(Date)+'T'+string(second(x)))
+		}
+		time_range = datetime(time_range.flatten())
+		total_time_range.append!(time_range)
+	}
+	return total_time_range
+}
+
+/**
+ * @Function Name: minuteFactor
+ * @Brief: Generates minute-level factor data for a partial security within a date range.
+ * @Param startDate: Start date for the factor data.
+ * @Param endDate: End date for the factor data.
+ * @Param securityNumber: The number of the security.
+ * @Param factorNumber: The number of the factor.
+ * @Return: Minute-level factor data for the partial security within the date range.
+ * @Sample Usage: minuteFactorData = minuteFactor(startDate=2021.12.01,endDate=2021.12.31,securityNumber=100, factorNumber=100)
+ */
+def minuteFactor(startDate,endDate,securityNumber, factorNumber){
+    funcName = "minuteFactor"
+	validateDateAndScalarParam(funcName, startDate)
+    validateDateAndScalarParam(funcName, endDate)
+    securityidNum = validateIntAndScalarParam(funcName, securityNumber) 
+    factorNum = validateIntAndScalarParam(funcName, factorNumber) 
+    if( endDate - startDate < 0 ){
+		simulateDataLog(funcName, "The endDate must after startDate")
+	}
+	totalTimeRange = minuteTimeList(startDate,endDate)
+    if(size(totalTimeRange) == 0){
+        return table(1:0, `tradetime`securityid`value`factorname, [TIMESTAMP, SYMBOL, DOUBLE, SYMBOL])
+    }
+ 	securityid = lpad(string(1..securityidNum),6,"000000")
+    factorNames = lpad(string(1..factorNum),6,"f00000")$SYMBOL
+    pt = table(1:0, `tradetime`securityid`value`factorname, [TIMESTAMP, SYMBOL, DOUBLE, SYMBOL])
+	for(j in 0..(totalTimeRange.size()-1)){  
+		for(factorname in factorNames){
+			num_row = securityid.size()*totalTimeRange[j].size()
+			col_names,col_types = ["tradetime","securityid","value","factorname"],[TIMESTAMP,SYMBOL,DOUBLE,SYMBOL]
+			t = table(num_row:num_row,col_names,col_types)
+			t["tradetime"] = stretch(totalTimeRange[j],num_row)
+			t["securityid"] = take(securityid,num_row)
+			t["value"] = rand(1.0,num_row)
+			t["factorname"] = take(factorname,num_row)
+			pt.append!(t)
+		}
+	}
+    return pt
+}
+
+def secondTimeList(startDate,endDate){
+    morning1 = 09:30:00 + 1..1799
+    morning2 = 10:00:00 + 0..3599
+    morning3 = 11:00:00 + 0..1800
+    afternoon1 = 13:00:00 + 1..3599
+    afternoon2 = 14:00:00 + 0..3599
+    afternoon3 = 15:00:00
+    timestampDay = (morning1 join morning2 join morning3 join afternoon1 join afternoon2 join afternoon3)
+    totalTimeRange = []
+    tradeDates = getMarketCalendar("XSHG", startDate, endDate)
+    if(size(tradeDates) == 0){
+        return totalTimeRange
+    }
+    for(Date in tradeDates){
+        time_range = []
+        for(time in timestampDay){
+            time_range.append!(string(Date)+'T'+string(time))
+        }
+        time_range = datetime(time_range.flatten())
+        totalTimeRange.append!(time_range)
+    }
+    return totalTimeRange
+}
+
+/**
+ * @Function Name: secondFactor
+ * @Brief: Generates second-level factor data for a partial security within a date range.
+ * @Param startDate: Start date for the factor data.
+ * @Param endDate: End date for the factor data
+ * @Param securityNumber: The number of the security.
+ * @Param factorNumber: The number of the factor.
+ * @Return: Second-level factor data for the partial security within the date range.
+ * @Sample Usage: secondFactorData = secondFactor(startDate=2021.12.15, endDate=2021.12.31, securityNumber=50, factorNumber=10)
+ */
+def secondFactor(startDate, endDate, securityNumber, factorNumber){
+    funcName = "secondFactor"
+	validateDateAndScalarParam(funcName, startDate)
+    validateDateAndScalarParam(funcName, endDate)
+    securityidNum = validateIntAndScalarParam(funcName, securityNumber) 
+    factorNum = validateIntAndScalarParam(funcName, factorNumber) 
+    if( endDate - startDate < 0 ){
+		simulateDataLog(funcName, "The endDate must after startDate")
+	}
+	totalTimeRange = secondTimeList(startDate,endDate)
+    if(size(totalTimeRange) == 0){
+        return table(1:0, `tradetime`securityid`value`factorname, [TIMESTAMP, SYMBOL, DOUBLE, SYMBOL])
+    }
+    factorNames = lpad(string(1..factorNum),6,"f00000")$SYMBOL
+    pt = table(1:0, `tradetime`securityid`value`factorname, [TIMESTAMP, SYMBOL, DOUBLE, SYMBOL])
+ 	securityid = lpad(string(1..securityidNum),6,"000000")$SYMBOL
+	factorValueRand = rand(1.0, 1000)
+    for(j in 0..(totalTimeRange.size()-1)){  
+		for(factorname in factorNames){
+			num_row = securityid.size()*totalTimeRange[j].size()
+			col_names,col_types = ["tradetime","securityid","value","factorname"],[TIMESTAMP,SYMBOL,DOUBLE,SYMBOL]
+			t = table(num_row:num_row,col_names,col_types)
+			t["tradetime"] = stretch(totalTimeRange[j],num_row)
+			t["securityid"] = take(securityid,num_row)
+			t["value"] = rand(1.0,num_row)
+			t["factorname"] = take(factorname,num_row)
+			pt.append!(t)
+		}
+	}
+    return pt
+}
+
+def level2TimeList(startDate,endDate){
+    morning = time(09:30:00.000) + 1..2400*3*1000
+    afternoon = time(13:00:00.000) + 1..2400*3*1000
+    timestampDay = morning.append!(afternoon)  
+    totalTimeRange = []
+    tradeDates = getMarketCalendar("XSHG", startDate, endDate)
+    if(size(tradeDates) == 0){
+        return totalTimeRange
+    }
+    for(Date in tradeDates){
+        time_range = []
+        for(time in timestampDay){
+            time_range.append!(string(Date)+'T'+string(time))
+        }
+        time_range = datetime(time_range.flatten())
+        totalTimeRange.append!(time_range)
+    }
+    return totalTimeRange
+}
+
+/**
+ * @Function Name: level2Factor
+ * @Brief: Generates Level-2 factor data for a partial security within a date range.
+ * @Param startDate: Start date for the factor data.
+ * @Param endDate: End date for the factor data.
+ * @Param securityNumber: The number of the security.
+ * @Param factorNumber: The number of the factor.
+ * @Return: Level-2 factor data for the partial security within the date range.
+ * @Sample Usage: level2FactorData = level2Factor(startDate=2021.12.01,endDate=2021.12.31,securityNumber=50, factorNumber=10)
+ */
+def level2Factor(startDate, endDate, securityNumber, factorNumber){
+    funcName = "level2Factor"
+	validateDateAndScalarParam(funcName, startDate)
+    validateDateAndScalarParam(funcName, endDate)
+    securityidNum = validateIntAndScalarParam(funcName, securityNumber) 
+    factorNum = validateIntAndScalarParam(funcName, factorNumber) 
+    if( endDate - startDate < 0 ){
+		simulateDataLog(funcName, "The endDate must after startDate")
+	}
+	totalTimeRange = level2TimeList(startDate,endDate)
+    if(size(totalTimeRange) == 0){
+        return table(1:0, `tradetime`securityid`value`factorname, [TIMESTAMP, SYMBOL, DOUBLE, SYMBOL])
+    }
+    factorNames = lpad(string(1..factorNum),6,"f00000")$SYMBOL
+    pt = table(1:0, `tradetime`securityid`value`factorname, [TIMESTAMP, SYMBOL, DOUBLE, SYMBOL])
+ 	securityid = lpad(string(1..securityidNum),6,"000000")$SYMBOL
+	factorValueRand = rand(1.0, 1000)
+    for(j in 0..(totalTimeRange.size()-1)){  
+		for(factorname in factorNames){
+			num_row = securityid.size()*totalTimeRange[j].size()
+			col_names,col_types = ["tradetime","securityid","value","factorname"],[TIMESTAMP,SYMBOL,DOUBLE,SYMBOL]
+			t = table(num_row:num_row,col_names,col_types)
+			t["tradetime"] = stretch(totalTimeRange[j],num_row)
+			t["securityid"] = take(securityid,num_row)
+			t["value"] = rand(1.0,num_row)
+			t["factorname"] = take(factorname,num_row)
+			pt.append!(t)
+		}
+	}
+    return pt
+}
+
+def tickTimeList(startDate,endDate){
+    morning = time(09:30:00.000) + 1..14400*500
+    afternoon = time(13:00:00.000) + 1..14400*500
+    timestampDay = morning.append!(afternoon)  
+    totalTimeRange = []
+    tradeDates = getMarketCalendar("XSHG", startDate, endDate)
+    if(size(tradeDates) == 0){
+        return totalTimeRange
+    }
+    for(Date in tradeDates){
+        time_range = []
+        for(time in timestampDay){
+            time_range.append!(string(Date)+'T'+string(time))
+        }
+        time_range = timestamp(time_range.flatten())
+        totalTimeRange.append!(time_range)
+    }
+    return totalTimeRange
+}
+
+/**
+ * @Function Name: tickFactor
+ * @Brief: Generates tick-level factor data for a partial security within a date range.
+ * @Param startDate: Start date for the factor data.
+ * @Param endDate: End date for the factor data.
+ * @Param securityNumber: The number of the security.
+ * @Param factorNumber: The number of the factor.
+ * @Return: Tick-level factor data for the partial security within the given date range.
+ * @Sample Usage: tickFactorData = tickFactor(startDate=2021.12.01,endDate=2021.12.31,securityNumber=50, factorNumber=10)
+ */
+def tickFactor(startDate,endDate,securityNumber, factorNumber){
+    funcName = "tickFactor"
+	validateDateAndScalarParam(funcName, startDate)
+    validateDateAndScalarParam(funcName, endDate)
+    securityidNum = validateIntAndScalarParam(funcName, securityNumber) 
+    factorNum = validateIntAndScalarParam(funcName, factorNumber) 
+    if( endDate - startDate < 0 ){
+		simulateDataLog(funcName, "The endDate must after startDate")
+	}
+	totalTimeRange = tickTimeList(startDate,endDate)
+    if(size(totalTimeRange) == 0){
+        return table(1:0, `tradetime`securityid`value`factorname, [TIMESTAMP, SYMBOL, DOUBLE, SYMBOL])
+    }
+    factorNames = lpad(string(1..factorNum),6,"f00000")$SYMBOL
+    pt = table(1:0, `tradetime`securityid`value`factorname, [TIMESTAMP, SYMBOL, DOUBLE, SYMBOL])
+ 	securityid = lpad(string(1..securityidNum),6,"000000")$SYMBOL
+	factorValueRand = rand(1.0, 1000)
+    for(j in 0..(totalTimeRange.size()-1)){  
+		for(factorname in factorNames){
+			num_row = securityid.size()*totalTimeRange[j].size()
+			col_names,col_types = ["tradetime","securityid","value","factorname"],[TIMESTAMP,SYMBOL,DOUBLE,SYMBOL]
+			t = table(num_row:num_row,col_names,col_types)
+			t["tradetime"] = stretch(totalTimeRange[j],num_row)
+			t["securityid"] = take(securityid,num_row)
+			t["value"] = rand(1.0,num_row)
+			t["factorname"] = take(factorname,num_row)
+			pt.append!(t)
+		}
+	}
+    return pt
+}
+
+def futuresTimeList(startDate,endDate){
+    morning1 = time(09:00:00.000) + 1..9000*500
+    morning2 = time(10:30:00.000) + 1..7200*500
+    afternoon = time(13:30:00.000) + 1..10800*500
+    night = time(21:00:00.000) + 1..39600*500
+    timestampDay = morning1.append!(morning2).append!(afternoon).append!(night)
+    totalTimeRange = []
+    tradeDates = getMarketCalendar("XSHG", startDate, endDate)
+    if(size(tradeDates) == 0){
+        return totalTimeRange
+    }
+    for(Date in tradeDates){
+        time_range = []
+        for(time in timestampDay){
+            time_range.append!(string(Date)+'T'+string(time))
+        }
+        time_range = timestamp(time_range.flatten())
+        totalTimeRange.append!(time_range)
+    }
+    return totalTimeRange
+}
+
+/**
+ * @Function Name: futuresFactor
+ * @Brief: Generates futures factor data for a partial security within a date range.
+ * @Param startDate: Start date for the factor data.
+ * @Param endDate: End date for the factor data.
+ * @Param securityNumber: The number of the security.
+ * @Param factorNumber: The number of the factor.
+ * @Return: Futures factor data for the partial security within the date range.
+ * @Sample Usage: futuresFactorData = futuresFactor(startDate=2021.12.15,endDate=2021.12.31,securityNumber=50, factorNumber=10)
+ */
+def futuresFactor(startDate,endDate,securityNumber, factorNumber){
+    funcName = "futuresFactor"
+	validateDateAndScalarParam(funcName, startDate)
+    validateDateAndScalarParam(funcName, endDate)
+    securityidNum = validateIntAndScalarParam(funcName, securityNumber) 
+    factorNum = validateIntAndScalarParam(funcName, factorNumber) 
+    if( endDate - startDate < 0 ){
+		simulateDataLog(funcName, "The endDate must after startDate")
+	}
+	totalTimeRange = futuresTimeList(startDate,endDate)
+    if(size(totalTimeRange) == 0){
+        return table(1:0, `tradetime`securityid`value`factorname, [TIMESTAMP, SYMBOL, DOUBLE, SYMBOL])
+    }
+    factorNames = lpad(string(1..factorNum),6,"f00000")$SYMBOL
+    pt = table(1:0, `tradetime`securityid`value`factorname, [TIMESTAMP, SYMBOL, DOUBLE, SYMBOL])
+ 	securityid = lpad(string(1..securityidNum),6,"000000")$SYMBOL
+	factorValueRand = rand(1.0, 1000)
+    for(j in 0..(totalTimeRange.size()-1)){  
+		for(factorname in factorNames){
+			num_row = securityid.size()*totalTimeRange[j].size()
+			col_names,col_types = ["tradetime","securityid","value","factorname"],[TIMESTAMP,SYMBOL,DOUBLE,SYMBOL]
+			t = table(num_row:num_row,col_names,col_types)
+			t["tradetime"] = stretch(totalTimeRange[j],num_row)
+			t["securityid"] = take(securityid,num_row)
+			t["value"] = rand(1.0,num_row)
+			t["factorname"] = take(factorname,num_row)
+			pt.append!(t)
+		}
+	}
+    return pt
+}
+
+
+
+
+
+
+
+/**
+ * @Function Name: stockSnapShotPT
+ * @Brief: Creates a snapshot table in the distributed database.
+ * @Param dbName: Name of the database 
+ * @Param tbName: Name of the table
+ * @Return: handle to the table
+ * @Sample Usage: t = stockSnapShotPT("dfs://merge_TB", "merge_snapshotTB")
+ */
+def stockSnapShotPT(dbName, tbName){
+    funcName = "stockSnapShotPT"
+    newdbName = validateStringAndScalarParam(funcName, dbName)
+    newtbName = validateStringAndScalarParam(funcName, tbName)
+	dbDate = database(, partitionType=VALUE, partitionScheme=2020.06.01..2021.01.01)
+	dbID = database(, partitionType=HASH, partitionScheme=[SYMBOL, 50])
+	db = database(directory=newdbName, partitionType=COMPO, partitionScheme=[dbDate, dbID], engine='TSDB')
+	colName = `TradeDate`TradeTime`MDStreamID`SecurityID`SecurityIDSource`TradingPhaseCode`ImageStatus`PreCloPrice`NumTrades`TotalVolumeTrade`TotalValueTrade`LastPrice`OpenPrice`HighPrice`LowPrice`ClosePrice`DifPrice1`DifPrice2`PE1`PE2`PreCloseIOPV`IOPV`TotalBidQty`WeightedAvgBidPx`AltWAvgBidPri`TotalOfferQty`WeightedAvgOfferPx`AltWAvgAskPri`UpLimitPx`DownLimitPx`OpenInt`OptPremiumRatio`OfferPrice`BidPrice`OfferOrderQty`BidOrderQty`BidNumOrders`OfferNumOrders`ETFBuyNumber`ETFBuyAmount`ETFBuyMoney`ETFSellNumber`ETFSellAmount`ETFSellMoney`YieldToMatu`TotWarExNum`WithdrawBuyNumber`WithdrawBuyAmount`WithdrawBuyMoney`WithdrawSellNumber`WithdrawSellAmount`WithdrawSellMoney`TotalBidNumber`TotalOfferNumber`MaxBidDur`MaxSellDur`BidNum`SellNum`LocalTime`SeqNo`OfferOrders`BidOrders 
+	colType = [DATE,TIME,SYMBOL,SYMBOL,SYMBOL,SYMBOL,INT,DOUBLE,LONG,LONG,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,LONG,DOUBLE,DOUBLE,LONG,DOUBLE,DOUBLE,DOUBLE,DOUBLE,INT,DOUBLE,DOUBLE[],DOUBLE[],LONG[],LONG[],INT[],INT[],INT,LONG,DOUBLE,INT,LONG,DOUBLE,DOUBLE,DOUBLE,INT,LONG,DOUBLE,INT,LONG,DOUBLE,INT,INT,INT,INT,INT,INT,TIME,INT,LONG[],LONG[]]
+	tbSchema = table(1:0, colName, colType)
+	db.createPartitionedTable(table=tbSchema,tableName=newtbName,partitionColumns=`TradeDate`SecurityID,sortColumns=`SecurityID`TradeTime,compressMethods={TradeDate:"delta",TradeTime:"delta"})
+	t = loadTable(newdbName, newtbName)
+	return t
+}
+
+/**
+ * @Function Name: stockEntrustPT
+ * @Brief: Creates an entrust table in the distributed database.
+ * @Param dbName: Name of the database 
+ * @Param tbName: Name of the table
+ * @Return: Handle to the table.
+ * @Sample Usage: t = stockEntrustPT("dfs://merge_TB", "merge_entrustTB")
+ */
+def stockEntrustPT(dbName, tbName){
+    funcName = "stockEntrustPT"
+    newdbName = validateStringAndScalarParam(funcName, dbName)
+    newtbName = validateStringAndScalarParam(funcName, tbName)
+	dbDate = database(, partitionType=VALUE, partitionScheme=2020.06.01..2021.01.01)
+	dbID = database(, partitionType=HASH, partitionScheme=[SYMBOL, 50])
+	db = database(directory=newdbName, partitionType=COMPO, partitionScheme=[dbDate, dbID], engine='TSDB')
+	colName = `ChannelNo`ApplSeqNum`MDStreamID`SecurityID`SecurityIDSource`Price`OrderQty`Side`TradeDate`TradeTime`OrderType`LocalTime`SeqNo`OrderNO`DataStatus`BizIndex
+	colType = [INT,LONG,SYMBOL,SYMBOL,SYMBOL,DOUBLE,LONG,SYMBOL,DATE,TIME,SYMBOL,TIME,LONG,LONG,INT,LONG]
+	tbSchema = table(1:0, colName, colType)
+	db.createPartitionedTable(table=tbSchema,tableName=newtbName,partitionColumns=`TradeDate`SecurityID,sortColumns=`SecurityID`TradeTime,compressMethods={TradeDate:"delta",TradeTime:"delta"})
+	t = loadTable(newdbName, newtbName)
+	return t
+}
+
+/**
+ * @Function Name: stockTradePT
+ * @Brief: Creates a trade table in the distributed database.
+ * @Param dbName: Name of the database 
+ * @Param tbName: Name of the table
+ * @Return: Handle to the table.
+ * @Sample Usage: t = stockTradePT("dfs://merge_TB", "merge_tradeTB")
+ */
+def stockTradePT(dbName, tbName){
+    funcName = "stockTradePT"
+    newdbName = validateStringAndScalarParam(funcName, dbName)
+    newtbName = validateStringAndScalarParam(funcName, tbName)
+	dbDate = database(, partitionType=VALUE, partitionScheme=2020.06.01..2021.01.01)
+	dbID = database(, partitionType=HASH, partitionScheme=[SYMBOL, 50])
+	db = database(directory=newdbName, partitionType=COMPO, partitionScheme=[dbDate, dbID], engine='TSDB')
+	colName = `ChannelNo`ApplSeqNum`MDStreamID`BidApplSeqNum`OfferApplSeqNum`SecurityID`SecurityIDSource`TradePrice`TradeQty`ExecType`TradeDate`TradeTime`LocalTime`SeqNo`DataStatus`TradeMoney`TradeBSFlag`BizIndex`OrderKind
+	colType = [INT,LONG,SYMBOL,LONG,LONG,SYMBOL,SYMBOL,DOUBLE,LONG,SYMBOL,DATE,TIME,TIME,LONG,INT,DOUBLE,SYMBOL,LONG,SYMBOL]
+	tbSchema = table(1:0, colName, colType)
+	db.createPartitionedTable(table=tbSchema,tableName=newtbName,partitionColumns=`TradeDate`SecurityID,sortColumns=`SecurityID`TradeTime,compressMethods={TradeDate:"delta",TradeTime:"delta"})
+	t = loadTable(newdbName, newtbName)
+	return t
+}
+
+/**
+ * @Function Name: stockMinuteKLinePT
+ * @Brief: Creates a table for minute K-line data in the distributed database.
+ * @Param dbName: Name of the database 
+ * @Param tbName: Name of the table
+ * @Return: Handle to the table.
+ * @Sample Usage: t = stockMinuteKLinePT("dfs://k_minute_level", "k_minute")
+ */
+def stockMinuteKLinePT(dbName, tbName){
+    funcName = "stockMinuteKLinePT"
+    newdbName = validateStringAndScalarParam(funcName, dbName)
+    newtbName = validateStringAndScalarParam(funcName, tbName)
+	db = database(directory=newdbName, partitionType=VALUE, partitionScheme=2020.06.01..2021.12.31, engine='OLAP')
+	colName = `SecurityID`TradeTime`Open`Close`High`Low`Vol`Val`Vwap
+	colType = [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE,DOUBLE,INT,DOUBLE,DOUBLE]
+	tbSchema = table(1:0, colName, colType)
+	db.createPartitionedTable(table=tbSchema,tableName=newtbName,partitionColumns=`TradeTime,compressMethods={TradeTime:"delta"})
+	t = loadTable(newdbName, newtbName)
+	return t
+}
+
+/**
+ * @Function Name: stockDailyKLinePT
+ * @Brief: Creates a table for daily K-line data in the distributed database.
+ * @Param dbName: Name of the database 
+ * @Param tbName: Name of the table
+ * @Return: Handle to the table.
+ * @Sample Usage: t = stockDailyKLinePT("dfs://k_day_level", "k_day")
+ */
+def stockDailyKLinePT(dbName, tbName){
+    funcName = "stockDailyKLinePT"
+    newdbName = validateStringAndScalarParam(funcName, dbName)
+    newtbName = validateStringAndScalarParam(funcName, tbName)
+	db = database(directory=newdbName, partitionType=RANGE, partitionScheme=2000.01M + (0..30)*12, engine='OLAP')
+	colName = `SecurityID`TradeTime`Open`Close`High`Low`Vol`Val`Vwap
+	colType = [SYMBOL,TIMESTAMP,DOUBLE,DOUBLE,DOUBLE,DOUBLE,INT,DOUBLE,DOUBLE]
+	tbSchema = table(1:0, colName, colType)
+	db.createPartitionedTable(table=tbSchema,tableName=newtbName,partitionColumns=`TradeTime,compressMethods={TradeTime:"delta"})
+	t = loadTable(newdbName, newtbName)
+	return t
+}
+
+/**
+ * @Function Name: futuresPT
+ * @Brief: Creates a futures table in the distributed database.
+ * @Param dbName: Name of the database 
+ * @Param tbName: Name of the table
+ * @Return: Handle to the table.
+ * @Sample Usage: t = futuresPT("dfs://ctp_futures", "futures")
+ */
+def futuresPT(dbName, tbName){
+    funcName = "futuresPT"
+    newdbName = validateStringAndScalarParam(funcName, dbName)
+    newtbName = validateStringAndScalarParam(funcName, tbName)
+    dbDate = database(, partitionType=VALUE, partitionScheme=2020.06.01..2021.01.01)
+	dbID = database(, partitionType=HASH, partitionScheme=[SYMBOL, 10])
+	db = database(directory=newdbName, partitionType=COMPO, partitionScheme=[dbDate, dbID], engine='TSDB')
+	colName = `TradingDay`ExchangeID`LastPrice`PreSettlementPrice`PreClosePrice`PreOpenInterest`OpenPrice`HighestPrice`LowestPrice`Volume`Turnover`OpenInterest`ClosePrice`SettlementPrice`UpperLimitPrice`LowerLimitPrice`PreDelta`CurrDelta`UpdateTime`UpdateMillisec`BidPrice`BidVolume`AskPrice`AskVolume`AveragePrice`ActionDay`InstrumentID`ExchangeInstID`BandingUpperPrice`BandingLowerPrice`TradeTime`ReceivedTime`PerPenetrationTime
+	colType = [DATE,SYMBOL,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,INT,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,SECOND,INT,DOUBLE[],INT[],DOUBLE[],INT[],DOUBLE,DATE,SYMBOL,SYMBOL,DOUBLE,DOUBLE,TIME,NANOTIMESTAMP,LONG]
+	tbSchema = table(1:0, colName, colType)
+	db.createPartitionedTable(table=tbSchema,tableName=newtbName,partitionColumns=`TradingDay`InstrumentID,sortColumns=`InstrumentID`ReceivedTime,compressMethods={TradingDay:"delta",ReceivedTime:"delta"})
+	t = loadTable(newdbName, newtbName)
+	return t
+}
+
+/**
+ * @Function Name: optionsPT
+ * @Brief: Creates an options table in the distributed database.
+ * @Param dbName: Name of the database 
+ * @Param tbName: Name of the table
+ * @Return: Handle to the table.
+ * @Sample Usage: t = optionsPT("dfs://ctp_options", "options")
+ */
+def optionsPT(dbName, tbName){
+    funcName = "optionsPT"
+    newdbName = validateStringAndScalarParam(funcName, dbName)
+    newtbName = validateStringAndScalarParam(funcName, tbName)
+    dbDate = database(, partitionType=VALUE, partitionScheme=2020.06.01..2021.01.01)
+	dbID = database(, partitionType=HASH, partitionScheme=[SYMBOL, 20])
+	db = database(directory=newdbName, partitionType=COMPO, partitionScheme=[dbDate, dbID], engine='TSDB')
+	colName = `TradingDay`ExchangeID`LastPrice`PreSettlementPrice`PreClosePrice`PreOpenInterest`OpenPrice`HighestPrice`LowestPrice`Volume`Turnover`OpenInterest`ClosePrice`SettlementPrice`UpperLimitPrice`LowerLimitPrice`PreDelta`CurrDelta`UpdateTime`UpdateMillisec`BidPrice`BidVolume`AskPrice`AskVolume`AveragePrice`ActionDay`InstrumentID`ExchangeInstID`BandingUpperPrice`BandingLowerPrice`TradeTime`ReceivedTime`PerPenetrationTime
+	colType = [DATE,SYMBOL,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,INT,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,SECOND,INT,DOUBLE[],INT[],DOUBLE[],INT[],DOUBLE,DATE,SYMBOL,SYMBOL,DOUBLE,DOUBLE,TIME,NANOTIMESTAMP,LONG]
+	tbSchema = table(1:0, colName, colType)
+	db.createPartitionedTable(table=tbSchema,tableName=newtbName,partitionColumns=`TradingDay`InstrumentID,sortColumns=`InstrumentID`ReceivedTime,compressMethods={TradingDay:"delta",ReceivedTime:"delta"})
+	t = loadTable(newdbName, newtbName)
+	return t
+}
+
+/**
+ * @Function Name: ESPDepthPT
+ * @Brief: Creates an ESP depth table in the distributed database.
+ * @Param dbName: Name of the database 
+ * @Param tbName: Name of the table
+ * @Return: Handle to the table.
+ * @Sample Usage: t = ESPDepthPT("dfs://ESPDepth", "ESPDepthtable")
+ */
+def ESPDepthPT(dbName, tbName){
+    funcName = "ESPDepthPT"
+    newdbName = validateStringAndScalarParam(funcName, dbName)
+    newtbName = validateStringAndScalarParam(funcName, tbName)
+    db = database(directory=newdbName, partitionType=VALUE, partitionScheme=2022.06.01..2023.01.01, engine='TSDB')
+	colName = `createDate`createTime`bondCodeVal`marketDepth`marketIndicator`mdBookType`mdSubBookType`messageId`messageSource`msgSeqNum`msgType`askclearingMethod`bidclearingMethod`askdeliveryType`biddeliveryType`askinitAccountNumSixCode`bidinitAccountNumSixCode`asklastPx`bidlastPx`askmdEntryDate`bidmdEntryDate`askmdEntrySize`bidmdEntrySize`askmdEntryTime`bidmdEntryTime`askmdQuoteType`bidmdQuoteType`askquoteEntryID`bidquoteEntryID`asksettlType`bidsettlType`askyield`bidyield`ask1initPartyTradeCode`bid1initPartyTradeCode`ask2initPartyTradeCode`bid2initPartyTradeCode`ask3initPartyTradeCode`bid3initPartyTradeCode`ask4initPartyTradeCode`bid4initPartyTradeCode`ask5initPartyTradeCode`bid5initPartyTradeCode`ask6initPartyTradeCode`bid6initPartyTradeCode`ask7initPartyTradeCode`bid7initPartyTradeCode`ask8initPartyTradeCode`bid8initPartyTradeCode`ask9initPartyTradeCode`bid9initPartyTradeCode`ask10initPartyTradeCode`bid10initPartyTradeCode`securityID`securityType`senderCompID`senderSubID`sendingTime`symbol
+	colType = [DATE,TIME,SYMBOL,LONG,LONG,LONG,LONG,LONG,SYMBOL,LONG,SYMBOL,LONG[],LONG[],LONG[],LONG[],LONG[],LONG[],DOUBLE[],DOUBLE[],DATE[],DATE[],LONG[],LONG[],TIME[],TIME[],LONG[],LONG[],LONG[],LONG[],LONG[],LONG[],DOUBLE[],DOUBLE[],SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,TIMESTAMP,SYMBOL]
+	tbSchema = table(1:0, colName, colType)
+	db.createPartitionedTable(table=tbSchema,tableName=newtbName,partitionColumns=`createDate,sortColumns=`securityID`createTime,compressMethods={createDate:"delta",createTime:"delta"})
+	t = loadTable(newdbName, newtbName)
+	return t
+}
+
+/**
+ * @Function Name: ESPTradePT
+ * @Brief: Creates an ESP trade table in the distributed database.
+ * @Param dbName: Name of the database 
+ * @Param tbName: Name of the table
+ * @Return: Handle to the table.
+ * @Sample Usage: t = ESPTradePT("dfs://ESPTrade", "ESPTradetable")
+ */
+def ESPTradePT(dbName, tbName){
+    funcName = "ESPTradePT"
+    newdbName = validateStringAndScalarParam(funcName, dbName)
+    newtbName = validateStringAndScalarParam(funcName, tbName)
+    db = database(directory=newdbName, partitionType=VALUE, partitionScheme=2022.06.01..2023.01.01, engine='TSDB')
+	colName = `createDate`createTime`securityID`execId`execType`lastQty`marketIndicator`messageSource`msgSeqNum`msgType`price`senderCompID`stipulationType`stipulationValue`symbol`tradeDate`tradeMethod`tradeTime`tradeType`transactTime
+	colType = [DATE,TIME,SYMBOL,SYMBOL,SYMBOL,LONG,LONG,SYMBOL,LONG,SYMBOL,DOUBLE,SYMBOL,SYMBOL,DOUBLE,SYMBOL,DATE,LONG,TIME,LONG,TIMESTAMP]
+	tbSchema = table(1:0, colName, colType)
+	db.createPartitionedTable(table=tbSchema,tableName=newtbName,partitionColumns=`createDate,sortColumns=`securityID`createTime,compressMethods={createDate:"delta",createTime:"delta"})
+	t = loadTable(newdbName, newtbName)
+	return t
+}
+
+/**
+ * @Function Name: XBondDepthPT
+ * @Brief: Creates an XBond depth table in the distributed database.
+ * @Param dbName: Name of the database 
+ * @Param tbName: Name of the table
+ * @Return: Handle to the table.
+ * @Sample Usage: t = XBondDepthPT("dfs://XBondDepth", "XBondDepthtable")
+ */
+def XBondDepthPT(dbName, tbName){
+    funcName = "XBondDepthPT"
+    newdbName = validateStringAndScalarParam(funcName, dbName)
+    newtbName = validateStringAndScalarParam(funcName, tbName)
+    db = database(directory=newdbName, partitionType=VALUE, partitionScheme=2022.06.01..2023.01.01, engine='TSDB')
+	colName = `bondCodeVal`createDate`createTime`marketDepth`mdBookType`messageId`messageSource`msgSeqNum`msgType`bidmdEntryPrice`offermdEntryPrice`bidmdEntrySize`offermdEntrySize`bidsettlType`offersettlType`bidyield`offeryield`bid1yieldType`offer1yieldType`bid2yieldType`offer2yieldType`bid3yieldType`offer3yieldType`bid4yieldType`offer4yieldType`bid5yieldType`offer5yieldType`bid6yieldType`offer6yieldType`securityID`senderCompID`senderSubID`sendingTime
+	colType = [SYMBOL,DATE,TIME,LONG,LONG,LONG,SYMBOL,LONG,SYMBOL,DOUBLE[],DOUBLE[],LONG[],LONG[],LONG[],LONG[],DOUBLE[],DOUBLE[],SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,SYMBOL,TIMESTAMP]
+	tbSchema = table(1:0, colName, colType)
+	db.createPartitionedTable(table=tbSchema,tableName=newtbName,partitionColumns=`createDate,sortColumns=`securityID`createTime,compressMethods={createDate:"delta",createTime:"delta"})
+	t = loadTable(newdbName, newtbName)
+	return t
+}
+
+/**
+ * @Function Name: XBondTradePT
+ * @Brief: Creates an XBond trade table in the distributed database.
+ * @Param dbName: Name of the database 
+ * @Param tbName: Name of the table
+ * @Return: Handle to the table.
+ * @Sample Usage: t = XBondTradePT("dfs://XBondTrade", "XBondTradetable")
+ */
+def XBondTradePT(dbName, tbName){
+    funcName = "XBondTradePT"
+    newdbName = validateStringAndScalarParam(funcName, dbName)
+    newtbName = validateStringAndScalarParam(funcName, tbName)
+    db = database(directory=newdbName, partitionType=VALUE, partitionScheme=2022.06.01..2023.01.01, engine='TSDB')
+	colName = `createDate`createTime`securityID`beforeClosingPrice`beforeClosingYield`beforeWeightedAveragePrice`beforeWeightedAverageYield`fillSide`highestPrice`highestYield`lowestPrice`lowestYield`marketIndicator`mdSubType`mdType`messageId`messageSource`msgSeqNum`msgType`openingValence`openingYield`priceRiseFallAmplitude`senderCompID`sendingTime`settlType`symbol`tradeMethod`transactTime`transactionNumber`uniqueOutputKey`upToDatePrice`upToDateYield`weightedAveragePrice`weightedAverageYield`yieldRiseFall
+	colType = [DATE,TIME,SYMBOL,DOUBLE,DOUBLE,DOUBLE,DOUBLE,LONG,DOUBLE,DOUBLE,DOUBLE,DOUBLE,LONG,LONG,LONG,LONG,SYMBOL,LONG,SYMBOL,DOUBLE,DOUBLE,DOUBLE,SYMBOL,TIMESTAMP,LONG,SYMBOL,LONG,TIMESTAMP,LONG,LONG,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE]
+	tbSchema = table(1:0, colName, colType)
+	db.createPartitionedTable(table=tbSchema,tableName=newtbName,partitionColumns=`createDate,sortColumns=`securityID`createTime,compressMethods={createDate:"delta",createTime:"delta"})
+	t = loadTable(newdbName, newtbName)
+	return t
+}
+
+/**
+ * @Function Name: dailyFactorPT
+ * @Brief: Creates a daily factor table in the distributed database.
+ * @Param dbName: Name of the database 
+ * @Param tbName: Name of the table
+ * @Return: Handle to the table.
+ * @Sample Usage: t = dailyFactorPT("dfs://dailyFactorDB", "dailyFactorTB")
+ */
+def dailyFactorPT(dbName, tbName){
+    funcName = "dailyFactorPT"
+    newdbName = validateStringAndScalarParam(funcName, dbName)
+    newtbName = validateStringAndScalarParam(funcName, tbName)
+    dbDate = database(, partitionType=RANGE, partitionScheme=date(datetimeAdd(1980.01M,0..80*12,'M')))
+	dbFactor = database(, partitionType=VALUE, partitionScheme=`f1`f2)
+	db = database(directory=newdbName, partitionType=COMPO, partitionScheme=[dbDate, dbFactor], engine='TSDB')
+    tbSchema = table(1:0, `tradetime`securityid`value`factorname, [DATE, SYMBOL, DOUBLE, SYMBOL])
+	db.createPartitionedTable(table=tbSchema,tableName=newtbName,partitionColumns=`tradetime`factorname,sortColumns=`securityid`tradetime,compressMethods={tradetime:"delta"}, sortKeyMappingFunction=[hashBucket{, 500}])
+	t = loadTable(newdbName, newtbName)
+	return t
+}
+
+/**
+ * @Function Name: halfHourFactorPT
+ * @Brief: Creates a half-hour factor table in the distributed database.
+ * @Param dbName: Name of the database 
+ * @Param tbName: Name of the table
+ * @Return: Handle to the table.
+ * @Sample Usage: t = halfHourFactorPT("dfs://halfhourFactorDB", "halfhourFactorTB")
+ */
+def halfHourFactorPT(dbName, tbName){
+    funcName = "halfHourFactorPT"
+    newdbName = validateStringAndScalarParam(funcName, dbName)
+    newtbName = validateStringAndScalarParam(funcName, tbName)
+    dbDate = database(, partitionType=RANGE, partitionScheme=date(datetimeAdd(1980.01M,0..80*12,'M')))
+	dbFactor = database(, partitionType=VALUE, partitionScheme=`f1`f2)
+	db = database(directory=newdbName, partitionType=COMPO, partitionScheme=[dbDate, dbFactor], engine='TSDB')
+    tbSchema = table(1:0, `tradetime`securityid`value`factorname, [TIMESTAMP, SYMBOL, DOUBLE, SYMBOL])
+	db.createPartitionedTable(table=tbSchema,tableName=newtbName,partitionColumns=`tradetime`factorname,sortColumns=`securityid`tradetime,compressMethods={tradetime:"delta"}, sortKeyMappingFunction=[hashBucket{, 500}])
+	t = loadTable(newdbName, newtbName)
+	return t
+}
+
+/**
+ * @Function Name: tenMinutesFactorPT
+ * @Brief: Creates a ten-minute factor table in the distributed database.
+ * @Param dbName: Name of the database 
+ * @Param tbName: Name of the table
+ * @Return: Handle to the table.
+ * @Sample Usage: t = tenMinutesFactorPT("dfs://tenMinutesFactorDB", "tenMinutesFactorTB")
+ */
+def tenMinutesFactorPT(dbName, tbName){
+    funcName = "tenMinutesFactorPT"
+    newdbName = validateStringAndScalarParam(funcName, dbName)
+    newtbName = validateStringAndScalarParam(funcName, tbName)
+    dbDate = database(, partitionType=VALUE, partitionScheme=2021.01M..2021.06M)
+	dbFactor = database(, partitionType=VALUE, partitionScheme=`f1`f2)
+	db = database(directory=newdbName, partitionType=COMPO, partitionScheme=[dbDate, dbFactor], engine='TSDB')
+    tbSchema = table(1:0, `tradetime`securityid`value`factorname, [TIMESTAMP, SYMBOL, DOUBLE, SYMBOL])
+	db.createPartitionedTable(table=tbSchema,tableName=newtbName,partitionColumns=`tradetime`factorname,sortColumns=`securityid`tradetime,compressMethods={tradetime:"delta"}, sortKeyMappingFunction=[hashBucket{, 500}])
+	t = loadTable(newdbName, newtbName)
+	return t
+}
+
+/**
+ * @Function Name: minuteFactorPT
+ * @Brief: Creates a minute-level factor table in the distributed database.
+ * @Param dbName: Name of the database 
+ * @Param tbName: Name of the table
+ * @Return: Handle to the table.
+ * @Sample Usage: t = minuteFactorPT("dfs://minuteFactorDB", "minuteFactorTB")
+ */
+def minuteFactorPT(dbName, tbName){
+    funcName = "minuteFactorPT"
+    newdbName = validateStringAndScalarParam(funcName, dbName)
+    newtbName = validateStringAndScalarParam(funcName, tbName)
+    dbDate = database(, partitionType=VALUE, partitionScheme=2021.12.01..2021.12.31)
+	dbFactor = database(, partitionType=VALUE, partitionScheme=`f1`f2)
+	db = database(directory=newdbName, partitionType=COMPO, partitionScheme=[dbDate, dbFactor], engine='TSDB')
+    tbSchema = table(1:0, `tradetime`securityid`value`factorname, [TIMESTAMP, SYMBOL, DOUBLE, SYMBOL])
+	db.createPartitionedTable(table=tbSchema,tableName=newtbName,partitionColumns=`tradetime`factorname,sortColumns=`securityid`tradetime,compressMethods={tradetime:"delta"}, sortKeyMappingFunction=[hashBucket{, 500}])
+	t = loadTable(newdbName, newtbName)
+	return t
+}
+
+/**
+ * @Function Name: secondFactorPT
+ * @Brief: Creates a second-level factor table in the distributed database.
+ * @Param dbName: Name of the database 
+ * @Param tbName: Name of the table
+ * @Return: Handle to the table.
+ * @Sample Usage: t = secondFactorPT("dfs://secondFactorDB", "secondFactorTB")
+ */
+def secondFactorPT(dbName, tbName){
+    funcName = "secondFactorPT"
+    newdbName = validateStringAndScalarParam(funcName, dbName)
+    newtbName = validateStringAndScalarParam(funcName, tbName)
+    dbDate = database(, partitionType=VALUE, partitionScheme=datehour(2022.01.15T00:00:00)..datehour(2022.01.31T00:00:00))
+	dbFactor = database(, partitionType=VALUE, partitionScheme=`f1`f2)
+	db = database(directory=newdbName, partitionType=COMPO, partitionScheme=[dbDate, dbFactor], engine='TSDB')
+    tbSchema = table(1:0, `tradetime`securityid`value`factorname, [TIMESTAMP, SYMBOL, DOUBLE, SYMBOL])
+	db.createPartitionedTable(table=tbSchema,tableName=newtbName,partitionColumns=`tradetime`factorname,sortColumns=`securityid`tradetime,compressMethods={tradetime:"delta"}, sortKeyMappingFunction=[hashBucket{, 500}])
+	t = loadTable(newdbName, newtbName)
+	return t
+}
+
+/**
+ * @Function Name: level2FactorPT
+ * @Brief: Creates a Level-2 factor table in the distributed database.
+ * @Param dbName: Name of the database 
+ * @Param tbName: Name of the table
+ * @Return: Handle to the table.
+ * @Sample Usage: t = level2FactorPT("dfs://level2FactorDB", "level2FactorTB")
+ */
+def level2FactorPT(dbName, tbName){
+    funcName = "level2FactorPT"
+    newdbName = validateStringAndScalarParam(funcName, dbName)
+    newtbName = validateStringAndScalarParam(funcName, tbName)
+    dbDate = database(, partitionType=VALUE, partitionScheme=2021.12.01..2021.12.31)
+	dbFactor = database(, partitionType=VALUE, partitionScheme=`f1`f2)
+	db = database(directory=newdbName, partitionType=COMPO, partitionScheme=[dbDate, dbFactor], engine='TSDB')
+    tbSchema = table(1:0, `tradetime`securityid`value`factorname, [TIMESTAMP, SYMBOL, DOUBLE, SYMBOL])
+	db.createPartitionedTable(table=tbSchema,tableName=newtbName,partitionColumns=`tradetime`factorname,sortColumns=`securityid`tradetime,compressMethods={tradetime:"delta"}, sortKeyMappingFunction=[hashBucket{, 500}])
+	t = loadTable(newdbName, newtbName)
+	return t
+}
+
+/**
+ * @Function Name: tickFactorPT
+ * @Brief: Creates a tick-level factor table in the distributed database.
+ * @Param dbName: Name of the database 
+ * @Param tbName: Name of the table
+ * @Return: Handle to the table.
+ * @Sample Usage: t = tickFactorPT("dfs://tickFactorDB", "tickFactorTB")
+ */
+def tickFactorPT(dbName, tbName){
+    funcName = "tickFactorPT"
+    newdbName = validateStringAndScalarParam(funcName, dbName)
+    newtbName = validateStringAndScalarParam(funcName, tbName)
+    dbDate = database(, partitionType=VALUE, partitionScheme=2022.12.01..2022.12.31)
+	dbFactor = database(, partitionType=VALUE, partitionScheme=`f1`f2)
+    dbID = database(, partitionType=HASH, partitionScheme=[SYMBOL,10])
+	db = database(directory=newdbName, partitionType=COMPO, partitionScheme=[dbDate, dbFactor, dbID], engine='TSDB')
+    tbSchema = table(1:0, `tradetime`securityid`value`factorname, [TIMESTAMP, SYMBOL, DOUBLE, SYMBOL])
+	db.createPartitionedTable(table=tbSchema,tableName=newtbName,partitionColumns=`tradetime`factorname`securityid, sortColumns=`securityid`tradetime, compressMethods={tradetime:"delta"})
+	t = loadTable(newdbName, newtbName)
+	return t
+}
+
+/**
+ * @Function Name: futuresFactorPT
+ * @Brief: Creates a futures factor table in the distributed database.
+ * @Param dbName: Name of the database 
+ * @Param tbName: Name of the table
+ * @Return: Handle to the table.
+ * @Sample Usage: t = futuresFactorPT("dfs://futuresFactorDB", "futuresFactorTB")
+ */
+def futuresFactorPT(dbName, tbName){
+    funcName = "futuresFactorPT"
+    newdbName = validateStringAndScalarParam(funcName, dbName)
+    newtbName = validateStringAndScalarParam(funcName, tbName)
+    dbDate = database(, partitionType=VALUE, partitionScheme=2021.12.01..2021.12.31)
+	dbFactor = database(, partitionType=VALUE, partitionScheme=`f1`f2)
+	db = database(directory=newdbName, partitionType=COMPO, partitionScheme=[dbDate, dbFactor], engine='TSDB')
+    tbSchema = table(1:0, `tradetime`securityid`value`factorname, [TIMESTAMP, SYMBOL, DOUBLE, SYMBOL])
+	db.createPartitionedTable(table=tbSchema,tableName=newtbName,partitionColumns=`tradetime`factorname,sortColumns=`securityid`tradetime,compressMethods={tradetime:"delta"}, sortKeyMappingFunction=[hashBucket{, 500}])
+	t = loadTable(newdbName, newtbName)
+	return t
+}

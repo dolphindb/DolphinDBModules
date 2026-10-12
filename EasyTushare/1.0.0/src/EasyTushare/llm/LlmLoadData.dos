@@ -1,0 +1,376 @@
+module EasyTushare::llm::LlmLoadData
+/* 
+*  @Brief: 大模型语料数据单个表导入函数模块
+*  @Author: DolphinDB
+*  @Last modification time: 2026.03.31
+*  @DolphinDB server version: 3.00.5 2026.02.06 LINUX x86_64
+*/
+
+use EasyTushare::TsInit
+
+/*
+*  @FunctionName: module_info
+*  @Brief: 模块信息,一个相同模块dir下的每个dos都需要有module_info函数,且是相同的
+*  @Param: None
+*  @Return: dict
+*  @SampleUsage: module_info()
+*/
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "EasyTushare"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+
+/*
+ * @Description: 上市公司公告数据导入
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-03 10:52:57
+ * @dev: 
+ * @Author: fangwu
+ */
+def appendAnnsD(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "anns_d"
+    api = "anns_d"
+    cols = [
+        "ann_date",
+        "ts_code",
+        "name",
+        "title",
+        "url",
+        "rec_time"
+    ]
+    out = loadTable(dbPath, tableName)
+    delete from loadTable(dbPath, tableName) where ann_date between start_date and end_date
+    for(oneDate in start_date..end_date){
+        dateStr = temporalFormat(oneDate, "yyyyMMdd") // dateStr = "20260710"
+        p = {ann_date:dateStr}
+        res = getApiData(token, api, p, cols)
+
+        if (!res.isVoid() and res.count() !=0){
+            
+            update res set update_time = now()
+
+            replaceColumn!(res, "ann_date", temporalParse(string(res.ann_date), "yyyyMMdd"))
+            replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+            replaceColumn!(res, "name", string(res.name))
+            replaceColumn!(res, "title", string(res.title))
+            replaceColumn!(res, "url", string(res.url))
+            replaceColumn!(res, "rec_time", timestamp(res.rec_time))
+            replaceColumn!(res, "update_time", timestamp(res.update_time))
+            out.append!(res)
+            print("Success append data for Table " + api + " for date: " + dateStr)
+        } else {
+            print("no data for Table " + api + " for date: " + dateStr)
+        }     
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+ * @Description: CCTV news data import
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-03 10:52:57
+ * @dev: 
+ * @Author: fangwu
+ */
+def appendCctvNews(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "cctv_news"
+    api = "cctv_news"
+    cols = [
+        "date",
+        "title",
+        "content"
+    ]
+    out = loadTable(dbPath, tableName)
+    delete from loadTable(dbPath, tableName) where news_date between start_date and end_date
+    for(oneDate in start_date..end_date){ // oneDate = 2026.04.21
+        dateStr = temporalFormat(oneDate, "yyyyMMdd")
+        p = {date:dateStr}
+        res = getApiData(token, api, p, cols)
+        if(!res.isVoid() and res.count() != 0){
+            res = select date as news_date, title, content from res
+            update res set update_time = now()
+            replaceColumn!(res, "news_date", temporalParse(string(res.news_date), "yyyyMMdd"))
+            replaceColumn!(res, "title", string(res.title))
+            replaceColumn!(res, "content", string(res.content))
+            out.append!(res)
+            print("Success append data for Table " + api + " for date: " + dateStr)
+        } else {
+            print("no data for Table " + api + " for date: " + dateStr)
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+ * @Description: SSE E-interaction Q&A data import
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-03 10:52:57
+ * @dev: 
+ * @Author: fangwu
+ */
+def appendIrmQaSh(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "irm_qa_sh"
+    api = "irm_qa_sh"
+    cols = [
+        "ts_code",
+        "name",
+        "trade_date",
+        "q",
+        "a",
+        "pub_time"
+    ]
+    out = loadTable(dbPath, tableName)
+    delete from loadTable(dbPath, tableName) where trade_date between start_date and end_date
+    for(oneDate in start_date..end_date){ // oneDate = 2026.04.21
+        dateStr = temporalFormat(oneDate, "yyyyMMdd")
+        p = {trade_date:dateStr}
+        res = getApiData(token, api, p, cols)
+        if(!res.isVoid() and res.count() != 0){
+            update res set update_time = now()
+            replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+            replaceColumn!(res, "name", string(res.name))
+            replaceColumn!(res, "trade_date", temporalParse(string(res.trade_date), "yyyyMMdd"))
+            replaceColumn!(res, "q", string(res.q))
+            replaceColumn!(res, "a", string(res.a))
+            replaceColumn!(res, "pub_time", timestamp(res.pub_time))
+            out.append!(res)
+            print("Success append data for Table " + api + " for date: " + dateStr)
+        } else {
+            print("no data for Table " + api + " for date: " + dateStr)
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+ * @Description: SZSE interaction Q&A data import
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-03 10:52:57
+ * @dev: 
+ * @Author: fangwu
+ */
+def appendIrmQaSz(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "irm_qa_sz"
+    api = "irm_qa_sz"
+    cols = [
+        "ts_code",
+        "name",
+        "trade_date",
+        "q",
+        "a",
+        "pub_time",
+        "industry"
+    ]
+    out = loadTable(dbPath, tableName)
+    delete from loadTable(dbPath, tableName) where trade_date between start_date and end_date
+    for(oneDate in start_date..end_date){ // oneDate = 2026.08.31
+        dateStr = temporalFormat(oneDate, "yyyyMMdd")
+        p = {"trade_date":dateStr}
+        res = getApiData(token, api, p, cols)
+        if(!res.isVoid() and res.count() != 0){
+            update res set update_time = now()
+            replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+            replaceColumn!(res, "name", string(res.name))
+            replaceColumn!(res, "trade_date", temporalParse(string(res.trade_date), "yyyyMMdd"))
+            replaceColumn!(res, "q", string(res.q))
+            replaceColumn!(res, "a", string(res.a))
+            replaceColumn!(res, "pub_time", timestamp(res.pub_time))
+            replaceColumn!(res, "industry", string(res.industry))
+            out.append!(res)
+            print("Success append data for Table " + api + " for date: " + dateStr)
+        } else {
+            print("no data for Table " + api + " for date: " + dateStr)
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+ * @Description: Major news data import
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-03 10:52:57
+ * @dev: 
+ * @Author: fangwu
+ */
+def appendMajorNews(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "major_news"
+    api = "major_news"
+    cols = [
+        "title",
+        "content",
+        "pub_time",
+        "src"
+    ]
+    out = loadTable(dbPath, tableName)
+    delete from loadTable(dbPath, tableName) where date(pub_time) between start_date and end_date
+    for(oneDate in start_date..end_date){
+        dateText = temporalFormat(oneDate, "yyyy-MM-dd")
+        dateText = temporalFormat(oneDate, "yyyy-MM-dd")
+        dtStart = dateText + " 00:00:00"
+        dtEnd = dateText + " 23:59:59"
+        p = {start_date:dtStart, end_date:dtEnd}
+        res = getApiData(token, api, p, cols)
+        if(!res.isVoid() and res.count() != 0){
+            update res set update_time = now()
+            replaceColumn!(res, "title", string(res.title))
+            replaceColumn!(res, "content", string(res.content))
+            replaceColumn!(res, "pub_time", timestamp(res.pub_time))
+            replaceColumn!(res, "src", symbol(string(res.src)))
+            out.append!(res)
+            print("Success append data for Table " + api + " for date: " + dateText)
+        } else {
+            print("no data for Table " + api + " for date: " + dateText)
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+ * @Description: News flash data import
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-03 10:52:57
+ * @dev: 
+ * @Author: fangwu
+ */
+def appendNews(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "news"
+    api = "news"
+    cols = [
+        "datetime",
+        "content",
+        "title",
+        "channels"
+    ]
+    out = loadTable(dbPath, tableName)
+    delete from loadTable(dbPath, tableName) where date(date_time) >= start_date and date(date_time)<=end_date
+    srcVals = ["sina","wallstreetcn","10jqka","eastmoney","yuncaijing","fenghuang","jinrongjie","cls","yicai"]
+    for(oneDate in start_date..end_date){ // oneDate = 2026.07.10
+        dateText = temporalFormat(oneDate, "yyyy-MM-dd")
+        dtStart = dateText + " 00:00:00"
+        dtEnd = dateText + " 23:59:59"
+        for(srcVal in srcVals){ // srcVal = 'fenghuang'
+            p = {src:srcVal, start_date:dtStart, end_date:dtEnd}
+            res = getApiData(token, api, p, cols)
+
+            if(!res.isVoid() and res.count() != 0){
+                res = select datetime as date_time, content, title, channels ,now() as update_time from res
+                // replaceColumn!(res, "date_time", timestamp(temporalParse(iif(strlen(string(res.date_time))==16,string(res.date_time)+ ":00",string(res.date_time)), "yyyy-MM-dd HH:mm:ss")))
+                replaceColumn!(res, "date_time", timestamp(res.date_time))
+                replaceColumn!(res, "content", string(res.content))
+                replaceColumn!(res, "title", string(res.title))
+                out.append!(res)
+                print("Success append data for Table " + api + " for date: " + dateText + " src: " + srcVal)
+            } else {
+                print("no data for Table " + api + " for date: " + dateText + " src: " + srcVal)
+            }
+        }  
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+ * @Description: National policy repository data import
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-03 10:52:57
+ * @dev: 
+ * @Author: fangwu
+ */
+def appendNpr(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "npr"
+    api = "npr"
+    cols = [
+        "pubtime",
+        "title",
+        "url",
+        "content_html",
+        "pcode",
+        "puborg",
+        "ptype"
+    ]
+    out = loadTable(dbPath, tableName)
+    delete from loadTable(dbPath, tableName) where date(pub_time) between start_date and end_date
+    for(oneDate in start_date..end_date){ // oneDate = 2026.07.10
+        dateText = temporalFormat(oneDate, "yyyy-MM-dd")
+        dtStart = dateText + " 00:00:00"
+        dtEnd = dateText + " 23:59:59"
+        p = {start_date:dtStart, end_date:dtEnd}
+        res = getApiData(token, api, p, cols)
+        if(!res.isVoid() and res.count() != 0){
+            res = select pubtime as pub_time, title, url, content_html, pcode, puborg, ptype from res
+            update res set update_time = now()
+            replaceColumn!(res, "pub_time", timestamp(res.pub_time))
+            replaceColumn!(res, "title", string(res.title))
+            replaceColumn!(res, "url", string(res.url))
+            replaceColumn!(res, "content_html", string(res.content_html))
+            replaceColumn!(res, "pcode", string(res.pcode))
+            replaceColumn!(res, "puborg", symbol(string(res.puborg)))
+            replaceColumn!(res, "ptype", symbol(string(res.ptype)))
+            out.append!(res)
+            print("Success append data for Table " + api + " for date: " + dateText)
+        } else {
+            print("no data for Table " + api + " for date: " + dateText)
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+ * @Description: Broker research report data import
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-03 10:52:57
+ * @dev: 
+ * @Author: fangwu
+ */
+def appendResearchReport(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "research_report"
+    api = "research_report"
+    cols = [
+        "trade_date",
+        "abstr",
+        "title",
+        "report_type",
+        "author",
+        "name",
+        "ts_code",
+        "inst_csname",
+        "ind_name",
+        "url"
+    ]
+    out = loadTable(dbPath, tableName)
+    delete from loadTable(dbPath, tableName) where trade_date between start_date and end_date
+    for(oneDate in start_date..end_date){ // oneDate = 2016.08.26
+        dateStr = temporalFormat(oneDate, "yyyyMMdd")
+        p = {trade_date:dateStr}
+        res = getApiData(token, api, p, cols)
+        if(!res.isVoid() and res.count() != 0){
+            update res set update_time = now()
+            replaceColumn!(res, "trade_date", temporalParse(string(res.trade_date), "yyyyMMdd"))
+            replaceColumn!(res, "abstr", string(res.abstr))
+            replaceColumn!(res, "title", string(res.title))
+            replaceColumn!(res, "report_type", symbol(string(res.report_type)))
+            replaceColumn!(res, "author", string(res.author))
+            replaceColumn!(res, "name", string(res.name))
+            replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+            replaceColumn!(res, "inst_csname", symbol(string(res.inst_csname)))
+            replaceColumn!(res, "ind_name", symbol(string(res.ind_name)))
+            replaceColumn!(res, "url", string(res.url))
+            out.append!(res)
+            print("Success append data for Table " + api + " for date: " + dateStr)
+        } else {
+            print("no data for Table " + api + " for date: " + dateStr)
+        }
+    }
+    print("Success append data for Table " + api)
+}
+

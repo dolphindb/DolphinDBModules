@@ -1,0 +1,13 @@
+module PayCatalogDos::PayFile::testPrint2::testPrint::testPrint
+
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "PayCatalogDos"
+    res["moduleVersion"] = "2.1.0"
+    res["isFree"] = false
+    return res
+}
+
+def myTestPrint(){
+    print("testPrint")
+}

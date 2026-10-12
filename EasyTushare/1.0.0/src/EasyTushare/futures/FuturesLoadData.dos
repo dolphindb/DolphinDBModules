@@ -1,0 +1,909 @@
+module EasyTushare::futures::FuturesLoadData
+/* 
+*  @Brief: 期货数据单个表导入函数模块
+*  @Author: DolphinDB
+*  @Last modification time: 2026.03.31
+*  @DolphinDB server version: 3.00.5 2026.02.06 LINUX x86_64
+*/
+
+use EasyTushare::TsInit
+/*
+*  @FunctionName: module_info
+*  @Brief: 模块信息,一个相同模块dir下的每个dos都需要有module_info函数,且是相同的
+*  @Param: None
+*  @Return: dict
+*  @SampleUsage: module_info()
+*/
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "EasyTushare"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+
+/*
+ * @Description: 期货合约涨跌停价格（盘前）数据导入
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-30 10:52:57
+ * @dev: 
+ * @Author: fangwu
+ */
+def appendFtLimit(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "ft_limit"
+    api = "ft_limit"
+    cols = ["trade_date","ts_code","name","up_limit","down_limit","m_ratio","cont","exchange"]
+    out = loadTable(dbPath, tableName)
+    delete from loadTable(dbPath, tableName) where trade_date between start_date and end_date
+    dts = getMarketCalendar("SSE", start_date, end_date)
+    for(oneDate in dts){ // oneDate = 2026.04.01
+        dateStr = temporalFormat(oneDate, "yyyyMMdd")
+        p = {"trade_date":dateStr}
+        res = getApiData(token, api, p, cols)
+
+        if (!res.isVoid() and res.count() !=0){
+            
+            update res set update_time = now()
+            replaceColumn!(res, "trade_date", temporalParse(string(res.trade_date), "yyyyMMdd"))
+            replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+            replaceColumn!(res, "name", string(res.name))
+            replaceColumn!(res, "up_limit", double(res.up_limit))
+            replaceColumn!(res, "down_limit", double(res.down_limit))
+            replaceColumn!(res, "m_ratio", double(res.m_ratio))
+            replaceColumn!(res, "cont", symbol(string(res.cont)))
+            replaceColumn!(res, "exchange", symbol(string(res.exchange)))
+            replaceColumn!(res, "update_time", timestamp(res.update_time))
+            out.append!(res)
+            print("Success append data for Table " + api + " for date: " + dateStr)
+        } else {
+            print("no data for Table " + api + " for date: " + dateStr)
+        }     
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+ * @Description: 期货历史分钟行情数据导入
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-30 10:52:57
+ * @dev: 
+ * @Author: fangwu
+ */
+def appendFt1minK(token, start_date, end_date){
+    dbPath = "dfs://tushare_minute_db"
+    tableName = "fut_1min_k"
+    api = "ft_mins"
+    cols = ["ts_code","trade_time","open","close","high","low","vol","amount","oi"]
+    out = loadTable(dbPath, tableName)
+    delete from loadTable(dbPath, tableName) where date(trade_time) between start_date and end_date
+    
+    days = start_date..end_date
+    for (one_date in days){ 
+        startDate = one_date-1 
+        endDate = one_date
+
+        exchange_list = ["CZCE","SHFE","DCE","CFFEX","INE","GFEX"]
+        for (oneMarket in exchange_list){    // oneMarket = "SHFE"
+            code_info = getApiData(token, "fut_basic", {"exchange":oneMarket}, ["ts_code","list_date","delist_date"])
+            
+            replaceColumn!(code_info, "list_date", temporalParse(string(code_info.list_date), "yyyyMMdd"))
+            replaceColumn!(code_info, "delist_date", temporalParse(string(code_info.delist_date), "yyyyMMdd"))
+            code_list = exec distinct ts_code from code_info where delist_date >= endDate and list_date <= startDate   
+            // ts_code = "LC.GFE"
+            // 前一天晚上的 21：00 到今天的 19：00点
+            startDateTime = temporalFormat(startDate, "yyyy-MM-dd") + " 21:00:00"
+            endDateTime = temporalFormat(endDate, "yyyy-MM-dd") + " 19:00:00"
+            
+            if (size(code_list) > 15) {
+                cut_codes = cut(code_list,15)
+            } else {
+                cut_codes = [code_list]
+            }
+            if (size(code_list)>0) {
+                for (one_batch in cut_codes){ // i = 0
+                    one_batch_str = concat(one_batch,",")
+                    p = {"ts_code":one_batch_str, "freq":"1min", "start_date":startDateTime, "end_date":endDateTime}
+                    res = getApiData(token, api, p, cols)
+
+                    if (!res.isVoid() and res.count() !=0){
+                        if (res.count() == 8000) {throw "count is 8000, Exceeded interface return data row limit,please check"}
+                        update res set update_time = now()
+                        replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+                        replaceColumn!(res, "trade_time", timestamp(res.trade_time))
+                        replaceColumn!(res, "open", double(res.open))
+                        replaceColumn!(res, "close", double(res.close))
+                        replaceColumn!(res, "high", double(res.high))
+                        replaceColumn!(res, "low", double(res.low))
+                        replaceColumn!(res, "vol", int(res.vol))
+                        replaceColumn!(res, "amount", double(res.amount))
+                        replaceColumn!(res, "oi", double(res.oi))
+                        replaceColumn!(res, "update_time", timestamp(res.update_time))
+                        out.append!(res)
+                        print("Success append data for Table " + tableName + " for " + startDateTime + " to " + endDateTime + " for " + one_batch_str+ ") for count" + res.count())
+                    } else {
+                        print("no data for Table " + tableName + " for " + startDateTime + " to " + endDateTime + " for " + one_batch_str+ ")")
+                    }     
+                }
+            }
+        }
+    }
+}
+
+/*
+ * @Description: 期货历史分钟行情数据导入
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-30 10:52:57
+ * @dev: 
+ * @Author: fangwu
+ */
+def appendFt5minK(token, start_date, end_date){
+    dbPath = "dfs://tushare_minute_db"
+    tableName = "fut_5min_k"
+    api = "ft_mins"
+    cols = ["ts_code","trade_time","open","close","high","low","vol","amount","oi"]
+    out = loadTable(dbPath, tableName)
+    delete from loadTable(dbPath, tableName) where date(trade_time) between start_date and end_date
+    
+    days = start_date..end_date
+    for (one_date in days){ 
+        startDate = one_date-1 
+        endDate = one_date
+
+        exchange_list = ["CZCE","SHFE","DCE","CFFEX","INE","GFEX"]
+        for (oneMarket in exchange_list){    // oneMarket = "SHFE"
+            code_info = getApiData(token, "fut_basic", {"exchange":oneMarket}, ["ts_code","list_date","delist_date"])
+            
+            replaceColumn!(code_info, "list_date", temporalParse(string(code_info.list_date), "yyyyMMdd"))
+            replaceColumn!(code_info, "delist_date", temporalParse(string(code_info.delist_date), "yyyyMMdd"))
+            code_list = exec distinct ts_code from code_info where delist_date >= endDate and list_date <= startDate   
+            // ts_code = "LC.GFE"
+            // 前一天晚上的 21：00 到今天的 19：00点
+            startDateTime = temporalFormat(startDate, "yyyy-MM-dd") + " 21:00:00"
+            endDateTime = temporalFormat(endDate, "yyyy-MM-dd") + " 19:00:00"
+            
+            if (size(code_list) > 80) {
+                cut_codes = cut(code_list,80)
+            } else {
+                cut_codes = [code_list]
+            }
+            if (size(code_list)>0) {
+                for (one_batch in cut_codes){ // i = 0
+                    one_batch_str = concat(one_batch,",")
+                    p = {"ts_code":one_batch_str, "freq":"5min", "start_date":startDateTime, "end_date":endDateTime}
+                    res = getApiData(token, api, p, cols)
+
+                    if (!res.isVoid() and res.count() !=0){
+                        if (res.count() == 8000) {throw "count is 8000, Exceeded interface return data row limit,please check"}
+                        update res set update_time = now()
+                        replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+                        replaceColumn!(res, "trade_time", timestamp(res.trade_time))
+                        replaceColumn!(res, "open", double(res.open))
+                        replaceColumn!(res, "close", double(res.close))
+                        replaceColumn!(res, "high", double(res.high))
+                        replaceColumn!(res, "low", double(res.low))
+                        replaceColumn!(res, "vol", int(res.vol))
+                        replaceColumn!(res, "amount", double(res.amount))
+                        replaceColumn!(res, "oi", double(res.oi))
+                        replaceColumn!(res, "update_time", timestamp(res.update_time))
+                        out.append!(res)
+                        print("Success append data for Table " + tableName + " for " + startDateTime + " to " + endDateTime + " for " + one_batch_str+ ") for count" + res.count())
+                    } else {
+                        print("no data for Table " + tableName + " for " + startDateTime + " to " + endDateTime + " for " + one_batch_str+ ")")
+                    }     
+                }
+            }
+        }
+    }
+}
+
+/*
+ * @Description: 期货历史分钟行情数据导入
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-30 10:52:57
+ * @dev: 
+ * @Author: fangwu
+ */
+def appendFt15minK(token, start_date, end_date){
+    dbPath = "dfs://tushare_minute_db"
+    tableName = "fut_15min_k"
+    api = "ft_mins"
+    cols = ["ts_code","trade_time","open","close","high","low","vol","amount","oi"]
+    out = loadTable(dbPath, tableName)
+    delete from loadTable(dbPath, tableName) where date(trade_time) between start_date and end_date
+    
+    days = start_date..end_date
+    for (one_date in days){ 
+        startDate = one_date-1 
+        endDate = one_date
+
+        exchange_list = ["CZCE","SHFE","DCE","CFFEX","INE","GFEX"]
+        for (oneMarket in exchange_list){    // oneMarket = "SHFE"
+            code_info = getApiData(token, "fut_basic", {"exchange":oneMarket}, ["ts_code","list_date","delist_date"])
+            
+            replaceColumn!(code_info, "list_date", temporalParse(string(code_info.list_date), "yyyyMMdd"))
+            replaceColumn!(code_info, "delist_date", temporalParse(string(code_info.delist_date), "yyyyMMdd"))
+            code_list = exec distinct ts_code from code_info where delist_date >= endDate and list_date <= startDate   
+            // ts_code = "LC.GFE"
+            // 前一天晚上的 21：00 到今天的 19：00点
+            startDateTime = temporalFormat(startDate, "yyyy-MM-dd") + " 21:00:00"
+            endDateTime = temporalFormat(endDate, "yyyy-MM-dd") + " 19:00:00"
+            
+            if (size(code_list) > 100) {
+                cut_codes = cut(code_list,100)
+            } else {
+                cut_codes = [code_list]
+            }
+            if (size(code_list)>0) {
+                for (one_batch in cut_codes){ // i = 0
+                    one_batch_str = concat(one_batch,",")
+                    p = {"ts_code":one_batch_str, "freq":"15min", "start_date":startDateTime, "end_date":endDateTime}
+                    res = getApiData(token, api, p, cols)
+
+                    if (!res.isVoid() and res.count() !=0){
+                        if (res.count() == 8000) {throw "count is 8000, Exceeded interface return data row limit,please check"}
+                        update res set update_time = now()
+                        replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+                        replaceColumn!(res, "trade_time", timestamp(res.trade_time))
+                        replaceColumn!(res, "open", double(res.open))
+                        replaceColumn!(res, "close", double(res.close))
+                        replaceColumn!(res, "high", double(res.high))
+                        replaceColumn!(res, "low", double(res.low))
+                        replaceColumn!(res, "vol", int(res.vol))
+                        replaceColumn!(res, "amount", double(res.amount))
+                        replaceColumn!(res, "oi", double(res.oi))
+                        replaceColumn!(res, "update_time", timestamp(res.update_time))
+                        out.append!(res)
+                        print("Success append data for Table " + tableName + " for " + startDateTime + " to " + endDateTime + " for " + one_batch_str+ ") for count" + res.count())
+                    } else {
+                        print("no data for Table " + tableName + " for " + startDateTime + " to " + endDateTime + " for " + one_batch_str+ ")")
+                    }     
+                }
+            }
+        }
+    }
+}
+
+/*
+ * @Description: 期货历史分钟行情数据导入
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-30 10:52:57
+ * @dev: 
+ * @Author: fangwu
+ */
+def appendFt30minK(token, start_date, end_date){
+    dbPath = "dfs://tushare_minute_db"
+    tableName = "fut_30min_k"
+    api = "ft_mins"
+    cols = ["ts_code","trade_time","open","close","high","low","vol","amount","oi"]
+    out = loadTable(dbPath, tableName)
+    delete from loadTable(dbPath, tableName) where date(trade_time) between start_date and end_date
+    
+    days = start_date..end_date
+    for (one_date in days){ 
+        startDate = one_date-1 
+        endDate = one_date
+
+        exchange_list = ["CZCE","SHFE","DCE","CFFEX","INE","GFEX"]
+        for (oneMarket in exchange_list){    // oneMarket = "SHFE"
+            code_info = getApiData(token, "fut_basic", {"exchange":oneMarket}, ["ts_code","list_date","delist_date"])
+            
+            replaceColumn!(code_info, "list_date", temporalParse(string(code_info.list_date), "yyyyMMdd"))
+            replaceColumn!(code_info, "delist_date", temporalParse(string(code_info.delist_date), "yyyyMMdd"))
+            code_list = exec distinct ts_code from code_info where delist_date >= endDate and list_date <= startDate   
+            // ts_code = "LC.GFE"
+            // 前一天晚上的 21：00 到今天的 19：00点
+            startDateTime = temporalFormat(startDate, "yyyy-MM-dd") + " 21:00:00"
+            endDateTime = temporalFormat(endDate, "yyyy-MM-dd") + " 19:00:00"
+            
+            if (size(code_list) > 100) {
+                cut_codes = cut(code_list,100)
+            } else {
+                cut_codes = [code_list]
+            }
+            if (size(code_list)>0) {
+                for (one_batch in cut_codes){ // i = 0
+                    one_batch_str = concat(one_batch,",")
+                    p = {"ts_code":one_batch_str, "freq":"30min", "start_date":startDateTime, "end_date":endDateTime}
+                    res = getApiData(token, api, p, cols)
+
+                    if (!res.isVoid() and res.count() !=0){
+                        if (res.count() == 8000) {throw "count is 8000, Exceeded interface return data row limit,please check"}
+                        update res set update_time = now()
+                        replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+                        replaceColumn!(res, "trade_time", timestamp(res.trade_time))
+                        replaceColumn!(res, "open", double(res.open))
+                        replaceColumn!(res, "close", double(res.close))
+                        replaceColumn!(res, "high", double(res.high))
+                        replaceColumn!(res, "low", double(res.low))
+                        replaceColumn!(res, "vol", int(res.vol))
+                        replaceColumn!(res, "amount", double(res.amount))
+                        replaceColumn!(res, "oi", double(res.oi))
+                        replaceColumn!(res, "update_time", timestamp(res.update_time))
+                        out.append!(res)
+                        print("Success append data for Table " + tableName + " for " + startDateTime + " to " + endDateTime + " for " + one_batch_str+ ") for count" + res.count())
+                    } else {
+                        print("no data for Table " + tableName + " for " + startDateTime + " to " + endDateTime + " for " + one_batch_str+ ")")
+                    }     
+                }
+            }
+        }
+    }
+}
+
+/*
+ * @Description: 期货历史分钟行情数据导入
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-30 10:52:57
+ * @dev: 
+ * @Author: fangwu
+ */
+def appendFt60minK(token, start_date, end_date){
+    dbPath = "dfs://tushare_minute_db"
+    tableName = "fut_60min_k"
+    api = "ft_mins"
+    cols = ["ts_code","trade_time","open","close","high","low","vol","amount","oi"]
+    out = loadTable(dbPath, tableName)
+    delete from loadTable(dbPath, tableName) where date(trade_time) between start_date and end_date
+    
+    days = start_date..end_date
+    for (one_date in days){ 
+        startDate = one_date-1 
+        endDate = one_date
+
+        exchange_list = ["CZCE","SHFE","DCE","CFFEX","INE","GFEX"]
+        for (oneMarket in exchange_list){    // oneMarket = "SHFE"
+            code_info = getApiData(token, "fut_basic", {"exchange":oneMarket}, ["ts_code","list_date","delist_date"])
+            
+            replaceColumn!(code_info, "list_date", temporalParse(string(code_info.list_date), "yyyyMMdd"))
+            replaceColumn!(code_info, "delist_date", temporalParse(string(code_info.delist_date), "yyyyMMdd"))
+            code_list = exec distinct ts_code from code_info where delist_date >= endDate and list_date <= startDate   
+            // ts_code = "LC.GFE"
+            // 前一天晚上的 21：00 到今天的 19：00点
+            startDateTime = temporalFormat(startDate, "yyyy-MM-dd") + " 21:00:00"
+            endDateTime = temporalFormat(endDate, "yyyy-MM-dd") + " 19:00:00"
+            
+            if (size(code_list) > 100) {
+                cut_codes = cut(code_list,100)
+            } else {
+                cut_codes = [code_list]
+            }
+            if (size(code_list)>0) {
+                for (one_batch in cut_codes){ // i = 0
+                    one_batch_str = concat(one_batch,",")
+                    p = {"ts_code":one_batch_str, "freq":"60min", "start_date":startDateTime, "end_date":endDateTime}
+                    res = getApiData(token, api, p, cols)
+
+                    if (!res.isVoid() and res.count() !=0){
+                        if (res.count() == 8000) {throw "count is 8000, Exceeded interface return data row limit,please check"}
+                        update res set update_time = now()
+                        replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+                        replaceColumn!(res, "trade_time", timestamp(res.trade_time))
+                        replaceColumn!(res, "open", double(res.open))
+                        replaceColumn!(res, "close", double(res.close))
+                        replaceColumn!(res, "high", double(res.high))
+                        replaceColumn!(res, "low", double(res.low))
+                        replaceColumn!(res, "vol", int(res.vol))
+                        replaceColumn!(res, "amount", double(res.amount))
+                        replaceColumn!(res, "oi", double(res.oi))
+                        replaceColumn!(res, "update_time", timestamp(res.update_time))
+                        out.append!(res)
+                        print("Success append data for Table " + tableName + " for " + startDateTime + " to " + endDateTime + " for " + one_batch_str+ ") for count" + res.count())
+                    } else {
+                        print("no data for Table " + tableName + " for " + startDateTime + " to " + endDateTime + " for " + one_batch_str+ ")")
+                    }     
+                }
+            }
+        }
+    }
+}
+
+/*
+ * @Description: 期货合约信息表数据导入
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-30 10:52:57
+ * @dev: 
+ * @Author: fangwu
+ */
+def appendFutBasic(token, start_date, end_date){
+    dbPath = "dfs://tushare_basic_db"
+    tableName = "fut_basic"
+    // 先truncate
+    truncate(dbPath,tableName)
+    // 导入数据合约信息表数据
+    api = "fut_basic"
+    cols = ["ts_code","symbol","exchange","name","fut_code","multiplier","trade_unit","per_unit","quote_unit","quote_unit_desc","d_mode_desc","list_date","delist_date","d_month","last_ddate","trade_time_desc"]
+    out = loadTable(dbPath, tableName)
+    
+    // 遍历所有交易所
+    exchanges = ["CFFEX", "DCE", "CZCE", "SHFE", "INE", "GFEX"]
+    for(exchange in exchanges){ // exchange = "GFEX"
+        p = {"exchange":exchange}
+        // p = {"exchange":exchange,"list_date":"20000101"}
+        res = getApiData(token, api, p, cols)
+
+        if (!res.isVoid() and res.count() !=0){
+            
+            update res set update_time = now()
+
+            replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+            replaceColumn!(res, "symbol", symbol(string(res.symbol)))
+            replaceColumn!(res, "exchange", symbol(string(res.exchange)))
+            replaceColumn!(res, "name", string(res.name))
+            replaceColumn!(res, "fut_code", symbol(string(res.fut_code)))
+            replaceColumn!(res, "multiplier", double(res.multiplier))
+            replaceColumn!(res, "trade_unit", string(res.trade_unit))
+            replaceColumn!(res, "per_unit", double(res.per_unit))
+            replaceColumn!(res, "quote_unit", string(res.quote_unit))
+            replaceColumn!(res, "quote_unit_desc", string(res.quote_unit_desc))
+            replaceColumn!(res, "d_mode_desc", string(res.d_mode_desc))
+            replaceColumn!(res, "list_date", temporalParse(string(res.list_date), "yyyyMMdd"))
+            replaceColumn!(res, "delist_date", temporalParse(string(res.delist_date), "yyyyMMdd"))
+            replaceColumn!(res, "d_month", string(res.d_month))
+            replaceColumn!(res, "last_ddate", temporalParse(string(res.last_ddate), "yyyyMMdd"))
+            replaceColumn!(res, "trade_time_desc", string(res.trade_time_desc))
+            replaceColumn!(res, "update_time", timestamp(res.update_time))
+            out.append!(res)
+            print("Success append data for Table " + api + " for exchange: " + exchange)
+        } else {
+            print("no data for Table " + api + " for exchange: " + exchange)
+        }     
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+ * @Description: 期货日线行情数据导入
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-30 10:52:57
+ * @dev: 
+ * @Author: fangwu
+ */
+def appendFutDaily(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "fut_daily"
+    api = "fut_daily"
+    cols = ["ts_code","trade_date","pre_close","pre_settle","open","high","low","close","settle","change1","change2","vol","amount","oi","oi_chg","delv_settle"]
+    out = loadTable(dbPath, tableName)
+    delete from loadTable(dbPath, tableName) where trade_date between start_date and end_date
+    dts = getMarketCalendar("SSE", start_date, end_date)
+    for(oneDate in dts){ // oneDate = 2026.04.02
+        dateStr = temporalFormat(oneDate, "yyyyMMdd")
+        p = {"trade_date":dateStr}
+        res = getApiData(token, api, p, cols)
+
+        if (!res.isVoid() and res.count() !=0){
+            
+            update res set update_time = now()
+            replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+            replaceColumn!(res, "trade_date", temporalParse(string(res.trade_date), "yyyyMMdd"))
+            replaceColumn!(res, "pre_close", double(res.pre_close))
+            replaceColumn!(res, "pre_settle", double(res.pre_settle))
+            replaceColumn!(res, "open", double(res.open))
+            replaceColumn!(res, "high", double(res.high))
+            replaceColumn!(res, "low", double(res.low))
+            replaceColumn!(res, "close", double(res.close))
+            replaceColumn!(res, "settle", double(res.settle))
+            replaceColumn!(res, "change1", double(res.change1))
+            replaceColumn!(res, "change2", double(res.change2))
+            replaceColumn!(res, "vol", double(res.vol))
+            replaceColumn!(res, "amount", double(res.amount))
+            replaceColumn!(res, "oi", double(res.oi))
+            replaceColumn!(res, "oi_chg", double(res.oi_chg))
+            replaceColumn!(res, "delv_settle", double(res.delv_settle))
+            replaceColumn!(res, "update_time", timestamp(res.update_time))
+            out.append!(res)
+            print("Success append data for Table " + api + " for date: " + dateStr+ "for count: " + res.count())
+        } else {
+            print("no data for Table " + api + " for date: " + dateStr)
+        }     
+    }
+    print("Success append data for Table " + api)
+}
+
+
+/*
+ * @Description: 每日成交持仓排名数据导入
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-30 10:52:57
+ * @dev: 
+ * @Author: fangwu
+ */
+def appendFutHolding(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "fut_holding"
+    api = "fut_holding"
+    cols = ["trade_date","symbol","broker","vol","vol_chg","long_hld","long_chg","short_hld","short_chg","exchange"]
+    out = loadTable(dbPath, tableName)
+    delete from loadTable(dbPath, tableName) where trade_date between start_date and end_date
+    dts = getMarketCalendar("SSE", start_date, end_date)
+    market_list = ["CZCE","SHFE","DCE","CFFEX","INE","GFEX"]
+    for(oneDate in dts){
+        dateStr = temporalFormat(oneDate, "yyyyMMdd")
+        for(oneMarket in market_list){ // oneMarket = "GFEX"
+            p = {"trade_date":dateStr,"exchange":oneMarket}
+            res = getApiData(token, api, p, cols)
+
+            if (!res.isVoid() and res.count() !=0){
+                
+                update res set update_time = now()
+                replaceColumn!(res, "trade_date", temporalParse(string(res.trade_date), "yyyyMMdd"))
+                replaceColumn!(res, "symbol", symbol(string(res.symbol)))
+                replaceColumn!(res, "broker", string(res.broker))
+                replaceColumn!(res, "vol", int(res.vol))
+                replaceColumn!(res, "vol_chg", int(res.vol_chg))
+                replaceColumn!(res, "long_hld", int(res.long_hld))
+                replaceColumn!(res, "long_chg", int(res.long_chg))
+                replaceColumn!(res, "short_hld", int(res.short_hld))
+                replaceColumn!(res, "short_chg", int(res.short_chg))
+                replaceColumn!(res, "exchange", symbol(string(res.exchange)))
+                replaceColumn!(res, "update_time", timestamp(res.update_time))
+                out.append!(res)
+                print("Success append data for Table " + api + " for date: " + dateStr + " for exchange: " + oneMarket+ "for count: " + res.count())
+            } else {
+                print("no data for Table " + api + " for date: " + dateStr + " for exchange: " + oneMarket)
+            }     
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+ * @Description: 期货主力与连续合约数据导入
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-30 10:52:57
+ * @dev: 
+ * @Author: fangwu
+ */
+def appendFutMapping(token, start_date, end_date){
+    dbPath = "dfs://tushare_basic_db"
+    tableName = "fut_mapping"
+    api = "fut_mapping"
+    cols = ["ts_code","trade_date","mapping_ts_code"]
+    out = loadTable(dbPath, tableName)
+    delete from loadTable(dbPath, tableName) where trade_date between start_date and end_date
+    dts = getMarketCalendar("SSE", start_date, end_date)
+    for(oneDate in dts){ // oneDate = 2026.04.01
+        dateStr = temporalFormat(oneDate, "yyyyMMdd")
+        p = {"trade_date":dateStr}
+        res = getApiData(token, api, p, cols)
+
+        if (!res.isVoid() and res.count() !=0) {
+            update res set update_time = now()
+            replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+            replaceColumn!(res, "trade_date", temporalParse(string(res.trade_date), "yyyyMMdd"))
+            replaceColumn!(res, "mapping_ts_code", symbol(string(res.mapping_ts_code)))
+            replaceColumn!(res, "update_time", timestamp(res.update_time))
+            out.append!(res)
+            print("Success append data for Table " + api + " for date: " + dateStr + "for count: " + res.count())
+        } else {
+            print("no data for Table " + api + " for date: " + dateStr)
+        }     
+    }
+    print("Success append data for Table " + api)
+}
+
+
+/*
+ * @Description: 期货主要品种交易周报数据导入
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-30 10:52:57
+ * @dev: 
+ * @Author: fangwu
+ */
+def appendFutWeeklyDetail(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "fut_weekly_detail"
+    api = "fut_weekly_detail"
+    cols = ["exchange","prd","name","vol","vol_yoy","amount","amout_yoy","cumvol","cumvol_yoy","cumamt","cumamt_yoy","open_interest","interest_wow","mc_close","close_wow","week","week_date"]
+    out = loadTable(dbPath, tableName)
+    
+    weeks = string(1..52)
+    years = year(start_date)..year(end_date)
+    years = years.sort!()
+    
+    for (oneYear in years){  // oneYear = 2020
+        for (oneWeek in weeks){ // oneWeek = "01"
+            startWeek = string(oneYear) + oneWeek
+            endWeek = string(oneYear) + oneWeek
+            // startWeek = '202601'
+            // endWeek = '202601'
+            p = {"start_week":startWeek, "end_week":endWeek}
+            res = getApiData(token, api, p, cols)
+            if (res.isVoid() and res.count() ==0) {
+                startWeek = string(oneYear) + oneWeek.lpad(2,"0")
+                endWeek = string(oneYear) + oneWeek.lpad(2,"0")
+                p = {"start_week":startWeek, "end_week":endWeek}
+                res = getApiData(token, api, p, cols)
+            }
+
+            if (!res.isVoid() and res.count() !=0){
+                
+                update res set update_time = now()
+                replaceColumn!(res, "exchange", symbol(string(res.exchange)))
+                replaceColumn!(res, "prd", symbol(string(res.prd)))
+                replaceColumn!(res, "name", string(res.name))
+                replaceColumn!(res, "vol", int(res.vol))
+                replaceColumn!(res, "vol_yoy", double(res.vol_yoy))
+                replaceColumn!(res, "amount", double(res.amount))
+                replaceColumn!(res, "amout_yoy", double(res.amout_yoy))
+                replaceColumn!(res, "cumvol", int(res.cumvol))
+                replaceColumn!(res, "cumvol_yoy", double(res.cumvol_yoy))
+                replaceColumn!(res, "cumamt", double(res.cumamt))
+                replaceColumn!(res, "cumamt_yoy", double(res.cumamt_yoy))
+                replaceColumn!(res, "open_interest", int(res.open_interest))
+                replaceColumn!(res, "interest_wow", double(res.interest_wow))
+                replaceColumn!(res, "mc_close", double(res.mc_close))
+                replaceColumn!(res, "close_wow", double(res.close_wow))
+                replaceColumn!(res, "week", string(res.week))
+                replaceColumn!(res, "week_date", temporalParse(string(res.week_date), "yyyyMMdd"))
+                replaceColumn!(res, "update_time", timestamp(res.update_time))
+
+                curentCounts = exec count(*) from out where week = startWeek
+                if (curentCounts>0) {
+                    delete from out where week = startWeek
+                }
+                out.append!(res)
+                print("Success append data for Table " + api+ " for week: " + startWeek+ "for count: " + res.count())
+            } else {
+                print("no data for Table " + api+ " for week: " + startWeek)
+            }     
+        }
+    }
+}
+
+/*
+ * @Description: 期货周行情数据导入
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-30 10:52:57
+ * @dev: 
+ * @Author: fangwu
+ */
+def appendFutWeekly(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "fut_weekly"
+    api = "fut_weekly_monthly"
+    cols = ["ts_code","trade_date","end_date","freq","open","high","low","close","pre_close","settle","pre_settle","vol","amount","oi","oi_chg","exchange","change1","change2"]
+    out = loadTable(dbPath, tableName)
+    
+    // 获取周线数据
+    days = getMarketCalendar("SSE", start_date, end_date)
+    delete from loadTable(dbPath, tableName) where trade_date in days
+    for (oneDate in days) { //oneDate = 2026.03.26
+        dateStr = temporalFormat(oneDate, "yyyyMMdd")
+        p = {"trade_date":dateStr, "freq":"week"}
+        
+        res = getApiData(token, api, p, cols)
+
+        if (!res.isVoid() and res.count() !=0){
+            
+            update res set update_time = now()
+            replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+            replaceColumn!(res, "trade_date", temporalParse(string(res.trade_date), "yyyyMMdd"))
+            replaceColumn!(res, "end_date", temporalParse(string(res.end_date), "yyyyMMdd"))
+            replaceColumn!(res, "freq", symbol(string(res.freq)))
+            replaceColumn!(res, "open", double(res.open))
+            replaceColumn!(res, "high", double(res.high))
+            replaceColumn!(res, "low", double(res.low))
+            replaceColumn!(res, "close", double(res.close))
+            replaceColumn!(res, "pre_close", double(res.pre_close))
+            replaceColumn!(res, "settle", double(res.settle))
+            replaceColumn!(res, "pre_settle", double(res.pre_settle))
+            replaceColumn!(res, "vol", double(res.vol))
+            replaceColumn!(res, "amount", double(res.amount))
+            replaceColumn!(res, "oi", double(res.oi))
+            replaceColumn!(res, "oi_chg", double(res.oi_chg))
+            replaceColumn!(res, "exchange", symbol(string(res.exchange)))
+            replaceColumn!(res, "change1", double(res.change1))
+            replaceColumn!(res, "change2", double(res.change2))
+            replaceColumn!(res, "update_time", timestamp(res.update_time))
+            out.append!(res)
+            print("Success append data for Table " + tableName + " for date: " + dateStr + "for count: " + res.count())
+        } else {
+            print("no data for Table " + tableName + " for date: " + dateStr)
+        }     
+    }
+    print("Success append data for Table " + tableName)
+}
+
+/*
+ * @Description: 期货月行情数据导入
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-30 10:52:57
+ * @dev: 
+ * @Author: fangwu
+ */
+def appendFutMonthly(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "fut_monthly"
+    api = "fut_weekly_monthly"
+    cols = ["ts_code","trade_date","end_date","freq","open","high","low","close","pre_close","settle","pre_settle","vol","amount","oi","oi_chg","exchange","change1","change2"]
+    out = loadTable(dbPath, tableName)
+    
+    // 获取月线数据
+    days = getMarketCalendar("SSE", start_date, end_date)
+     delete from loadTable(dbPath, tableName) where trade_date in days
+    for (oneDate in days) { //oneDate = 2026.03.26
+        dateStr = temporalFormat(oneDate, "yyyyMMdd")
+        p = {"trade_date":dateStr, "freq":"month"}
+        res = getApiData(token, api, p, cols)
+
+        if (!res.isVoid() and res.count() !=0){
+            
+            update res set update_time = now()
+            replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+            replaceColumn!(res, "trade_date", temporalParse(string(res.trade_date), "yyyyMMdd"))
+            replaceColumn!(res, "end_date", temporalParse(string(res.end_date), "yyyyMMdd"))
+            replaceColumn!(res, "freq", symbol(string(res.freq)))
+            replaceColumn!(res, "open", double(res.open))
+            replaceColumn!(res, "high", double(res.high))
+            replaceColumn!(res, "low", double(res.low))
+            replaceColumn!(res, "close", double(res.close))
+            replaceColumn!(res, "pre_close", double(res.pre_close))
+            replaceColumn!(res, "settle", double(res.settle))
+            replaceColumn!(res, "pre_settle", double(res.pre_settle))
+            replaceColumn!(res, "vol", double(res.vol))
+            replaceColumn!(res, "amount", double(res.amount))
+            replaceColumn!(res, "oi", double(res.oi))
+            replaceColumn!(res, "oi_chg", double(res.oi_chg))
+            replaceColumn!(res, "exchange", symbol(string(res.exchange)))
+            replaceColumn!(res, "change1", double(res.change1))
+            replaceColumn!(res, "change2", double(res.change2))
+            replaceColumn!(res, "update_time", timestamp(res.update_time))
+            out.append!(res)
+            print("Success append data for Table " + tableName + " for date: " + dateStr + "for count: " + res.count())
+        } else {
+            print("no data for Table " + tableName + " for date: " + dateStr)
+        }     
+    }
+    print("Success append data for Table " + tableName)
+}
+
+
+/*
+ * @Description: 仓单日报数据导入
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-30 10:52:57
+ * @dev: 
+ * @Author: fangwu
+ */
+def appendFutWsr(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "fut_wsr"
+    api = "fut_wsr"
+    cols = ["trade_date","symbol","fut_name","warehouse","wh_id","pre_vol","vol","vol_chg","area","year","grade","brand","place","pd","is_ct","unit","exchange"]
+    out = loadTable(dbPath, tableName)
+    delete from loadTable(dbPath, tableName) where trade_date between start_date and end_date
+    dts = getMarketCalendar("SSE", start_date, end_date)
+    for(oneDate in dts){ // oneDate = 2018.11.13
+        dateStr = temporalFormat(oneDate, "yyyyMMdd")
+        p = {"trade_date":dateStr}
+        res = getApiData(token, api, p, cols)
+
+        if (!res.isVoid() and res.count() !=0){
+            
+            update res set update_time = now()
+
+            replaceColumn!(res, "trade_date", temporalParse(string(res.trade_date), "yyyyMMdd"))
+            replaceColumn!(res, "symbol", symbol(string(res.symbol)))
+            replaceColumn!(res, "fut_name", string(res.fut_name))
+            replaceColumn!(res, "warehouse", string(res.warehouse))
+            replaceColumn!(res, "wh_id", string(res.wh_id))
+            replaceColumn!(res, "pre_vol", int(res.pre_vol))
+            replaceColumn!(res, "vol", int(res.vol))
+            replaceColumn!(res, "vol_chg", int(res.vol_chg))
+            replaceColumn!(res, "area", string(res.area))
+            replaceColumn!(res, "year", string(res.year))
+            replaceColumn!(res, "grade", string(res.grade))
+            replaceColumn!(res, "brand", string(res.brand))
+            replaceColumn!(res, "place", string(res.place))
+            replaceColumn!(res, "pd", int(res.pd))
+            replaceColumn!(res, "is_ct", string(res.is_ct))
+            replaceColumn!(res, "unit", string(res.unit))
+            replaceColumn!(res, "exchange", symbol(string(res.exchange)))
+            replaceColumn!(res, "update_time", timestamp(res.update_time))
+            out.append!(res)
+            print("Success append data for Table " + api + " for date: " + dateStr)
+        } else {
+            print("no data for Table " + api + " for date: " + dateStr)
+        }     
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+ * @Description: 南华期货指数日线行情数据导入
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-30 10:52:57
+ * @dev: 
+ * @Author: fangwu
+ */
+def appendFutIndexDaily(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "fut_index_daily"
+    api = "index_daily"
+    cols = ["ts_code","trade_date","close","open","high","low","pre_close","change","pct_chg","vol","amount"]
+    out = loadTable(dbPath, tableName)
+    delete from loadTable(dbPath, tableName) where trade_date between start_date and end_date
+
+    // days
+    days = start_date..end_date
+    yearBegins = yearBegin(days).distinct().sort!()
+
+    index_codes = ["NHAI.NH","NHCI.NH","NHECI.NH","NHFI.NH","NHII.NH","NHMI.NH","NHNFI.NH","NHPMI.NH","A.NH","AG.NH","AL.NH","AP.NH","AU.NH","BB.NH","BU.NH","C.NH","CF.NH","CS.NH","CU.NH","CY.NH","ER.NH","FB.NH","FG.NH","FU.NH","HC.NH","I.NH","J.NH","JD.NH","JM.NH","JR.NH","L.NH","LR.NH","M.NH","ME.NH","NI.NH","P.NH","PB.NH","PP.NH","RB.NH","RM.NH","RO.NH","RS.NH","RU.NH","SC.NH","SF.NH","SM.NH","SN.NH","SP.NH","SR.NH","TA.NH","TC.NH","V.NH","WR.NH","WS.NH","Y.NH","ZN.NH"]
+    for(oneYear in yearBegins){  // oneYear = 2000.01.01
+        startDate = temporalFormat(max(start_date, oneYear), "yyyyMMdd")
+        endDate = temporalFormat(min(end_date, yearEnd(oneYear)), "yyyyMMdd")
+        for(oneCode in index_codes){ // oneCode = "NHAI.NH"
+            p = {"ts_code":oneCode,"start_date":startDate, "end_date":endDate}
+            res = getApiData(token, api, p, cols)
+
+            if (!res.isVoid() and res.count() !=0){
+                
+                update res set update_time = now()
+                replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+                replaceColumn!(res, "trade_date", temporalParse(string(res.trade_date), "yyyyMMdd"))
+                replaceColumn!(res, "close", double(res.close))
+                replaceColumn!(res, "open", double(res.open))
+                replaceColumn!(res, "high", double(res.high))
+                replaceColumn!(res, "low", double(res.low))
+                replaceColumn!(res, "pre_close", double(res.pre_close))
+                replaceColumn!(res, "change", double(res.change))
+                replaceColumn!(res, "pct_chg", double(res.pct_chg))
+                replaceColumn!(res, "vol", double(res.vol))
+                replaceColumn!(res, "amount", double(res.amount))
+                replaceColumn!(res, "update_time", timestamp(res.update_time))
+                out.append!(res)
+                print("Success append data for Table " + tableName + " for " + startDate + " to " + endDate+ " for " + oneCode)
+            } else {
+                print("no data for Table " + tableName + " for " + startDate + " to " + endDate+ " for " + oneCode)
+            }     
+        }
+    }
+    print("Success append data for Table " + tableName)
+}
+
+/*
+ * @Description: 结算参数数据导入
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-30 10:52:57
+ * @dev: 
+ * @Author: fangwu
+ */
+def appendFutSettle(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "fut_settle"
+    api = "fut_settle"
+    cols = ["ts_code","trade_date","settle","trading_fee_rate","trading_fee","delivery_fee","b_hedging_margin_rate","s_hedging_margin_rate","long_margin_rate","short_margin_rate","offset_today_fee","exchange"]
+    out = loadTable(dbPath, tableName)
+    delete from loadTable(dbPath, tableName) where trade_date between start_date and end_date
+    dts = getMarketCalendar("SSE", start_date, end_date)
+    for(oneDate in dts){ // oneDate = 2018.11.14
+        dateStr = temporalFormat(oneDate, "yyyyMMdd")
+        p = {"trade_date":dateStr}
+        res = getApiData(token, api, p, cols)
+
+        if (!res.isVoid() and res.count() !=0){
+            
+            update res set update_time = now()
+            replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+            replaceColumn!(res, "trade_date", temporalParse(string(res.trade_date), "yyyyMMdd"))
+            replaceColumn!(res, "settle", double(res.settle))
+            replaceColumn!(res, "trading_fee_rate", double(res.trading_fee_rate))
+            replaceColumn!(res, "trading_fee", double(res.trading_fee))
+            replaceColumn!(res, "delivery_fee", double(res.delivery_fee))
+            replaceColumn!(res, "b_hedging_margin_rate", double(res.b_hedging_margin_rate))
+            replaceColumn!(res, "s_hedging_margin_rate", double(res.s_hedging_margin_rate))
+            replaceColumn!(res, "long_margin_rate", double(res.long_margin_rate))
+            replaceColumn!(res, "short_margin_rate", double(res.short_margin_rate))
+            replaceColumn!(res, "offset_today_fee", double(res.offset_today_fee))
+            replaceColumn!(res, "exchange", symbol(string(res.exchange)))
+            replaceColumn!(res, "update_time", timestamp(res.update_time))
+            out.append!(res)
+            print("Success append data for Table " + api + " for date: " + dateStr)
+        } else {
+            print("no data for Table " + api + " for date: " + dateStr)
+        }     
+    }
+    print("Success append data for Table " + api)
+}

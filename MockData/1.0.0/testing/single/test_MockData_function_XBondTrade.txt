@@ -1,0 +1,41 @@
+#include "setup/settings.txt"
+use MockData
+
+@testing:case="test_MockData_function_XBondTrade_syntax"
+re = syntax(XBondTrade)
+ex = "XBondTrade(tradeDate,securityNumber)"
+assert 1, eqObj(re, ex)
+
+@testing:case="test_MockData_function_XBondTrade_normal"
+t = XBondTrade(tradeDate=2020.06.01, securityNumber=10)
+assert 1, form(t)==6
+assert 2, t.rows()==1200
+assert 3, t.cols()==35
+assert 4, eqObj(t.schema().colDefs[0].name, "tradeDate")
+
+@testing:case="test_MockData_function_XBondTrade_default_securityNumber"
+t = XBondTrade(tradeDate=2020.06.01)
+assert 1, form(t)==6
+assert 2, t.cols()==35
+
+@testing:case="test_MockData_function_XBondTrade_securityNumber_1"
+t = XBondTrade(tradeDate=2020.06.01, securityNumber=1)
+assert 1, t.rows()==120
+assert 2, t.cols()==35
+
+@testing:case="test_MockData_function_XBondTrade_non_trading_day"
+t = XBondTrade(tradeDate=2020.06.07, securityNumber=10)
+assert 1, t.rows()==0
+assert 2, t.cols()==35
+
+@testing:case="test_MockData_function_XBondTrade_invalid_tradeDate_int", exception=1
+XBondTrade(tradeDate=1, securityNumber=10)
+
+@testing:case="test_MockData_function_XBondTrade_invalid_tradeDate_string", exception=1
+XBondTrade(tradeDate="2020.06.01", securityNumber=10)
+
+@testing:case="test_MockData_function_XBondTrade_invalid_securityNumber_string", exception=1
+XBondTrade(tradeDate=2020.06.01, securityNumber="10")
+
+@testing:case="test_MockData_function_XBondTrade_invalid_securityNumber_double", exception=1
+XBondTrade(tradeDate=2020.06.01, securityNumber=1.1)

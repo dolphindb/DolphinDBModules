@@ -1,0 +1,34 @@
+#include "setup/settings.txt"
+
+use alphalens
+go
+
+testData = loadText(DATA_DIR+"/testData.csv")
+prices = select close from testData pivot by tradeDate as Date, securityId
+factor = select tradeDate as Date, securityId as asset, vwap as factor from testData
+groupData = select tradeDate as Date, securityId as asset, rand(3, count(testData)) as Group from testData
+factor_data = get_clean_factor_and_forward_returns(factor, prices, groupby=groupData)
+
+def checkAllTables(res, byGroupFlag=false) {
+    try {
+        assert count(res['Mean_Factor_Rank_Autocorrelation'])!=0
+        assert count(res['Mean_Turnover'])!=0
+        assert count(res['autocorrelation'])!=0
+        assert count(res['quantile_turnover'])!=0   
+    } catch(ex) {
+        return false
+    }
+    return true
+}
+
+@testing: case = "test_alphalens_function_create_turnover_tear_sheet"
+res = create_turnover_tear_sheet(factor_data)
+assert 1, form(res)==5
+assert 2, checkAllTables(res)==true
+
+@testing: case = "test_alphalens_function_create_turnover_tear_sheet_turnover_periods_"
+res = create_turnover_tear_sheet(factor_data, turnover_periods_=['1D', '2D'])
+assert 1, checkAllTables(res)==true
+res = create_turnover_tear_sheet(factor_data, turnover_periods_="illegal param")
+assert 2, checkAllTables(res)==true
+// WARNING: 实际上 turnover_periods_ 参数并不起作用，因为在 create_turnover_tear_sheet 函数中并没有使用该参数

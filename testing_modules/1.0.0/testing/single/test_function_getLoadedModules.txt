@@ -1,0 +1,310 @@
+@testing:case = "test_function_getLoadedModules_syntax"
+re = syntax(getLoadedModules)
+ex = "getLoadedModules()"
+assert 1, eqObj(re, ex)
+
+@testing:case = "test_function_getLoadedModules_para_more", syntaxError =1
+getLoadedModules(1)
+
+@testing:case = "test_function_getLoadedModules_prepare_free"
+module_path = getHomeDir()+"/modules"
+if(exists(module_path+"/ta.dos")){
+	rm(module_path+"/ta.dos")
+	installModule("ta", "test.dolphindb.cn")
+}
+if(exists(module_path+"/wq101alpha.dos")){
+	rm(module_path+"/wq101alpha.dos")
+	installModule("wq101alpha", "test.dolphindb.cn")
+}
+if(exists(module_path+"/alphalens.dos")){
+	rm(module_path+"/alphalens.dos")
+	installModule("alphalens", "test.dolphindb.cn")
+}
+if(exists(module_path+"/mytt.dos")){
+	rm(module_path+"/mytt.dos")
+	installModule("mytt", "test.dolphindb.cn")
+}
+if(exists(module_path+"/LogSearcher.dom")){
+	rm(module_path+"/LogSearcher.dom")
+	installModule("LogSearcher", "test.dolphindb.cn")
+}
+if(exists(module_path+"/ops.dos")){
+	rm(module_path+"/ops.dos")
+	installModule("ops", "test.dolphindb.cn")
+}
+if(exists(module_path+"/gtja191Alpha.dos")){
+	rm(module_path+"/gtja191Alpha.dos")
+	installModule("gtja191Alpha", "test.dolphindb.cn")
+}
+if(exists(module_path+"/DolphinDBModules")){
+	rmdir(module_path+"/DolphinDBModules", true)
+	installModule("DolphinDBModules", "test.dolphindb.cn")
+}
+
+
+@testing:case = "test_function_getLoadedModules_use_free_modules"
+clearCachedModules()
+go
+use ta
+use wq101alpha
+use alphalens
+use mytt
+use LogSearcher
+use ops
+use gtja191Alpha
+use DolphinDBModules::easyTLDataImport::createDbAndTb::createDB
+go
+
+re = select * from getLoadedModules() order by moduleName
+exname = ["ta", "wq101alpha", "alphalens", "mytt", "LogSearcher", "ops", "gtja191Alpha", "DolphinDBModules", "nest", "usePay", "ForFreePayFile"]
+exver = ["1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.0.0", "1.1.1", "1.1.1", "1.1.2"]
+exisfree = take([true], 8) join [false, true, false]
+ex = table(exname, exver, exisfree)
+ex = select * from ex order by exname
+assert 1, each(eqObj, re.values(), ex.values())
+re = select * from defs() where name like "%module_info%"
+assert "1_1", re.size() == 0
+
+clearCachedModules()
+go
+use ta
+go
+re = select * from getLoadedModules() order by moduleName
+exname = ["ta", "nest", "usePay", "ForFreePayFile"]
+exver = ["1.0.0", "1.1.1", "1.1.1", "1.1.2"]
+exisfree = take([true], 1) join [false, true, false]
+ex = table(exname, exver, exisfree)
+ex = select * from ex order by exname
+assert 2, each(eqObj, re.values(), ex.values())
+
+clearCachedModules()
+go
+use wq101alpha
+go
+re = select * from getLoadedModules() order by moduleName
+exname = ["wq101alpha", "nest", "usePay", "ForFreePayFile"]
+exver = ["1.0.0", "1.1.1", "1.1.1", "1.1.2"]
+exisfree = take([true], 1) join [false, true, false]
+ex = table(exname, exver, exisfree)
+ex = select * from ex order by exname
+assert 3, each(eqObj, re.values(), ex.values())
+
+clearCachedModules()
+go
+use alphalens
+go
+re = select * from getLoadedModules() order by moduleName
+exname = ["alphalens", "nest", "usePay", "ForFreePayFile"]
+exver = ["1.0.0", "1.1.1", "1.1.1", "1.1.2"]
+exisfree = take([true], 1) join [false, true, false]
+ex = table(exname, exver, exisfree)
+ex = select * from ex order by exname
+assert 4, each(eqObj, re.values(), ex.values())
+
+clearCachedModules()
+go
+use mytt
+go
+re = select * from getLoadedModules() order by moduleName
+exname = ["mytt", "nest", "usePay", "ForFreePayFile"]
+exver = ["1.0.0", "1.1.1", "1.1.1", "1.1.2"]
+exisfree = take([true], 1) join [false, true, false]
+ex = table(exname, exver, exisfree)
+ex = select * from ex order by exname
+assert 5, each(eqObj, re.values(), ex.values())
+
+clearCachedModules()
+go
+use LogSearcher
+go
+re = select * from getLoadedModules() order by moduleName
+exname = ["LogSearcher", "nest", "usePay", "ForFreePayFile"]
+exver = ["1.0.0", "1.1.1", "1.1.1", "1.1.2"]
+exisfree = take([true], 1) join [false, true, false]
+ex = table(exname, exver, exisfree)
+ex = select * from ex order by exname
+assert 6, each(eqObj, re.values(), ex.values())
+
+clearCachedModules()
+go
+use ops
+go
+re = select * from getLoadedModules() order by moduleName
+exname = ["ops", "nest", "usePay", "ForFreePayFile"]
+exver = ["1.0.0", "1.1.1", "1.1.1", "1.1.2"]
+exisfree = take([true], 1) join [false, true, false]
+ex = table(exname, exver, exisfree)
+ex = select * from ex order by exname
+assert 7, each(eqObj, re.values(), ex.values())
+
+clearCachedModules()
+go
+use gtja191Alpha
+go
+re = select * from getLoadedModules() order by moduleName
+exname = ["gtja191Alpha", "nest", "usePay", "ForFreePayFile"]
+exver = ["1.0.0", "1.1.1", "1.1.1", "1.1.2"]
+exisfree = take([true], 1) join [false, true, false]
+ex = table(exname, exver, exisfree)
+ex = select * from ex order by exname
+assert 8, each(eqObj, re.values(), ex.values())
+
+clearCachedModules()
+go
+use DolphinDBModules::easyTLDataImport::createDbAndTb::createDB
+go
+re = select * from getLoadedModules() order by moduleName
+exname = ["DolphinDBModules", "nest", "usePay", "ForFreePayFile"]
+exver = ["1.0.0", "1.1.1", "1.1.1", "1.1.2"]
+exisfree = take([true], 1) join [false, true, false]
+ex = table(exname, exver, exisfree)
+ex = select * from ex order by exname
+assert 9, each(eqObj, re.values(), ex.values())
+
+@testing:case = "test_function_getLoadedModules_prepare_pay"
+module_path = getHomeDir()+"/modules"
+if(exists(module_path+"/nest")){
+	rmdir(module_path+"/nest", true)
+	installModule("nest", "test.dolphindb.cn")
+}
+if(exists(module_path+"/PayCatalogDos")){
+	rmdir(module_path+"/PayCatalogDos", true)
+	installModule("PayCatalogDos", "test.dolphindb.cn")
+}
+if(exists(module_path+"/PayCatalogDom")){
+	rmdir(module_path+"/PayCatalogDom", true)
+	installModule("PayCatalogDom", "test.dolphindb.cn")
+}
+
+
+@testing:case = "test_function_getLoadedModules_use_pay_modules"
+clearCachedModules()
+go
+use nest::free
+use PayCatalogDom::PayFile::testPrint2::testPrint::testPrint
+use PayCatalogDom::easyNSQ
+use PaySingleDom
+go
+
+re = select * from getLoadedModules() order by moduleName
+exname = ["nest", "PayCatalogDom", "PaySingleDom", "usePay", "ForFreePayFile"]
+exver = ["1.1.1", "2.1.0", "1.1.2", "1.1.1", "1.1.2"]
+exisfree = take([false], 3) join [true, false]
+ex = table(exname, exver, exisfree)
+ex = select * from ex order by exname
+assert 1, each(eqObj, re.values(), ex.values())
+re = select * from defs() where name like "%module_info%"
+assert "1_1", re.size() == 0
+
+clearCachedModules()
+go
+use nest::free
+re = select * from getLoadedModules() order by moduleName
+exname = ["nest", "usePay", "ForFreePayFile"]
+exver = ["1.1.1", "1.1.1", "1.1.2"]
+exisfree = take([false], 1) join [true, false]
+ex = table(exname, exver, exisfree)
+ex = select * from ex order by exname
+assert 2, each(eqObj, re.values(), ex.values())
+
+clearCachedModules()
+go
+use PayCatalogDom::PayFile::testPrint2::testPrint::testPrint
+go
+re = select * from getLoadedModules() order by moduleName
+exname = ["PayCatalogDom", "nest", "usePay", "ForFreePayFile"]
+exver = ["2.1.0", "1.1.1", "1.1.1", "1.1.2"]
+exisfree = take([false], 1) join [false, true, false]
+ex = table(exname, exver, exisfree)
+ex = select * from ex order by exname
+assert 3, each(eqObj, re.values(), ex.values())
+
+clearCachedModules()
+go
+use PayCatalogDom::easyNSQ
+go
+re = select * from getLoadedModules() order by moduleName
+exname = ["PayCatalogDom", "nest", "usePay", "ForFreePayFile"]
+exver = ["2.1.0", "1.1.1", "1.1.1", "1.1.2"]
+exisfree = take([false], 1) join [false, true, false]
+ex = table(exname, exver, exisfree)
+ex = select * from ex order by exname
+assert 4, each(eqObj, re.values(), ex.values())
+
+
+@testing:case = "test_function_getLoadedModules_multiJob"
+def myJob(){
+	clearCachedModules()
+	go
+	runScript("use LogSearcher")
+	runScript("use ta")
+	runScript("use DolphinDBModules::easyTLDataImport::createDbAndTb::createDB \n go")
+	for(i in 1..1000){
+		re = getLoadedModules()
+	}
+	return re
+}
+jobids = array(STRING, 0, 10)
+for(i in 1..5){
+	jobid = submitJob("getLoadedModulesJob"+string(i), "getLoadedModules job", myJob)
+	jobids.append!(jobid)
+}
+for(jobid in jobids){
+	re = getJobReturn(jobid, true)
+	re = select * from re order by moduleName
+	exname = ["ta", "LogSearcher", "DolphinDBModules", "nest", "usePay", "ForFreePayFile"]
+	exver = ["1.0.0", "1.0.0", "1.0.0", "1.1.1", "1.1.1", "1.1.2"]
+	exisfree = take([true], 3) join [false, true, false]
+	ex = table(exname, exver, exisfree)
+	ex = select * from ex order by exname
+	assert 1, each(eqObj, re.values(), ex.values())
+}
+
+@testing:case = "test_function_getLoadedModules_functionview"
+def myJob(){
+	clearCachedModules()
+	go
+	runScript("use LogSearcher")
+	runScript("use ta")
+	runScript("use DolphinDBModules::easyTLDataImport::createDbAndTb::createDB \n go")
+	for(i in 1..1000){
+		re = getLoadedModules()
+	}
+	return re
+}
+try{dropFunctionView(`myJob)}catch(exp){print(exp)}
+addFunctionView(myJob)
+undef(`myJob)
+go
+re = myJob()
+re = select * from re order by moduleName
+exname = ["ta", "LogSearcher", "DolphinDBModules", "nest", "usePay", "ForFreePayFile"]
+exver = ["1.0.0", "1.0.0", "1.0.0", "1.1.1", "1.1.1", "1.1.2"]
+exisfree = take([true], 3) join [false, true, false]
+ex = table(exname, exver, exisfree)
+ex = select * from ex order by exname
+assert 1, each(eqObj, re.values(), ex.values())
+
+
+@testing:case = "test_getLoadedModules_preload"
+clearCachedModules()
+go
+use ta
+// 配置项中配置：preloadModules=usePay,ForFreePayFile
+re = select * from getLoadedModules() order by moduleName
+exname = ["ta", "nest", "usePay", "ForFreePayFile"]
+exver = ["1.0.0", "1.1.1", "1.1.1", "1.1.2"]
+exisfree = [true, false, true, false]
+ex = table(exname, exver, exisfree)
+ex = select * from ex order by exname
+assert 1, each(eqObj, re.values(), ex.values())
+re = select * from defs() where name like "%module_info%"
+assert 2, re.size() == 0
+re1 = select * from defs() where name like "%usePay:%" 
+assert 3, re1.size() > 0
+re1 = select * from defs() where name like "%ForFreePayFile:%" 
+assert 4, re1.size() > 0
+
+
+
+

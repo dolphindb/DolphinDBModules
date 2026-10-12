@@ -1,0 +1,171 @@
+module easyTLDataImport::loadTLData
+
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "easyTLDataImport"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+/* 
+*  @ brief  
+*  The module is designed to facilitate the automatic loading of trading data from DataYes into DolphinDB databases.
+*  @ Author: DolphinDB
+*  @ Last modification time: 2025.01.15
+*  @ DolphinDB server version: 2.00.15/3.00.3
+*/
+
+use easyTLDataImport::createDbAndTb::createTB
+use easyTLDataImport::loadData::loadData
+
+/*
+ * @FunctionName: autoLoadTongLianData
+ * @Brief: Automatically loads DataYes trading data from the specified directory into the corresponding database tables.
+ * @Param: fileDir: The directory containing the files to be processed.
+ * @Param: dataSource: The source of the data, determining the type of data to be loaded (e.g., TLAll, TLTrade, TLEntrsut, TLTradeEntrust, TLSnapshot).
+ * @Param: dbName="dfs://TL_Level2": The name of the database for storing the imported data.
+ * @Param: tableName=NULL: The name of the table to be created.
+ * @Param: market="ALL": The market type for the data (e.g., "SH", "SZ", "ALL").
+ * @Param: startDate=NULL: The starting date as a string in "YYYYMMDD" format. Default is NULL, meaning no filtering.
+ * @Param: endDate=NULL: The ending date as a string in "YYYYMMDD" format. Default is NULL, meaning no filtering.
+ * @Param: parallel=1: The number of parallel tasks to execute.
+ * @Param: initialDB=false: A boolean flag indicating whether to drop the existing database.
+ * @Param: initialTB=false: A boolean flag indicating whether to drop existing tables.
+ * @Param: isDataDuplicated=true: A boolean flag indicating whether to handle duplicate data entries.
+ * @Param: isConcatTime=true: A boolean flag indicating whether to concatenate date and time into a single timestamp column.
+ * @Param: isNeedOrderQueue=true: A boolean flag indicating whether to include order queue data.
+ * @Return: Returns the job ID for tracking the import task.
+ * @SampleUsage:
+	fileDir = "/home/appadmin/fln/DolphinDB_V2.00.12.8/server/uploads/TongLian/"
+	dataSource = "TLAll"
+	dbName = {
+		"TLSnapshot": "dfs://TL_Level2",
+		"TLEntrust": "dfs://TL_Level2",
+		"TLTrade": "dfs://TL_Level2"}
+	tableName = NULL
+	market = "ALL"
+	startDate = NULL
+	endDate = NULL
+	parallel = 1
+	initialDB = true
+	initialTB = true
+	isDataDuplicated = false
+	isConcatTime = true
+	isNeedOrderQueue = true
+	autoLoadTongLianData(fileDir, dataSource, dbName, tableName, market, startDate, endDate, parallel, initialDB, initialTB, isDataDuplicated, isConcatTime)
+ */
+def autoLoadTongLianData(fileDir, dataSource, 
+						dbName="dfs://TL_Level2", tableName=NULL, market="ALL", 
+						startDate=NULL, endDate=NULL, parallel=1, initialDB=false, initialTB=false,
+						isDataDuplicated=true, isConcatTime=true, isNeedOrderQueue=true){
+	// Validate the market parameter
+	if(string(market) in ["ALL"])			merge = true
+	else if(string(market) in ["SZ", "SH"])	merge = false
+	else{
+		errorMessage = dict(`message`code, ["市场 [" + market + "] 暂时不支持", "error"])
+		return printLog(errorMessage)
+	}
+
+	// Validate the dataSource parameter
+	if(!(string(dataSource) in ["TLAll", "TLTradeEntrust", "TLSnapshot", "TLEntrust", "TLTrade"])){
+		errorMessage = dict(`message`code, ["数据源 [" + string(dataSource) + "] 暂时不支持", "error"])
+		return printLog(errorMessage)
+	}
+
+	// Determine the data type to be imported
+	if(dataSource=="TLTradeEntrust")	dtypes = ["TLTrade", "TLEntrust"]
+	else if(dataSource=="TLAll")		dtypes = ["TLSnapshot", "TLTrade", "TLEntrust"]
+	else								dtypes = [dataSource]
+
+	// Determine the database name
+	if(typestr(dbName)=="VOID")			dbNames = take("dfs://TL_Level2", size(dtypes))
+	else if(typestr(dbName)=="STRING")	dbNames = take(dbName, size(dtypes))
+	else if(typestr(dbName).strpos("DICTIONARY")!=-1) dbNames = dbName[dtypes]
+	else{
+		errorMessage = dict(`message`code, ["数据库名 [" + string(dbName) + "] 参数类型有误", "error"])
+		return printLog(errorMessage)
+	}
+
+	// Determine the names of the distributed tables
+	if(typestr(tableName)=="VOID")								tbNames = take(lower(each(at{, 2:}, dtypes)), size(dtypes))+iif(merge==true, "", market)
+	else if(typestr(tableName)=="STRING" and size(dtypes)==1)	tbNames = take(tableName, size(dtypes))+iif(merge==true, "", market)
+	else if(typestr(tableName).strpos("DICTIONARY")!=-1) 		tbNames = tableName[dtypes]+iif(merge==true, "", market)
+	else{
+		errorMessage = dict(`message`code, ["分布式表名 [" + string(tableName) + "] 参数类型有误", "error"])
+		return printLog(errorMessage)
+	}
+
+	// Get all importable dates
+	fileDirs = getFileDate(fileDir, startDate, endDate)
+	if(typestr(fileDirs)=="BOOL"){ return false }
+	load_date = temporalParse(each(last, split(fileDirs, "/")), "yyyyMMdd")
+
+	// Create all relevant databases and tables
+	isDuplicatedDB = isDuplicated(flatten(dbNames), FIRST)
+	for(i in 0:size(dbNames)){	// i = 0
+		dbname = dbNames[i]
+		tbname = tbNames[i]
+		if(isDuplicatedDB[i]==false) initialdb = initialDB
+		else						 initialdb = false
+		printLog("Start creating the table [" + tbname + "] in the database [" + dbname + "].", false)
+		try{
+			createTB(dbname, tbname, dtypes[i], initialTB=initialTB, initialDB=initialdb, market=market, isConcatTime=isConcatTime)
+		}catch(ex){
+			errorMessage = dict(`message`code, [string(ex[0])+":"+string(ex[1]), "error"])
+			return printLog(errorMessage)
+		}
+
+		// Remove any existing data that meets the import conditions from the original database (to prevent duplicates)
+		if(isConcatTime==true){
+			exist_date = (select count(*) from loadTable(dbname, tbname) group by date(TradeTime) as TradeDate).TradeDate
+		}else{
+			exist_date = (select count(*) from loadTable(dbname, tbname) group by TradeDate).TradeDate
+		}
+
+		target_date = load_date[load_date in exist_date]
+		if(size(target_date) > 0){
+			printLog("Delete duplicate data in the database.", false)
+			dropPartition(database(dbname), target_date, tableName=tbname)
+		}
+	}
+
+	// Split tasks according to the specified parallelism
+	myCut = def(i, parallel, dirs){return dirs[rowNo(dirs)%parallel==i]}
+	fileLists = loop(myCut{,parallel, fileDirs}, 0..(parallel-1))
+
+	// Create a status monitoring table for the import tasks
+	tmp = table(1:0, `dtype`market`trade_date`start_time`end_time`errorMsg, `SYMBOL`SYMBOL`DATE`TIMESTAMP`TIMESTAMP`STRING)
+	share(tmp, `TLDataImportStatusTable)
+
+	// Submit import tasks
+	printLog("Start loading the TongLian data.", false)
+	jobid = rand(uuid(), 1)[0]
+	for(fileList in fileLists){//fileList=fileLists[0]
+		submitJob("TongLian_"+dataSource+"_"+market, string(jobid), loadDaysData{fileList, dbNames, tbNames, dtypes, market, isConcatTime, isDataDuplicated, isNeedOrderQueue})
+	}
+	return jobid
+}
+
+/*
+ * @FunctionName: getTLJobStatus
+ * @Brief: Retrieves the status of a specific job.
+ * @Param: jobid: The unique identifier of the job whose status is to be retrieved.
+ * @Return: A table containing the status information for the specified job.
+ */
+def getTLJobStatus(jobid){
+	temp = string(jobid)
+	return select * from getRecentJobs() where jobDesc=temp
+}
+
+/*
+ * @FunctionName: getTLJobDetails
+ * @Brief: Retrieves detailed information about a specific job.
+ * @Param: jobid: The unique identifier of the job whose details are to be retrieved.
+ * @Return: A concatenated string containing detailed messages about the specified job
+ */
+def getTLJobDetails(jobid){
+	jobStatus = getTLJobStatus(jobid)
+	jobMessage = each(getJobMessage, jobStatus.jobId)
+	jobMessage = concat(jobMessage, "\n////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////\n")
+	return jobMessage
+}

@@ -1,0 +1,676 @@
+#include "setup/settings.txt"
+use DolphinDBModules::easyTLDataImport::loadTLData
+
+// 登陆账户
+login("admin", "123456")
+
+// 清理环境
+clearDbNames = ["dfs://TL_Level2", "dfs://test1", "dfs://test2", "dfs://test3", "dfs://test4", "dfs://test5", "dfs://test6"]
+for(clearDbName in clearDbNames){
+	try{dropDatabase(clearDbName)}catch(ex){}
+}
+
+// 设置文件路径
+fileDir = DATA_DIR + "/data"
+
+// 测试 fileDir
+@testing:case="test_function_autoLoadTongLianData_fileDir_not_exist"
+ jobid = autoLoadTongLianData(fileDir="123", dataSource="TLSnapshot")
+ assert jobid==false
+
+@testing:case="test_function_autoLoadTongLianData_fileDir_not_satisfied"
+ jobid = autoLoadTongLianData(fileDir=fileDir+"20230201", dataSource="TLSnapshot")
+ assert jobid==false
+
+@testing:case="test_function_autoLoadTongLianData_fileDir_int"
+ jobid = autoLoadTongLianData(fileDir=123, dataSource="TLSnapshot")
+ assert jobid==false
+
+@testing:case="test_function_autoLoadTongLianData_fileDir_null"
+ jobid = autoLoadTongLianData(fileDir=NULL, dataSource="TLSnapshot")
+ assert jobid==false
+
+// 测试 dataSource
+@testing:case="test_function_autoLoadTongLianData_dataSource_not_satisfied"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="12345")
+ assert jobid==false
+
+@testing:case="test_function_autoLoadTongLianData_dataSource_int"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource=1234)
+ assert jobid==false
+
+@testing:case="test_function_autoLoadTongLianData_dataSource_null"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource=NULL)
+ assert jobid==false
+
+@testing:case="test_function_autoLoadTongLianData_dataSource_TLSnapshot"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLSnapshot")
+ assert 1, typestr(jobid) == "UUID"
+ do{
+	sleep(100)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 2, (exec count(*) from loadTable("dfs://TL_Level2", "snapshot"))==30340
+ assert 3, (select count(*) from loadTable("dfs://TL_Level2", "snapshot") group by TradeTime, SecurityID, ImageStatus having count(*) != 1).rows() == 0
+ assert 4, objByName(`TLDataImportStatusTable).rows()==14
+ assert 5, (select * from objByName(`TLDataImportStatusTable) where errorMsg!=NULL).rows()==2
+
+@testing:case="test_function_autoLoadTongLianData_dataSource_TLEntrust"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLEntrust")
+ assert 1, typestr(jobid) == "UUID"
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 2, (exec count(*) from loadTable("dfs://TL_Level2", "entrust"))==635436
+ assert 3, (select count(*) from loadTable("dfs://TL_Level2", "entrust") group by date(TradeTime), Market, SeqNo having count(*) != 1).rows() == 0
+ assert 4, objByName(`TLDataImportStatusTable).rows()==14
+ assert 5, (select * from objByName(`TLDataImportStatusTable) where errorMsg!=NULL).rows()==2
+
+@testing:case="test_function_autoLoadTongLianData_dataSource_TLTrade"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLTrade")
+ assert 1, typestr(jobid) == "UUID"
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 2, (exec count(*) from loadTable("dfs://TL_Level2", "trade"))==470744
+ assert 3, (select count(*) from loadTable("dfs://TL_Level2", "trade") group by date(TradeTime), Market, SeqNo having count(*) != 1).rows() == 0
+ assert 4, objByName(`TLDataImportStatusTable).rows()==14
+ assert 5, (select * from objByName(`TLDataImportStatusTable) where errorMsg!=NULL).rows()==0
+
+@testing:case="test_function_autoLoadTongLianData_dataSource_TLTradeEntrust"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLTradeEntrust")
+ assert 1, typestr(jobid) == "UUID"
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 2, (exec count(*) from loadTable("dfs://TL_Level2", "entrust"))==635436
+ assert 3, (exec count(*) from loadTable("dfs://TL_Level2", "trade"))==470744
+ assert 4, objByName(`TLDataImportStatusTable).rows()==27
+ assert 5, (select * from objByName(`TLDataImportStatusTable) where errorMsg!=NULL).rows()==2
+
+@testing:case="test_function_autoLoadTongLianData_dataSource_TLAll"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLAll")
+ assert 1, typestr(jobid) == "UUID"
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 2, (exec count(*) from loadTable("dfs://TL_Level2", "snapshot"))==30340
+ assert 3, (exec count(*) from loadTable("dfs://TL_Level2", "entrust"))==635436
+ assert 4, (exec count(*) from loadTable("dfs://TL_Level2", "trade"))==470744
+ assert 5, objByName(`TLDataImportStatusTable).rows()==41
+ assert 6, (select * from objByName(`TLDataImportStatusTable) where errorMsg!=NULL).rows()==4
+
+// 测试 dbName
+@testing:case="test_function_autoLoadTongLianData_dbName_not_satisfied"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLSnapshot", dbName="123")
+ assert jobid==false
+
+@testing:case="test_function_autoLoadTongLianData_dbName_int"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLSnapshot", dbName=123)
+ assert jobid==false
+
+@testing:case="test_function_autoLoadTongLianData_dbName_null"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLSnapshot", dbName=NULL)
+ assert 1, typestr(jobid) == "UUID"
+ do{
+	sleep(100)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 2, (exec count(*) from loadTable("dfs://TL_Level2", "snapshot"))==30340
+ assert 3, (select count(*) from loadTable("dfs://TL_Level2", "snapshot") group by TradeTime, SecurityID, ImageStatus having count(*) != 1).rows() == 0
+ assert 4, objByName(`TLDataImportStatusTable).rows()==14
+ assert 5, (select * from objByName(`TLDataImportStatusTable) where errorMsg!=NULL).rows()==2
+
+@testing:case="test_function_autoLoadTongLianData_dbName_scala_dataSource_TLSnapshot"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLSnapshot", dbName="dfs://test1")
+ assert 1, typestr(jobid) == "UUID"
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 2, (exec count(*) from loadTable("dfs://test1", "snapshot"))==30340
+ assert 3, (select count(*) from loadTable("dfs://test1", "snapshot") group by TradeTime, SecurityID, ImageStatus having count(*) != 1).rows() == 0
+ assert 4, objByName(`TLDataImportStatusTable).rows()==14
+ assert 5, (select * from objByName(`TLDataImportStatusTable) where errorMsg!=NULL).rows()==2
+
+@testing:case="test_function_autoLoadTongLianData_dbName_scala_dataSource_TLTradeEntrust"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLTradeEntrust", dbName="dfs://test1")
+ assert 1, typestr(jobid) == "UUID"
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 2, (exec count(*) from loadTable("dfs://test1", "entrust"))==635436
+ assert 3, (exec count(*) from loadTable("dfs://test1", "trade"))==470744
+ assert 4, objByName(`TLDataImportStatusTable).rows()==27
+ assert 5, (select * from objByName(`TLDataImportStatusTable) where errorMsg!=NULL).rows()==2
+
+@testing:case="test_function_autoLoadTongLianData_dbName_dict_dataSource_TLSnapshot"
+ dbName = {
+	"TLSnapshot":"dfs://test2",
+	"TLEntrust": "dfs://test3",
+	"TLTrade": "dfs://test4"
+ }
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLSnapshot", dbName=dbName)
+ assert 1, typestr(jobid) == "UUID"
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 2, (exec count(*) from loadTable("dfs://test2", "snapshot"))==30340
+ assert 3, (select count(*) from loadTable("dfs://test2", "snapshot") group by TradeTime, SecurityID, ImageStatus having count(*) != 1).rows() == 0
+ assert 4, objByName(`TLDataImportStatusTable).rows()==14
+ assert 5, (select * from objByName(`TLDataImportStatusTable) where errorMsg!=NULL).rows()==2
+
+@testing:case="test_function_autoLoadTongLianData_dbName_dict_dataSource_TLAll"
+ dbName = {
+	"TLSnapshot":"dfs://test2",
+	"TLEntrust": "dfs://test3",
+	"TLTrade": "dfs://test4"
+ }
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLAll", dbName=dbName)
+ assert 1, typestr(jobid) == "UUID"
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 2, (exec count(*) from loadTable("dfs://test2", "snapshot"))==30340
+ assert 3, (exec count(*) from loadTable("dfs://test3", "entrust"))==635436
+ assert 4, (exec count(*) from loadTable("dfs://test4", "trade"))==470744
+ assert 5, objByName(`TLDataImportStatusTable).rows()==41
+ assert 6, (select * from objByName(`TLDataImportStatusTable) where errorMsg!=NULL).rows()==4
+
+// 测试 tableName
+@testing:case="test_function_autoLoadTongLianData_tableName_not_satisfied"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLSnapshot", tableName="123")
+ assert jobid==false
+
+@testing:case="test_function_autoLoadTongLianData_tableName_int"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLSnapshot", tableName=123)
+ assert jobid==false
+
+@testing:case="test_function_autoLoadTongLianData_tableName_null"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLEntrust", dbName="dfs://test1", tableName=NULL)
+ assert 1, typestr(jobid) == "UUID"
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 2, (exec count(*) from loadTable("dfs://test1", "entrust"))==635436
+ assert 3, (select count(*) from loadTable("dfs://test1", "entrust") group by date(TradeTime), Market, SeqNo having count(*) != 1).rows() == 0
+ assert 4, objByName(`TLDataImportStatusTable).rows()==14
+ assert 5, (select * from objByName(`TLDataImportStatusTable) where errorMsg!=NULL).rows()==2
+
+@testing:case="test_function_autoLoadTongLianData_tableName_scala_dataSource_TLTrade"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLTrade", dbName="dfs://test1", tableName="testTableName")
+ assert 1, typestr(jobid) == "UUID"
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 2, (exec count(*) from loadTable("dfs://test1", "testTableName"))==470744
+ assert 3, (select count(*) from loadTable("dfs://test1", "testTableName") group by date(TradeTime), Market, SeqNo having count(*) != 1).rows() == 0
+ assert 4, objByName(`TLDataImportStatusTable).rows()==14
+ assert 5, (select * from objByName(`TLDataImportStatusTable) where errorMsg!=NULL).rows()==0
+@testing:case="test_function_autoLoadTongLianData_tableName_dict_dataSource_TLTradeEntrust"
+ tableName = {
+	"TLSnapshot": "testSnapshot",
+	"TLTrade":"testTrade",
+	"TLEntrust":"testEntrust"
+ }
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLTradeEntrust", dbName="dfs://test1", tableName=tableName)
+ assert 1, typestr(jobid) == "UUID"
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 2, (exec count(*) from loadTable("dfs://test1", "testEntrust"))==635436
+ assert 3, (exec count(*) from loadTable("dfs://test1", "testTrade"))==470744
+ assert 4, objByName(`TLDataImportStatusTable).rows()==27
+ assert 5, (select * from objByName(`TLDataImportStatusTable) where errorMsg!=NULL).rows()==2
+
+@testing:case="test_function_autoLoadTongLianData_tableName_dict_dataSource_TLAll"
+ dbName = {
+	"TLSnapshot":"dfs://test2",
+	"TLEntrust": "dfs://test3",
+	"TLTrade": "dfs://test4"
+ }
+ tableName = {
+	"TLSnapshot": "testSnapshot",
+	"TLTrade":"testTrade",
+	"TLEntrust":"testEntrust"
+ }
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLAll", dbName=dbName, tableName=tableName)
+ assert 1, typestr(jobid) == "UUID"
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 2, (exec count(*) from loadTable("dfs://test2", "testSnapshot"))==30340
+ assert 3, (exec count(*) from loadTable("dfs://test3", "testEntrust"))==635436
+ assert 4, (exec count(*) from loadTable("dfs://test4", "testTrade"))==470744
+ assert 5, objByName(`TLDataImportStatusTable).rows()==41
+ assert 6, (select * from objByName(`TLDataImportStatusTable) where errorMsg!=NULL).rows()==4
+
+// 测试 market
+@testing:case="test_function_autoLoadTongLianData_market_not_satisfied"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLSnapshot", market="123")
+ assert jobid==false
+
+@testing:case="test_function_autoLoadTongLianData_market_int"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLSnapshot", market=1234)
+ assert jobid==false
+
+@testing:case="test_function_autoLoadTongLianData_market_null"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLSnapshot", market=NULL)
+ assert jobid==false
+
+@testing:case="test_function_autoLoadTongLianData_market_SZ_snapshot"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLSnapshot", dbName="dfs://test1", market="SZ")
+ assert 1, typestr(jobid) == "UUID"
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 2, (exec count(*) from loadTable("dfs://test1", "snapshotSZ"))==15039
+ assert 3, (select count(*) from loadTable("dfs://test1", "snapshotSZ") group by TradeTime, SecurityID having count(*) != 1).rows() == 0
+ assert 4, objByName(`TLDataImportStatusTable).rows()==7
+ assert 5, (select * from objByName(`TLDataImportStatusTable) where errorMsg!=NULL).rows()==1
+
+@testing:case="test_function_autoLoadTongLianData_market_SH_snapshot"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLSnapshot", dbName="dfs://test1", market="SH")
+ assert 1, typestr(jobid) == "UUID"
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 2, (exec count(*) from loadTable("dfs://test1", "snapshotSH"))==15301
+ assert 3, (select count(*) from loadTable("dfs://test1", "snapshotSH") group by TradeTime, SecurityID, ImageStatus having count(*) != 1).rows() == 0
+ assert 4, objByName(`TLDataImportStatusTable).rows()==7
+ assert 5, (select * from objByName(`TLDataImportStatusTable) where errorMsg!=NULL).rows()==1
+
+@testing:case="test_function_autoLoadTongLianData_market_SZ_entrust"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLEntrust", dbName="dfs://test1", tableName="order", market="SZ")
+ assert 1, typestr(jobid) == "UUID"
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 2, (exec count(*) from loadTable("dfs://test1", "orderSZ"))==435126
+ assert 3, (select count(*) from loadTable("dfs://test1", "orderSZ") group by date(TradeTime), SeqNo having count(*) != 1).rows() == 0
+ assert 4, objByName(`TLDataImportStatusTable).rows()==7
+ assert 5, (select * from objByName(`TLDataImportStatusTable) where errorMsg!=NULL).rows()==0
+
+@testing:case="test_function_autoLoadTongLianData_market_SH_entrust"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLEntrust", dbName="dfs://test1", tableName="order", market="SH")
+ assert 1, typestr(jobid) == "UUID"
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 2, (exec count(*) from loadTable("dfs://test1", "orderSH"))==200310
+ assert 3, (select count(*) from loadTable("dfs://test1", "orderSH") group by date(TradeTime), SeqNo having count(*) != 1).rows() == 0
+ assert 4, objByName(`TLDataImportStatusTable).rows()==7
+ assert 5, (select * from objByName(`TLDataImportStatusTable) where errorMsg!=NULL).rows()==2
+
+@testing:case="test_function_autoLoadTongLianData_market_SZ_trade"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLTrade", dbName="dfs://test1", tableName="tick", market="SZ")
+ assert 1, typestr(jobid) == "UUID"
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 2, (exec count(*) from loadTable("dfs://test1", "tickSZ"))==379593
+ assert 3, (select count(*) from loadTable("dfs://test1", "tickSZ") group by date(TradeTime), SeqNo having count(*) != 1).rows() == 0
+ assert 4, objByName(`TLDataImportStatusTable).rows()==7
+ assert 5, (select * from objByName(`TLDataImportStatusTable) where errorMsg!=NULL).rows()==0
+
+@testing:case="test_function_autoLoadTongLianData_market_SH_trade"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLTrade", dbName="dfs://test1", tableName="tick", market="SH")
+ assert 1, typestr(jobid) == "UUID"
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 2, (exec count(*) from loadTable("dfs://test1", "tickSH"))==91151
+ assert 3, (select count(*) from loadTable("dfs://test1", "tickSH") group by date(TradeTime), SeqNo having count(*) != 1).rows() == 0
+ assert 4, objByName(`TLDataImportStatusTable).rows()==7
+ assert 5, (select * from objByName(`TLDataImportStatusTable) where errorMsg!=NULL).rows()==0
+
+@testing:case="test_function_autoLoadTongLianData_market_SZ_tradeEntrust"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLTradeEntrust", dbName="dfs://test1", tableName=tableName, market="SZ")
+ assert 1, typestr(jobid) == "UUID"
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 2, (exec count(*) from loadTable("dfs://test1", "testTradeSZ"))==379593
+ assert 3, (exec count(*) from loadTable("dfs://test1", "testEntrustSZ"))==435126
+ assert 4, objByName(`TLDataImportStatusTable).rows()==14
+ assert 5, (select * from objByName(`TLDataImportStatusTable) where errorMsg!=NULL).rows()==0
+
+@testing:case="test_function_autoLoadTongLianData_market_SH_tradeEntrust"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLTradeEntrust", dbName="dfs://test2", tableName=tableName, market="SH")
+ assert 1, typestr(jobid) == "UUID"
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 2, (exec count(*) from loadTable("dfs://test2", "testTradeSH"))==91151
+ assert 3, (exec count(*) from loadTable("dfs://test2", "testEntrustSH"))==200310
+ assert 4, objByName(`TLDataImportStatusTable).rows()==13
+ assert 5, (select * from objByName(`TLDataImportStatusTable) where errorMsg!=NULL).rows()==2
+
+@testing:case="test_function_autoLoadTongLianData_market_SZ_all"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLAll", dbName="dfs://test3", tableName=tableName, market="SZ")
+ assert 1, typestr(jobid) == "UUID"
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 2, (exec count(*) from loadTable("dfs://test3", "testSnapshotSZ"))==15039
+ assert 3, (exec count(*) from loadTable("dfs://test3", "testTradeSZ"))==379593
+ assert 4, (exec count(*) from loadTable("dfs://test3", "testEntrustSZ"))==435126
+ assert 5, objByName(`TLDataImportStatusTable).rows()==21
+ assert 6, (select * from objByName(`TLDataImportStatusTable) where errorMsg!=NULL).rows()==1
+
+@testing:case="test_function_autoLoadTongLianData_market_SH_all"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLAll", dbName="dfs://test4", tableName=tableName, market="SH")
+ assert 1, typestr(jobid) == "UUID"
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 2, (exec count(*) from loadTable("dfs://test4", "testSnapshotSH"))==15301
+ assert 3, (exec count(*) from loadTable("dfs://test4", "testTradeSH"))==91151
+ assert 4, (exec count(*) from loadTable("dfs://test4", "testEntrustSH"))==200310
+ assert 5, objByName(`TLDataImportStatusTable).rows()==20
+ assert 6, (select * from objByName(`TLDataImportStatusTable) where errorMsg!=NULL).rows()==3
+
+
+// 测试 startDate
+@testing:case="test_function_autoLoadTongLianData_startDate_date"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLSnapshot", startDate=2022.01.01)
+ assert jobid==false
+
+@testing:case="test_function_autoLoadTongLianData_startDate_int"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLSnapshot", startDate=20220101)
+ assert jobid==false
+
+@testing:case="test_function_autoLoadTongLianData_startDate_not_satisfied"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLSnapshot", startDate="abcdefg")
+ assert jobid==false
+
+@testing:case="test_function_autoLoadTongLianData_startDate_test"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLSnapshot", dbName="dfs://test5", tableName="testStartDate", startDate="20230202")
+ assert 1, typestr(jobid) == "UUID"
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 2, (exec count(*) from loadTable("dfs://test5", "testStartDate"))==20216
+ assert 3, objByName(`TLDataImportStatusTable).rows()==6
+ assert 4, (select * from objByName(`TLDataImportStatusTable) where errorMsg!=NULL).rows()==2
+
+// 测试 endDate
+@testing:case="test_function_autoLoadTongLianData_endDate_date"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLSnapshot", endDate=2022.01.01)
+ assert jobid==false
+
+@testing:case="test_function_autoLoadTongLianData_endDate_int"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLSnapshot", endDate=20220101)
+ assert jobid==false
+
+@testing:case="test_function_autoLoadTongLianData_endDate_not_satisfied"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLSnapshot", endDate="abcdefg")
+ assert jobid==false
+
+@testing:case="test_function_autoLoadTongLianData_endDate_test"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLSnapshot", dbName="dfs://test5",tableName="testEndDate", endDate="20230202")
+ assert 1, typestr(jobid) == "UUID"
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 2, (exec count(*) from loadTable("dfs://test5", "testEndDate"))==20263
+ assert 3, objByName(`TLDataImportStatusTable).rows()==10
+ assert 4, (select * from objByName(`TLDataImportStatusTable) where errorMsg!=NULL).rows()==0
+
+// 测试 initialDB
+@testing:case="test_function_autoLoadTongLianData_initialDB_true"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLSnapshot", dbName="dfs://test1", tableName="testInitialDB", initialDB=true)
+ assert 1, typestr(jobid) == "UUID"
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 2, existsTable("dfs://test1", "tickSH")==false
+ assert 3, (exec count(*) from loadTable("dfs://test1", "testInitialDB"))==30340
+ assert 4, (select count(*) from loadTable("dfs://test1", "testInitialDB") group by TradeTime, SecurityID, ImageStatus having count(*) != 1).rows() == 0
+
+@testing:case="test_function_autoLoadTongLianData_initialDB_false_DB_not_satisfied"
+ db = database("dfs://test6", VALUE, 2022.01.01..2023.01.01)
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLTrade", dbName="dfs://test6", tableName="test", initialDB=false)
+ assert jobid == false
+
+@testing:case="test_function_autoLoadTongLianData_initialDB_false_DB_satisfied"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLSnapshot", dbName="dfs://test1", tableName="testInitialDB2", initialDB=false)
+ assert 1, typestr(jobid) == "UUID"
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 2, (exec count(*) from loadTable("dfs://test1", "testInitialDB"))==30340
+ assert 3, (exec count(*) from loadTable("dfs://test1", "testInitialDB2"))==30340
+
+// 测试 initialTB
+@testing:case="test_function_autoLoadTongLianData_initialTB_true"
+ assert 1, (exec count(*) from loadTable("dfs://test1", "testInitialDB"))==30340
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLSnapshot", dbName="dfs://test1", tableName="testInitialDB", initialTB=true, startDate="20230202")
+ assert 2, typestr(jobid) == "UUID"
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 3, (exec count(*) from loadTable("dfs://test1", "testInitialDB"))==20216
+
+@testing:case="test_function_autoLoadTongLianData_initialTB_false_TB_satisfied"
+ assert 1, (exec count(*) from loadTable("dfs://test1", "testInitialDB"))==20216
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLSnapshot", dbName="dfs://test1", tableName="testInitialDB", initialTB=false, endDate="20230201")
+ assert 2, typestr(jobid) == "UUID"
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 3, (exec count(*) from loadTable("dfs://test1", "testInitialDB"))==30340
+
+// 测试 parallel
+@testing:case="test_function_autoLoadTongLianData_parallel"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLSnapshot", dbName="dfs://test1", tableName="testParallel", parallel=3)
+ assert 1, typestr(jobid) == "UUID"
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 2, (exec count(*) from loadTable("dfs://test1", "testParallel"))==30340
+ assert 3, (exec count(*) from getTLJobStatus(jobid))==3
+
+// 测试重复提交导入任务情况
+@testing:case="test_function_autoLoadTongLianData_repeat_submit"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLSnapshot", tableName="repeat")
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 1, typestr(jobid) == "UUID"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLSnapshot", tableName="repeat")
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 2, typestr(jobid) == "UUID"
+ assert 3, (exec count(*) from loadTable("dfs://TL_Level2", "repeat"))==30340
+
+// 测试 isDataDuplicated
+@testing:case="test_function_autoLoadTongLianData_isDataDuplicated_true_market_all"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLAll", dbName="dfs://test1", tableName=tableName, startDate="20230201", endDate="20230201", initialDB=true, isDataDuplicated=true)
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 1, typestr(jobid) == "UUID"
+ assert 2, (exec count(*) from loadTable("dfs://test1", "testSnapshot"))==10113
+ assert 3, (exec count(*) from loadTable("dfs://test1", "testTrade"))==115865
+ assert 4, (exec count(*) from loadTable("dfs://test1", "testEntrust"))==156129
+
+@testing:case="test_function_autoLoadTongLianData_isDataDuplicated_false_market_all"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLAll", dbName="dfs://test1", tableName=tableName, startDate="20230201", endDate="20230201", initialDB=true, isDataDuplicated=false)
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 1, typestr(jobid) == "UUID"
+ assert 2, (exec count(*) from loadTable("dfs://test1", "testSnapshot"))==10140
+ assert 3, (exec count(*) from loadTable("dfs://test1", "testTrade"))==115885
+ assert 4, (exec count(*) from loadTable("dfs://test1", "testEntrust"))==156149
+
+@testing:case="test_function_autoLoadTongLianData_isDataDuplicated_true_market_sz"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLAll", dbName="dfs://test1", tableName=tableName, market="SZ", startDate="20230201", endDate="20230201", initialDB=true, isDataDuplicated=true)
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 1, typestr(jobid) == "UUID"
+ assert 2, (exec count(*) from loadTable("dfs://test1", "testSnapshotSZ"))==5011
+ assert 3, (exec count(*) from loadTable("dfs://test1", "testTradeSZ"))==88730
+ assert 4, (exec count(*) from loadTable("dfs://test1", "testEntrustSZ"))==101394
+
+@testing:case="test_function_autoLoadTongLianData_isDataDuplicated_false_market_sz"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLAll", dbName="dfs://test1", tableName=tableName, market="SZ", startDate="20230201", endDate="20230201", initialDB=true, isDataDuplicated=false)
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 1, typestr(jobid) == "UUID"
+ assert 2, (exec count(*) from loadTable("dfs://test1", "testSnapshotSZ"))==5021
+ assert 3, (exec count(*) from loadTable("dfs://test1", "testTradeSZ"))==88740
+ assert 4, (exec count(*) from loadTable("dfs://test1", "testEntrustSZ"))==101404
+
+
+
+
+
+
+@testing:case="test_function_autoLoadTongLianData_isDataDuplicated_true_market_sh"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLAll", dbName="dfs://test1", tableName=tableName, market="SH", startDate="20230201", endDate="20230201", initialDB=true, isDataDuplicated=true)
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 1, typestr(jobid) == "UUID"
+ assert 2, (exec count(*) from loadTable("dfs://test1", "testSnapshotSH"))==5102
+ assert 3, (exec count(*) from loadTable("dfs://test1", "testTradeSH"))==27135
+ assert 4, (exec count(*) from loadTable("dfs://test1", "testEntrustSH"))==54735
+
+@testing:case="test_function_autoLoadTongLianData_isDataDuplicated_false_market_sh"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLAll", dbName="dfs://test1", tableName=tableName, market="SH", startDate="20230201", endDate="20230201", initialDB=true, isDataDuplicated=false)
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 1, typestr(jobid) == "UUID"
+ assert 2, (exec count(*) from loadTable("dfs://test1", "testSnapshotSH"))==5119
+ assert 3, (exec count(*) from loadTable("dfs://test1", "testTradeSH"))==27145
+ assert 4, (exec count(*) from loadTable("dfs://test1", "testEntrustSH"))==54745
+
+
+
+
+// 测试 isConcatTime
+@testing:case="test_function_autoLoadTongLianData_isConcatTime_true_market_all"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLAll", dbName="dfs://test1", tableName=tableName, startDate="20230201", endDate="20230201", initialDB=true, isConcatTime=true)
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 1, typestr(jobid) == "UUID"
+ assert 2, (exec count(*) from loadTable("dfs://test1", "testSnapshot"))==10113
+ assert 3, (exec count(*) from loadTable("dfs://test1", "testTrade"))==115865
+ assert 4, (exec count(*) from loadTable("dfs://test1", "testEntrust"))==156129
+ assert 5, !("TradeDate" in loadTable("dfs://test1", "testSnapshot").colNames())
+ assert 6, !("TradeDate" in loadTable("dfs://test1", "testTrade").colNames())
+ assert 7, !("TradeDate" in loadTable("dfs://test1", "testEntrust").colNames())
+
+@testing:case="test_function_autoLoadTongLianData_isConcatTime_false_market_all"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLAll", dbName="dfs://test1", tableName=tableName, startDate="20230201", endDate="20230201", initialDB=true, isConcatTime=false)
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 1, typestr(jobid) == "UUID"
+ assert 2, (exec count(*) from loadTable("dfs://test1", "testSnapshot"))==10113
+ assert 3, (exec count(*) from loadTable("dfs://test1", "testTrade"))==115865
+ assert 4, (exec count(*) from loadTable("dfs://test1", "testEntrust"))==156129
+ assert 5, ("TradeDate" in loadTable("dfs://test1", "testSnapshot").colNames())
+ assert 6, ("TradeDate" in loadTable("dfs://test1", "testTrade").colNames())
+ assert 7, ("TradeDate" in loadTable("dfs://test1", "testEntrust").colNames())
+
+@testing:case="test_function_autoLoadTongLianData_isConcatTime_true_market_sz"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLAll", dbName="dfs://test1", market="SZ", tableName=tableName, startDate="20230201", endDate="20230201", initialDB=true, isConcatTime=true)
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 1, typestr(jobid) == "UUID"
+ assert 2, (exec count(*) from loadTable("dfs://test1", "testSnapshotSZ"))==5011
+ assert 3, (exec count(*) from loadTable("dfs://test1", "testTradeSZ"))==88730
+ assert 4, (exec count(*) from loadTable("dfs://test1", "testEntrustSZ"))==101394
+ assert 5, !("TradeDate" in loadTable("dfs://test1", "testSnapshotSZ").colNames())
+ assert 6, !("TradeDate" in loadTable("dfs://test1", "testTradeSZ").colNames())
+ assert 7, !("TradeDate" in loadTable("dfs://test1", "testEntrustSZ").colNames())
+
+@testing:case="test_function_autoLoadTongLianData_isConcatTime_false_market_sz"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLAll", dbName="dfs://test1", market="SZ", tableName=tableName, startDate="20230201", endDate="20230201", initialDB=true, isConcatTime=false)
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 1, typestr(jobid) == "UUID"
+ assert 2, (exec count(*) from loadTable("dfs://test1", "testSnapshotSZ"))==5011
+ assert 3, (exec count(*) from loadTable("dfs://test1", "testTradeSZ"))==88730
+ assert 4, (exec count(*) from loadTable("dfs://test1", "testEntrustSZ"))==101394
+ assert 5, ("TradeDate" in loadTable("dfs://test1", "testSnapshotSZ").colNames())
+ assert 6, ("TradeDate" in loadTable("dfs://test1", "testTradeSZ").colNames())
+ assert 7, ("TradeDate" in loadTable("dfs://test1", "testEntrustSZ").colNames())
+
+@testing:case="test_function_autoLoadTongLianData_isConcatTime_true_market_sh"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLAll", dbName="dfs://test1", market="SH", tableName=tableName, startDate="20230201", endDate="20230201", initialDB=true, isConcatTime=true)
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 1, typestr(jobid) == "UUID"
+ assert 2, (exec count(*) from loadTable("dfs://test1", "testSnapshotSH"))==5102
+ assert 3, (exec count(*) from loadTable("dfs://test1", "testTradeSH"))==27135
+ assert 4, (exec count(*) from loadTable("dfs://test1", "testEntrustSH"))==54735
+ assert 5, !("TradeDate" in loadTable("dfs://test1", "testSnapshotSH").colNames())
+ assert 6, !("TradeDate" in loadTable("dfs://test1", "testTradeSH").colNames())
+ assert 7, !("TradeDate" in loadTable("dfs://test1", "testEntrustSH").colNames())
+
+@testing:case="test_function_autoLoadTongLianData_isConcatTime_false_market_sh"
+ jobid = autoLoadTongLianData(fileDir=fileDir, dataSource="TLAll", dbName="dfs://test1", market="SH", tableName=tableName, startDate="20230201", endDate="20230201", initialDB=true, isConcatTime=false)
+ do{
+	sleep(1000)
+	t = exec count(*) from getTLJobStatus(jobid) where endTime==NULL
+ }while(t != 0)
+ assert 1, typestr(jobid) == "UUID"
+ assert 2, (exec count(*) from loadTable("dfs://test1", "testSnapshotSH"))==5102
+ assert 3, (exec count(*) from loadTable("dfs://test1", "testTradeSH"))==27135
+ assert 4, (exec count(*) from loadTable("dfs://test1", "testEntrustSH"))==54735
+ assert 5, ("TradeDate" in loadTable("dfs://test1", "testSnapshotSH").colNames())
+ assert 6, ("TradeDate" in loadTable("dfs://test1", "testTradeSH").colNames())
+ assert 7, ("TradeDate" in loadTable("dfs://test1", "testEntrustSH").colNames())

@@ -1,0 +1,592 @@
+module EasyTushare::fund::FundLoadData
+use EasyTushare::TsInit
+
+/* 
+*  @Brief: 基金数据单个表导入函数模块
+*  @Author: DolphinDB
+*  @Last modification time: 2026.03.31
+*  @DolphinDB server version: 3.00.5 2026.02.06 LINUX x86_64
+*/
+
+/*
+*  @FunctionName: module_info
+*  @Brief: 模块信息,一个相同模块dir下的每个dos都需要有module_info函数,且是相同的
+*  @Param: None
+*  @Return: dict
+*  @SampleUsage: module_info()
+*/
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "EasyTushare"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+
+def getFundCodes(token){
+    api = "fund_basic"
+    cols = ["ts_code"]
+    
+    p = {}
+    res = getApiData(token, api, p, cols)
+
+    offset = 1
+    do{
+        offset = 15000 + offset
+        p = {"offset":offset}
+        tmp = getApiData(token, api, p, cols)
+        if(tmp.count() != 0){
+            res.append!(tmp)
+        }
+    }while(tmp.count() != 0)
+    return res["ts_code"]
+}
+
+
+
+/*
+ * @Description: 公募基金列表数据导入
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-24 10:52:57
+ * @dev: 
+ * @Author: tanhua
+ */
+def appendFundBasic(token, start_date1, end_date1){
+    dbPath = "dfs://tushare_basic_db"
+    tableName = "fund_basic"
+    api = "fund_basic"
+    cols = ["ts_code","name","management","custodian","fund_type","found_date","due_date","list_date","issue_date","delist_date","issue_amount","m_fee","c_fee","duration_year","p_value","min_amount","exp_return","benchmark","status","invest_type","type","trustee","purc_startdate","redm_startdate","market"]
+    out = loadTable(dbPath, tableName)
+    count_ = 0
+    p = {}
+    res = getApiData(token, api, p, cols)
+    offset = 1
+    do{
+        offset = 15000 + offset
+        print("fetch data from offset: " + string(offset))
+        p = {"offset":offset}
+        tmp = getApiData(token, api, p, cols)
+        if(tmp.count() != 0){
+            res.append!(tmp)
+        }
+    }while(tmp.count() != 0)
+
+
+    if (!res.isVoid() and res.count() !=0){
+        
+        update res set update_time = now()
+        replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+        replaceColumn!(res, "name", string(res.name))
+        replaceColumn!(res, "management", string(res.management))
+        replaceColumn!(res, "custodian", string(res.custodian))
+        replaceColumn!(res, "fund_type", string(res.fund_type))
+        replaceColumn!(res, "found_date", temporalParse(string(res.found_date), "yyyyMMdd"))
+        replaceColumn!(res, "due_date", temporalParse(string(res.due_date), "yyyyMMdd"))
+        replaceColumn!(res, "list_date", temporalParse(string(res.list_date), "yyyyMMdd"))
+        replaceColumn!(res, "issue_date", temporalParse(string(res.issue_date), "yyyyMMdd"))
+        replaceColumn!(res, "delist_date", temporalParse(string(res.delist_date), "yyyyMMdd"))
+        replaceColumn!(res, "issue_amount", double(res.issue_amount))
+        replaceColumn!(res, "m_fee", double(res.m_fee))
+        replaceColumn!(res, "c_fee", double(res.c_fee))
+        replaceColumn!(res, "duration_year", double(res.duration_year))
+        replaceColumn!(res, "p_value", double(res.p_value))
+        replaceColumn!(res, "min_amount", double(res.min_amount))
+        replaceColumn!(res, "exp_return", double(res.exp_return))
+        replaceColumn!(res, "benchmark", string(res.benchmark))
+        replaceColumn!(res, "status", symbol(string(res.status)))
+        replaceColumn!(res, "invest_type", string(res.invest_type))
+        replaceColumn!(res, "type", string(res.type))
+        replaceColumn!(res, "trustee", string(res.trustee))
+        replaceColumn!(res, "purc_startdate", temporalParse(string(res.purc_startdate), "yyyyMMdd"))
+        replaceColumn!(res, "redm_startdate", temporalParse(string(res.redm_startdate), "yyyyMMdd"))
+        replaceColumn!(res, "market", symbol(string(res.market)))
+        replaceColumn!(res, "update_time", timestamp(res.update_time))
+        
+        // 重命名 ts_code 为 code
+        rename!(res, "ts_code", "code")
+        delete from out 
+        out.append!(res)
+        print("Success append data for Table " + api)
+    } else {
+        print("no data for Table " + api)
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+ * @Description: 公募基金公司数据导入
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-24 10:52:57
+ * @dev: 
+ * @Author: tanhua
+ */
+def appendFundCompany(token, start_date1, end_date1){
+    dbPath = "dfs://tushare_basic_db"
+    tableName = "fund_company"
+    api = "fund_company"
+    cols = ["name","shortname","short_enname","province","city","address","phone","office","website","chairman","manager","reg_capital","setup_date","end_date","employees","main_business","org_code","credit_code"]
+    out = loadTable(dbPath, tableName)
+    
+    p = {}
+    res = getApiData(token, api, p, cols)
+
+    if (!res.isVoid() and res.count() !=0){
+        
+        update res set update_time = now()
+
+        replaceColumn!(res, "name", string(res.name))
+        replaceColumn!(res, "shortname", string(res.shortname))
+        replaceColumn!(res, "short_enname", string(res.short_enname))
+        replaceColumn!(res, "province", string(res.province))
+        replaceColumn!(res, "city", string(res.city))
+        replaceColumn!(res, "address", string(res.address))
+        replaceColumn!(res, "phone", string(res.phone))
+        replaceColumn!(res, "office", string(res.office))
+        replaceColumn!(res, "website", string(res.website))
+        replaceColumn!(res, "chairman", string(res.chairman))
+        replaceColumn!(res, "manager", string(res.manager))
+        replaceColumn!(res, "reg_capital", double(res.reg_capital))
+        replaceColumn!(res, "setup_date", temporalParse(string(res.setup_date), "yyyyMMdd"))
+        replaceColumn!(res, "end_date", temporalParse(string(res.end_date), "yyyyMMdd"))
+        replaceColumn!(res, "employees", double(res.employees))
+        replaceColumn!(res, "main_business", string(res.main_business))
+        replaceColumn!(res, "org_code", string(res.org_code))
+        replaceColumn!(res, "credit_code", string(res.credit_code))
+        replaceColumn!(res, "update_time", timestamp(res.update_time))
+        delete from out
+        out.append!(res)
+        print("Success append data for Table " + api)
+    } else {
+        print("no data for Table " + api)
+    }
+    print("Success append data for Table " + api)
+}
+
+
+/*
+ * @Description: 公募基金分红数据导入
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-24 10:52:57
+ * @dev: 
+ * @Author: tanhua
+ */
+def appendFundDiv(token, start_date1, end_date1){
+    dbPath = "dfs://tushare_basic_db"
+    tableName = "fund_div"
+    api = "fund_div"
+    cols = ["ts_code","ann_date","imp_anndate","base_date","div_proc","record_date","ex_date","pay_date","earpay_date","net_ex_date","div_cash","base_unit","ear_distr","ear_amount","account_date","base_year"]
+    out = loadTable(dbPath, tableName)
+    
+    dts = start_date1..end_date1
+
+    delete from out where ann_date >= start_date1 and ann_date <= end_date1
+    for(oneDate in dts){
+        // oneDate = dts[0]
+        dateStr = temporalFormat(oneDate, "yyyyMMdd")
+        // dateStr = "20181220"
+        p = {"ann_date": dateStr} // 2002.06.20
+        res = getApiData(token, api, p, cols)
+
+        if (!res.isVoid() and res.count() !=0){
+            
+            update res set update_time = now()
+
+            replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+            replaceColumn!(res, "ann_date", temporalParse(string(res.ann_date), "yyyyMMdd"))
+            replaceColumn!(res, "imp_anndate", temporalParse(string(res.imp_anndate), "yyyyMMdd"))
+            replaceColumn!(res, "base_date", temporalParse(string(res.base_date), "yyyyMMdd"))
+            replaceColumn!(res, "div_proc", string(res.div_proc))
+            replaceColumn!(res, "record_date", temporalParse(string(res.record_date), "yyyyMMdd"))
+            replaceColumn!(res, "ex_date", temporalParse(string(res.ex_date), "yyyyMMdd"))
+            replaceColumn!(res, "pay_date", temporalParse(string(res.pay_date), "yyyyMMdd"))
+            replaceColumn!(res, "earpay_date", temporalParse(string(res.earpay_date), "yyyyMMdd"))
+            replaceColumn!(res, "net_ex_date", temporalParse(string(res.net_ex_date), "yyyyMMdd"))
+            replaceColumn!(res, "div_cash", double(res.div_cash))
+            replaceColumn!(res, "base_unit", double(res.base_unit))
+            replaceColumn!(res, "ear_distr", double(res.ear_distr))
+            replaceColumn!(res, "ear_amount", double(res.ear_amount))
+            replaceColumn!(res, "account_date", temporalParse(string(res.account_date), "yyyyMMdd"))
+            replaceColumn!(res, "base_year", string(res.base_year))
+            replaceColumn!(res, "update_time", timestamp(res.update_time))
+            
+            // 重命名 ts_code 为 code
+            rename!(res, "ts_code", "code")
+            
+            out.append!(res)
+            print("Success append data for Table " + api + " for date: " + dateStr)
+        } else {
+            print("no data for Table " + api + " for date: " + dateStr)
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+ * @Description: 场内基金技术因子(专业版)数据导入
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-24 10:52:57
+ * @dev: 
+ * @Author: tanhua
+ */
+def appendFundFactorPro(token, start_date1, end_date1){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "fund_factor_pro"
+    api = "fund_factor_pro"
+    cols = ["ts_code","trade_date","trade_date_doris","open","high","low","close","pre_close","change","pct_change","vol","amount","asi_bfq","asit_bfq","atr_bfq","bbi_bfq","bias1_bfq","bias2_bfq","bias3_bfq","boll_lower_bfq","boll_mid_bfq","boll_upper_bfq","brar_ar_bfq","brar_br_bfq","cci_bfq","cr_bfq","dfma_dif_bfq","dfma_difma_bfq","dmi_adx_bfq","dmi_adxr_bfq","dmi_mdi_bfq","dmi_pdi_bfq","downdays","updays","dpo_bfq","madpo_bfq","ema_bfq_10","ema_bfq_20","ema_bfq_250","ema_bfq_30","ema_bfq_5","ema_bfq_60","ema_bfq_90","emv_bfq","maemv_bfq","expma_12_bfq","expma_50_bfq","kdj_bfq","kdj_d_bfq","kdj_k_bfq","ktn_down_bfq","ktn_mid_bfq","ktn_upper_bfq","lowdays","topdays","ma_bfq_10","ma_bfq_20","ma_bfq_250","ma_bfq_30","ma_bfq_5","ma_bfq_60","ma_bfq_90","macd_bfq","macd_dea_bfq","macd_dif_bfq","mass_bfq","ma_mass_bfq","mfi_bfq","mtm_bfq","mtmma_bfq","obv_bfq","psy_bfq","psyma_bfq","roc_bfq","maroc_bfq","rsi_bfq_12","rsi_bfq_24","rsi_bfq_6","taq_down_bfq","taq_mid_bfq","taq_up_bfq","trix_bfq","trma_bfq","vr_bfq","wr_bfq","wr1_bfq","xsii_td1_bfq","xsii_td2_bfq","xsii_td3_bfq","xsii_td4_bfq"]
+    out = loadTable(dbPath, tableName)
+    
+    delete from out where trade_date >= start_date1 and trade_date <= end_date1
+    dts = start_date1..end_date1
+    for(oneDate in dts){
+        // oneDate = dts[0]
+        dateStr = temporalFormat(oneDate, "yyyyMMdd")
+        p = {"trade_date": dateStr}
+        res = getApiData(token, api, p, cols)
+
+        if (!res.isVoid() and res.count() !=0){
+            
+            update res set update_time = now()
+
+            replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+            replaceColumn!(res, "trade_date", temporalParse(string(res.trade_date), "yyyyMMdd"))
+            replaceColumn!(res, "trade_date_doris", temporalParse(string(res.trade_date_doris), "yyyy-MM-dd"))
+            replaceColumn!(res, "open", double(res.open))
+            replaceColumn!(res, "high", double(res.high))
+            replaceColumn!(res, "low", double(res.low))
+            replaceColumn!(res, "close", double(res.close))
+            replaceColumn!(res, "pre_close", double(res.pre_close))
+            replaceColumn!(res, "change", double(res.change))
+            replaceColumn!(res, "pct_change", double(res.pct_change))
+            replaceColumn!(res, "vol", double(res.vol))
+            replaceColumn!(res, "amount", double(res.amount))
+            replaceColumn!(res, "asi_bfq", double(res.asi_bfq))
+            replaceColumn!(res, "asit_bfq", double(res.asit_bfq))
+            replaceColumn!(res, "atr_bfq", double(res.atr_bfq))
+            replaceColumn!(res, "bbi_bfq", double(res.bbi_bfq))
+            replaceColumn!(res, "bias1_bfq", double(res.bias1_bfq))
+            replaceColumn!(res, "bias2_bfq", double(res.bias2_bfq))
+            replaceColumn!(res, "bias3_bfq", double(res.bias3_bfq))
+            replaceColumn!(res, "boll_lower_bfq", double(res.boll_lower_bfq))
+            replaceColumn!(res, "boll_mid_bfq", double(res.boll_mid_bfq))
+            replaceColumn!(res, "boll_upper_bfq", double(res.boll_upper_bfq))
+            replaceColumn!(res, "brar_ar_bfq", double(res.brar_ar_bfq))
+            replaceColumn!(res, "brar_br_bfq", double(res.brar_br_bfq))
+            replaceColumn!(res, "cci_bfq", double(res.cci_bfq))
+            replaceColumn!(res, "cr_bfq", double(res.cr_bfq))
+            replaceColumn!(res, "dfma_dif_bfq", double(res.dfma_dif_bfq))
+            replaceColumn!(res, "dfma_difma_bfq", double(res.dfma_difma_bfq))
+            replaceColumn!(res, "dmi_adx_bfq", double(res.dmi_adx_bfq))
+            replaceColumn!(res, "dmi_adxr_bfq", double(res.dmi_adxr_bfq))
+            replaceColumn!(res, "dmi_mdi_bfq", double(res.dmi_mdi_bfq))
+            replaceColumn!(res, "dmi_pdi_bfq", double(res.dmi_pdi_bfq))
+            replaceColumn!(res, "downdays", double(res.downdays))
+            replaceColumn!(res, "updays", double(res.updays))
+            replaceColumn!(res, "dpo_bfq", double(res.dpo_bfq))
+            replaceColumn!(res, "madpo_bfq", double(res.madpo_bfq))
+            replaceColumn!(res, "ema_bfq_10", double(res.ema_bfq_10))
+            replaceColumn!(res, "ema_bfq_20", double(res.ema_bfq_20))
+            replaceColumn!(res, "ema_bfq_250", double(res.ema_bfq_250))
+            replaceColumn!(res, "ema_bfq_30", double(res.ema_bfq_30))
+            replaceColumn!(res, "ema_bfq_5", double(res.ema_bfq_5))
+            replaceColumn!(res, "ema_bfq_60", double(res.ema_bfq_60))
+            replaceColumn!(res, "ema_bfq_90", double(res.ema_bfq_90))
+            replaceColumn!(res, "emv_bfq", double(res.emv_bfq))
+            replaceColumn!(res, "maemv_bfq", double(res.maemv_bfq))
+            replaceColumn!(res, "expma_12_bfq", double(res.expma_12_bfq))
+            replaceColumn!(res, "expma_50_bfq", double(res.expma_50_bfq))
+            replaceColumn!(res, "kdj_bfq", double(res.kdj_bfq))
+            replaceColumn!(res, "kdj_d_bfq", double(res.kdj_d_bfq))
+            replaceColumn!(res, "kdj_k_bfq", double(res.kdj_k_bfq))
+            replaceColumn!(res, "ktn_down_bfq", double(res.ktn_down_bfq))
+            replaceColumn!(res, "ktn_mid_bfq", double(res.ktn_mid_bfq))
+            replaceColumn!(res, "ktn_upper_bfq", double(res.ktn_upper_bfq))
+            replaceColumn!(res, "lowdays", double(res.lowdays))
+            replaceColumn!(res, "topdays", double(res.topdays))
+            replaceColumn!(res, "ma_bfq_10", double(res.ma_bfq_10))
+            replaceColumn!(res, "ma_bfq_20", double(res.ma_bfq_20))
+            replaceColumn!(res, "ma_bfq_250", double(res.ma_bfq_250))
+            replaceColumn!(res, "ma_bfq_30", double(res.ma_bfq_30))
+            replaceColumn!(res, "ma_bfq_5", double(res.ma_bfq_5))
+            replaceColumn!(res, "ma_bfq_60", double(res.ma_bfq_60))
+            replaceColumn!(res, "ma_bfq_90", double(res.ma_bfq_90))
+            replaceColumn!(res, "macd_bfq", double(res.macd_bfq))
+            replaceColumn!(res, "macd_dea_bfq", double(res.macd_dea_bfq))
+            replaceColumn!(res, "macd_dif_bfq", double(res.macd_dif_bfq))
+            replaceColumn!(res, "mass_bfq", double(res.mass_bfq))
+            replaceColumn!(res, "ma_mass_bfq", double(res.ma_mass_bfq))
+            replaceColumn!(res, "mfi_bfq", double(res.mfi_bfq))
+            replaceColumn!(res, "mtm_bfq", double(res.mtm_bfq))
+            replaceColumn!(res, "mtmma_bfq", double(res.mtmma_bfq))
+            replaceColumn!(res, "obv_bfq", double(res.obv_bfq))
+            replaceColumn!(res, "psy_bfq", double(res.psy_bfq))
+            replaceColumn!(res, "psyma_bfq", double(res.psyma_bfq))
+            replaceColumn!(res, "roc_bfq", double(res.roc_bfq))
+            replaceColumn!(res, "maroc_bfq", double(res.maroc_bfq))
+            replaceColumn!(res, "rsi_bfq_12", double(res.rsi_bfq_12))
+            replaceColumn!(res, "rsi_bfq_24", double(res.rsi_bfq_24))
+            replaceColumn!(res, "rsi_bfq_6", double(res.rsi_bfq_6))
+            replaceColumn!(res, "taq_down_bfq", double(res.taq_down_bfq))
+            replaceColumn!(res, "taq_mid_bfq", double(res.taq_mid_bfq))
+            replaceColumn!(res, "taq_up_bfq", double(res.taq_up_bfq))
+            replaceColumn!(res, "trix_bfq", double(res.trix_bfq))
+            replaceColumn!(res, "trma_bfq", double(res.trma_bfq))
+            replaceColumn!(res, "vr_bfq", double(res.vr_bfq))
+            replaceColumn!(res, "wr_bfq", double(res.wr_bfq))
+            replaceColumn!(res, "wr1_bfq", double(res.wr1_bfq))
+            replaceColumn!(res, "xsii_td1_bfq", double(res.xsii_td1_bfq))
+            replaceColumn!(res, "xsii_td2_bfq", double(res.xsii_td2_bfq))
+            replaceColumn!(res, "xsii_td3_bfq", double(res.xsii_td3_bfq))
+            replaceColumn!(res, "xsii_td4_bfq", double(res.xsii_td4_bfq))
+            replaceColumn!(res, "update_time", timestamp(res.update_time))
+            
+            // 重命名 ts_code 为 code
+            rename!(res, "ts_code", "code")
+            
+            out.append!(res)
+            print("Success append data for Table " + api + " for date: " + dateStr)
+        } else {
+            print("no data for Table " + api + " for date: " + dateStr)
+        }
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+ * @Description: 基金经理数据导入
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-24 10:52:57
+ * @dev: 
+ * @Author: tanhua
+ */
+def appendFundManager(token, start_date1, end_date1){
+    dbPath = "dfs://tushare_basic_db"
+    tableName = "fund_manager"
+    api = "fund_manager"
+    cols = ["ts_code","ann_date","name","gender","birth_year","edu","nationality","begin_date","end_date","resume"]
+    out = loadTable(dbPath, tableName)
+
+    delete from out 
+    
+    p = {}
+    res = getApiData(token, api, p, cols)
+
+    offset = 1
+    do{
+        offset = 5000 + offset
+        p = {"offset":offset}
+        tmp = getApiData(token, api, p, cols)
+        if(tmp.count() != 0){
+            res.append!(tmp)
+        }
+    }while(tmp.count() != 0)
+
+    if (!res.isVoid() and res.count() !=0){  
+        update res set update_time = now()
+
+        replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+        replaceColumn!(res, "ann_date", temporalParse(string(res.ann_date), "yyyyMMdd"))
+        replaceColumn!(res, "name", string(res.name))
+        replaceColumn!(res, "gender", string(res.gender))
+        replaceColumn!(res, "birth_year", string(res.birth_year))
+        replaceColumn!(res, "edu", string(res.edu))
+        replaceColumn!(res, "nationality", string(res.nationality))
+        replaceColumn!(res, "begin_date", temporalParse(string(res.begin_date), "yyyyMMdd"))
+        replaceColumn!(res, "end_date", temporalParse(string(res.end_date), "yyyyMMdd"))
+        replaceColumn!(res, "resume", string(res.resume))
+        replaceColumn!(res, "update_time", timestamp(res.update_time))
+        
+        // 重命名 ts_code 为 code
+        rename!(res, "ts_code", "code")
+        
+        out.append!(res)
+        print("Success append data for Table " + api)
+    } else {
+        print("no data for Table " + api )
+    }
+
+    print("Success append data for Table " + api)
+}
+
+/*
+ * @Description: 公募基金净值数据导入
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-24 10:52:57
+ * @dev: 
+ * @Author: tanhua
+ */
+def appendFundNav(token, start_date1, end_date1){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "fund_nav"
+    api = "fund_nav"
+    cols = ["ts_code","ann_date","nav_date","unit_nav","accum_nav","accum_div","net_asset","total_netasset","adj_nav"]
+    out = loadTable(dbPath, tableName)
+    dts = start_date1..end_date1
+    for(oneDate in dts){ // oneDate = 2018.01.01
+        delete from out where nav_date = oneDate
+        dateStr = temporalFormat(oneDate, "yyyyMMdd")
+
+        offset_ = 0 
+        prev_count_ = 0
+        do {
+            p = {"nav_date": dateStr, "offset":offset_}
+            res = getApiData(token, api, p, cols)
+            cur_count_= res.count()
+            if (cur_count_ !=0){
+                update res set update_time = now()
+                replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+                replaceColumn!(res, "ann_date", temporalParse(string(res.ann_date), "yyyyMMdd"))
+                replaceColumn!(res, "nav_date", temporalParse(string(res.nav_date), "yyyyMMdd"))
+                replaceColumn!(res, "unit_nav", double(res.unit_nav))
+                replaceColumn!(res, "accum_nav", double(res.accum_nav))
+                replaceColumn!(res, "accum_div", double(res.accum_div))
+                replaceColumn!(res, "net_asset", double(res.net_asset))
+                replaceColumn!(res, "total_netasset", double(res.total_netasset))
+                replaceColumn!(res, "adj_nav", double(res.adj_nav))
+                replaceColumn!(res, "update_time", timestamp(res.update_time))
+                
+                // 重命名 ts_code 为 code
+                rename!(res, "ts_code", "code")
+                out.append!(res)
+                
+                offset_ = prev_count_ + cur_count_ + 1
+                prev_count_ = prev_count_ + cur_count_
+                print("Success append data for Table " + api + " for date: " + dateStr)
+            } 
+        } while (cur_count_ != 0)
+    }
+    print("Success append data for Table " + api)
+}
+
+/*
+ * @Description: 公募基金持仓数据导入
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-24 10:52:57
+ * @dev: 
+ * @Author: tanhua
+ */
+def appendFundPortfolio(token, start_date1, end_date1){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "fund_portfolio"
+    api = "fund_portfolio"
+    cols = ["ts_code","ann_date","end_date","symbol","mkv","amount","stk_mkv_ratio","stk_float_ratio"]
+    out = loadTable(dbPath, tableName)
+    delete from out where ann_date >= start_date1 and ann_date <= end_date1
+
+    dts = start_date1..end_date1
+    for(oneDate in dts){
+        // oneDate = 2026.03.31
+        dateStr = temporalFormat(oneDate, "yyyyMMdd")
+        offset_ = 0 
+        prev_count_ = 0
+        do{
+            p = {"offset":offset_,"ann_date": dateStr}
+            res = getApiData(token, api, p, cols)
+            cur_count_ = res.count()
+            if(cur_count_ != 0){
+                update res set update_time = now()
+
+                replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+                replaceColumn!(res, "ann_date", temporalParse(string(res.ann_date), "yyyyMMdd"))
+                replaceColumn!(res, "end_date", temporalParse(string(res.end_date), "yyyyMMdd"))
+                replaceColumn!(res, "symbol", symbol(string(res.symbol)))
+                replaceColumn!(res, "mkv", double(res.mkv))
+                replaceColumn!(res, "amount", double(res.amount))
+                replaceColumn!(res, "stk_mkv_ratio", double(res.stk_mkv_ratio))
+                replaceColumn!(res, "stk_float_ratio", double(res.stk_float_ratio))
+                replaceColumn!(res, "update_time", timestamp(res.update_time))
+                
+                // 重命名 ts_code 为 code
+                rename!(res, "ts_code", "code")
+                
+                out.append!(res)
+                offset_ = prev_count_ + cur_count_ + 1
+                prev_count_ = prev_count_ + cur_count_
+            }
+        }while(res.count() != 0)
+        print("Success append data for Table " + api + " for date: " + dateStr)
+    }
+    print("Success append data for Table " + api)
+}
+
+
+/*
+ * @Description: 基金规模数据导入
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-24 10:52:57
+ * @dev: 
+ * @Author: tanhua
+ */
+def appendFundShare(token, start_date1, end_date1){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "fund_share"
+    api = "fund_share"
+    cols = ["ts_code","trade_date","fd_share"]
+    out = loadTable(dbPath, tableName)
+    delete from out where trade_date >= start_date1 and trade_date <= end_date1
+    dts = start_date1..end_date1
+    for(oneDate in dts){
+        dateStr = temporalFormat(oneDate, "yyyyMMdd")
+        codes = getFundCodes(token)
+        codes_lists = codes.cut(codes.size()/2000 + 1)
+
+        for(code_list in codes_lists){
+            // code_list = codes_lists[0]
+            p = {"trade_date": dateStr,"ts_code":string(code_list.toStdJson()).strReplace("[","").strReplace("]","").strReplace("\"","")}
+            res = getApiData(token, api, p, cols)
+            if (!res.isVoid() and res.count() !=0){
+            
+                update res set update_time = now()
+
+                replaceColumn!(res, "ts_code", symbol(string(res.ts_code)))
+                replaceColumn!(res, "trade_date", temporalParse(string(res.trade_date), "yyyyMMdd"))
+                replaceColumn!(res, "fd_share", double(res.fd_share))
+                replaceColumn!(res, "update_time", timestamp(res.update_time))
+                
+                // 重命名 ts_code 为 code
+                rename!(res, "ts_code", "code")
+                
+                out.append!(res)
+            } 
+        }
+        print("Success append data for Table " + api + " for date: " + dateStr)
+    }
+}
+
+
+/*
+ * @Description: 基金规模数据导入
+ * @DolphinDB server version: 
+ * @Last modification time: 2026-03-24 10:52:57
+ * @dev: 
+ * @Author: tanhua
+ */
+def appendMktIdxBmk(token, start_date1, end_date1){
+    dbPath = "dfs://tushare_basic_db"
+    tableName = "mkt_idx_bmk"
+    api = "mkt_idx_bmk"
+    cols = ["ts_code","symbol","name","fullname","bmk_level","bmk_type","bmk_src","idx_type"]
+    out = loadTable(dbPath, tableName)
+    truncate(dbPath,tableName)
+    // bmk_levels = ["一类库","二类库"] 
+    bmk_levels = ["一类库"] 
+    for(one_bmk_level in bmk_levels){ // one_bmk_level = "二类库"
+       
+        p = {"bmk_levels": one_bmk_level}
+        // p = {"ts_code":"000097.SH"}
+        res = getApiData(token, api, p, cols)
+        // res2 = getApiData(token, api, p, cols)
+        if (!res.isVoid() and res.count() !=0){
+            
+            update res set update_time = now()
+            
+            // 重命名 ts_code 为 code
+            rename!(res, "ts_code", "security_id")
+            
+            out.append!(res)
+            print("Success append data for Table " + api+ " for " + one_bmk_level)
+        } else {
+            print("no data for Table " + api + " for " + one_bmk_level)
+        }
+    }
+    print("Success append data for Table " + api)
+}

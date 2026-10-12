@@ -1,0 +1,59 @@
+module DolphinDBModules::easyTLDataImport::tbSchema::dfsSchema::entrustSchema
+
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "DolphinDBModules"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+/*
+ * @FunctionName: entrustSchemaTb
+ * @Brief: Defines the schema for the entrust data table for the Shenzhen market and the Shanghai market. 
+ * @Param: isConcatTime: A boolean flag indicating whether to concatenate trade date and time into a single timestamp (true) or keep them as separate columns (false).
+ * @Return: A table schema defining the structure of the trade data table.
+ */
+def entrustSchemaTb(isConcatTime){
+	if(isConcatTime==true){
+		name = `ChannelNo`ApplSeqNum`MDStreamID`SecurityID`SecurityIDSource`Price`OrderQty`Side`TradeTime`OrderType`LocalTime`SeqNo`OrderNO`DataStatus`BizIndex`Market
+		type = [`INT, `LONG, `SYMBOL, `SYMBOL, `SYMBOL, `DOUBLE, `LONG, `SYMBOL, `TIMESTAMP, `SYMBOL, `TIME, `LONG, `LONG, `INT,`LONG, `SYMBOL]
+	}else{
+		name = `ChannelNo`ApplSeqNum`MDStreamID`SecurityID`SecurityIDSource`Price`OrderQty`Side`TradeDate`TradeTime`OrderType`LocalTime`SeqNo`OrderNO`DataStatus`BizIndex`Market
+		type = [`INT, `LONG, `SYMBOL, `SYMBOL, `SYMBOL, `DOUBLE, `LONG, `SYMBOL, `DATE, `TIME, `SYMBOL, `TIME, `LONG, `LONG, `INT,`LONG, `SYMBOL]
+	}
+	return table(1:0, name, type)
+}
+
+/*
+ * @FunctionName: entrustSchemaTbSZ
+ * @Brief: Defines the schema for the entrust data table for the Shenzhen market. 
+ * @Param: isConcatTime: A boolean flag indicating whether to concatenate trade date and time into a single timestamp (true) or keep them as separate columns (false).
+ * @Return: A table schema defining the structure of the trade data table.
+ */
+def entrustSchemaTbSZ(isConcatTime){
+	if(isConcatTime==true){
+		name = `ChannelNo`ApplSeqNum`MDStreamID`SecurityID`SecurityIDSource`Price`OrderQty`Side`TradeTime`OrderType`LocalTime`SeqNo
+		type = `INT`LONG`SYMBOL`SYMBOL`SYMBOL`DOUBLE`LONG`SYMBOL`TIMESTAMP`SYMBOL`TIME`LONG
+	}else{
+		name = `ChannelNo`ApplSeqNum`MDStreamID`SecurityID`SecurityIDSource`Price`OrderQty`Side`TradeDate`TradeTime`OrderType`LocalTime`SeqNo
+		type = `INT`LONG`SYMBOL`SYMBOL`SYMBOL`DOUBLE`LONG`SYMBOL`DATE`TIME`SYMBOL`TIME`LONG
+	}
+	return table(1:0, name, type)
+}
+
+/*
+ * @FunctionName: entrustSchemaTbSH
+ * @Brief: Defines the schema for the entrust data table for the Shanghai market. 
+ * @Param: isConcatTime: A boolean flag indicating whether to concatenate trade date and time into a single timestamp (true) or keep them as separate columns (false).
+ * @Return: A table schema defining the structure of the trade data table.
+ */
+def entrustSchemaTbSH(isConcatTime){
+	if(isConcatTime==true){
+		name = `DataStatus`ApplSeqNum`ChannelNo`SecurityID`TradeTime`OrderType`OrderNO`Price`OrderQty`Side`BizIndex`LocalTime`SeqNo
+		type = `INT`LONG`INT`SYMBOL`TIMESTAMP`SYMBOL`INT`DOUBLE`LONG`SYMBOL`LONG`TIME`LONG
+	}else{
+		name = `DataStatus`ApplSeqNum`ChannelNo`SecurityID`TradeDate`TradeTime`OrderType`OrderNO`Price`OrderQty`Side`BizIndex`LocalTime`SeqNo
+		type = `INT`LONG`INT`SYMBOL`DATE`TIME`SYMBOL`INT`DOUBLE`LONG`SYMBOL`LONG`TIME`LONG	
+	}
+	return table(1:0, name, type)
+}

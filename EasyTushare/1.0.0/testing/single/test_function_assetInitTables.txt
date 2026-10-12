@@ -1,0 +1,97 @@
+#include "setup/settings.txt"
+
+login("admin", "123456")
+use EasyTushare::TsInit
+use EasyTushare::stock::StockInit
+use EasyTushare::etf::EtfInit
+use EasyTushare::fund::FundInit
+use EasyTushare::futures::FuturesInit
+use EasyTushare::bond::BondInit
+use EasyTushare::index::IndexInit
+use EasyTushare::options::OptionsInit
+use EasyTushare::foreignExchangre::FxInit
+use EasyTushare::spot::SpotInit
+use EasyTushare::llm::LlmInit
+use EasyTushare::macroeconomics::MacroeconomicsInit
+
+createDb()
+
+// Each case uses one representative table.  InitTables([]) is intentionally
+// covered by the package integration job because it creates every table.
+@testing:case="test_stockInitTables_selected"
+if(!existsTable("dfs://tushare_basic_db", "stock_basic")){
+    stockInitTables(["stock_basic"])
+}
+assert 1, existsTable("dfs://tushare_basic_db", "stock_basic")
+assert 2, stockGetAllTableNames().size() > 0
+assert 3, "stock_basic" in stockGetAllTableNames()
+
+@testing:case="test_etfInitTables_selected"
+if(!existsTable("dfs://tushare_basic_db", "etf_basic")){
+    etfInitTables(["etf_basic"])
+}
+assert 1, existsTable("dfs://tushare_basic_db", "etf_basic")
+assert 2, "etf_basic" in etfGetAllTableNames()
+
+@testing:case="test_fundInitTables_selected"
+if(!existsTable("dfs://tushare_basic_db", "fund_basic")){
+    fundInitTables(["fund_basic"])
+}
+assert 1, existsTable("dfs://tushare_basic_db", "fund_basic")
+assert 2, "fund_basic" in fundGetAllTableNames()
+
+@testing:case="test_futuresInitTables_selected"
+if(!existsTable("dfs://tushare_basic_db", "fut_basic")){
+    futuresInitTables(["fut_basic"])
+}
+assert 1, existsTable("dfs://tushare_basic_db", "fut_basic")
+assert 2, "fut_basic" in futuresGetAllTableNames()
+
+@testing:case="test_bondInitTables_selected"
+if(!existsTable("dfs://tushare_basic_db", "cb_basic")){
+    bondInitTables(["cb_basic"])
+}
+assert 1, existsTable("dfs://tushare_basic_db", "cb_basic")
+assert 2, "cb_basic" in bondGetAllTableNames()
+
+@testing:case="test_indexInitTables_selected"
+if(!existsTable("dfs://tushare_basic_db", "index_basic")){
+    indexInitTables(["index_basic"])
+}
+assert 1, existsTable("dfs://tushare_basic_db", "index_basic")
+assert 2, "index_basic" in indexGetAllTableNames()
+
+@testing:case="test_optionsInitTables_selected"
+if(!existsTable("dfs://tushare_basic_db", "opt_basic")){
+    optionsInitTables(["opt_basic"])
+}
+assert 1, existsTable("dfs://tushare_basic_db", "opt_basic")
+assert 2, "opt_basic" in optionsGetAllTableNames()
+
+@testing:case="test_fxInitTables_selected"
+if(!existsTable("dfs://tushare_basic_db", "fx_obasic")){
+    fxInitTables(["fx_obasic"])
+}
+assert 1, existsTable("dfs://tushare_basic_db", "fx_obasic")
+assert 2, "fx_obasic" in fxGetAllTableNames()
+
+@testing:case="test_spotInitTables_selected"
+if(!existsTable("dfs://tushare_basic_db", "sge_basic")){
+    spotInitTables(["sge_basic"])
+}
+assert 1, existsTable("dfs://tushare_basic_db", "sge_basic")
+assert 2, "sge_basic" in spotGetAllTableNames()
+
+@testing:case="test_llmInitTables_selected"
+if(!existsTable("dfs://tushare_daily_db", "anns_d")){
+    llmInitTables(["anns_d"])
+}
+assert 1, existsTable("dfs://tushare_daily_db", "anns_d")
+assert 2, "anns_d" in llmGetAllTableNames()
+
+@testing:case="test_macroeconomicsInitTables_selected"
+if(!existsTable("dfs://tushare_daily_db", "shibor")){
+    macroeconomicsInitTables(["shibor"])
+}
+assert 1, existsTable("dfs://tushare_daily_db", "shibor")
+assert 2, "shibor" in macroeconomicsGetAllTableNames()

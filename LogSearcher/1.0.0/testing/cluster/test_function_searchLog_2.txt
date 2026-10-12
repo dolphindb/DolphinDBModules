@@ -1,0 +1,116 @@
+// 测试集群有节点下线的情况
+// 以下case需要手动测试
+@testing:case = "prepare"
+use LogSearcher
+go
+
+/*
+tnow = now()
+tstart = 2025.06.09 00:00:00.000
+tend = temporalAdd(tnow, 1, "d")  // 2025.06.14T11:04:52.198
+para = dict(STRING, ANY)
+para["startTime"] = tstart
+para["endTime"] = tend
+re = LogSearcher::searchLog(para)
+
+
+@testing:case = "test_function_searchLog_all_datanode_disable"
+// 将所有数据节点和计算节点下线，下面的case在controller或agent上执行
+use LogSearcher
+
+tnow = now()
+tstart = 2025.06.09 00:00:00.000
+tend = temporalAdd(tnow, 1, "d")
+para = dict(STRING, ANY)
+para["startTime"] = tstart
+para["endTime"] = tend
+para["dolphindbPath"] = dolphindbPath
+re = LogSearcher::searchLog(para)
+assert 1, re.size() > 0
+nodes = exec name from rpc(getControllerAlias(), getClusterPerf{true}) where mode != 1 and state = 1
+assert 2, distinct(re.node).sort() == (nodes join ["localhost"]).sort()
+
+tnow = now()
+tstart = 2025.06.09 00:00:00.000
+tend = temporalAdd(tnow, 1, "d")
+para = dict(STRING, ANY)
+para["startTime"] = tstart
+para["endTime"] = tend
+para["adminPassword"] = "123456"
+re = LogSearcher::searchLog(para)
+assert 1, re.size() > 0
+nodes = exec name from rpc(getControllerAlias(), getClusterPerf{true}) where mode != 1
+assert 2, distinct(re.node).sort() == (nodes join ["localhost"]).sort() 
+assert 3, distinct(re.logType).sort() == ["running", "job", "query", "audit", "aclAudit", "access", "hardware", "dmesg", "coredump"].sort()
+
+
+@testing:case = "test_function_searchLog_all_datanode_disable"
+// 将所有数据节点下线，在计算节点上执行,控制节点需要配置enableShellFunction = true
+// 不设置adminpassword
+use LogSearcher
+
+// 无adminPassword
+tnow = now()
+tstart = 2025.06.09 00:00:00.000
+tend = temporalAdd(tnow, 1, "d")
+para = dict(STRING, ANY)
+para["startTime"] = tstart
+para["endTime"] = tend
+re = LogSearcher::searchLog(para)
+assert 1, re.size() > 0
+nodes = exec name from rpc(getControllerAlias(), getClusterPerf{true}) where mode != 1 and state = 1
+assert 2, distinct(re.node).sort() == (nodes join ["localhost"]).sort() 
+assert 3, distinct(re.logType).sort() == ["running", "job", "query", "audit", "aclAudit", "access", "hardware", "dmesg", "coredump"].sort()
+
+tnow = now()
+tstart = 2025.06.09 00:00:00.000
+tend = temporalAdd(tnow, 1, "d")
+para = dict(STRING, ANY)
+para["startTime"] = tstart
+para["endTime"] = tend
+para["adminPassword"] = "123456"
+re = LogSearcher::searchLog(para)
+assert 1, re.size() > 0
+nodes = exec name from rpc(getControllerAlias(), getClusterPerf{true}) where mode != 1
+assert 2, distinct(re.node).sort() == (nodes join ["localhost"]).sort() 
+assert 3, distinct(re.logType).sort() == ["running", "job", "query", "audit", "aclAudit", "access", "hardware", "dmesg", "coredump"].sort()
+
+@testing:case = "test_function_searchLog_all_datanode_disable"
+// 将所有计算节点下线，在数据节点上执行
+use LogSearcher
+
+// 无adminPassword
+tnow = now()
+tstart = 2025.06.09 00:00:00.000
+tend = temporalAdd(tnow, 1, "d")
+para = dict(STRING, ANY)
+para["startTime"] = tstart
+para["endTime"] = tend
+re = LogSearcher::searchLog(para)
+assert 1, re.size() > 0
+nodes = exec name from rpc(getControllerAlias(), getClusterPerf{true}) where mode != 1 and state = 1
+assert 2, distinct(re.node).sort() == (nodes join ["localhost"]).sort() 
+assert 3, distinct(re.logType).sort() == ["running", "job", "query", "audit", "aclAudit", "access", "hardware", "dmesg", "coredump"].sort()
+
+// 正确adminPassword 
+para = dict(STRING, ANY)
+para["startTime"] = tstart
+para["endTime"] = tend
+para["adminPassword"] = "123456"
+re = LogSearcher::searchLog(para)
+assert 4, re.size() > 0
+nodes = exec name from rpc(getControllerAlias(), getClusterPerf{true}) where mode != 1
+assert 5, distinct(re.node).sort() == (nodes join ["localhost"]).sort() 
+assert 6, distinct(re.logType).sort() == ["running", "job", "query", "audit", "aclAudit", "access", "hardware", "dmesg", "coredump"].sort()
+
+@testing:case = "test_function_searchLog_all_datanode_disable_error_passord", exception = 1
+// 错误adminPassword
+tnow = now()
+tstart = 2025.06.09 00:00:00.000
+tend = temporalAdd(tnow, 1, "d")
+para = dict(STRING, ANY)
+para["startTime"] = tstart
+para["endTime"] = tend
+para["adminPassword"] = "admin"
+re = LogSearcher::searchLog(para)
+*/

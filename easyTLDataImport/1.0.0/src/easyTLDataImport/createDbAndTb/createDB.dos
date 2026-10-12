@@ -1,0 +1,50 @@
+module easyTLDataImport::createDbAndTb::createDB
+
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "easyTLDataImport"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+/*
+ * @FunctionName: createDb
+ * @Brief: Creates a database with the specified name.
+ * @Param: dbName: The name of the database to be created.
+ * @Param: dataSource: The type of data to be stored in the database.(e.g., TLSnapshot, TLEntrust, TLTrade)
+ * @Param: merge: A boolean flag indicating whether to merge the data from different exchanges.
+ */
+def createDb(dbName, dataSource, merge){
+    if(dataSource in ["TLSnapshot", "TLTrade", "TLEntrust"]){
+        hashNum = iif(merge==true, 50, 25)
+        db1 = database(, VALUE, 2021.01.01..2021.01.03)
+        db2 = database(, HASH, [SYMBOL, hashNum])
+        db = database(dbName, COMPO, [db1, db2], , "TSDB")
+    }
+}
+
+/*
+ * @FunctionName: createDB
+ * @Brief: Main function to create a database.
+ * @Param: dbName: The name of the database to be created.
+ * @Param: dataSource: The type of data to be stored in the database.(e.g., TLSnapshot, TLEntrust, TLTrade)
+ * @Param: initial: A boolean flag indicating whether to drop an existing database first.
+ * @Param: merge: A boolean flag indicating whether to merge the data from different exchanges.
+ */
+def createDB(dbName, dataSource, initial, merge){
+    // Check if the database already exists
+	if(existsDatabase(dbName)){
+        // If the initial flag is true, drop the existing database
+		if(initial==true)	dropDatabase(dbName)
+		else{
+            // Log a information message if the database exists and initial creation is not requested
+			errorMessage = dict(`message`code, ["[" + dbName + "] 数据库已经存在", "info"])
+            errorMessage = toStdJson(errorMessage)
+            writeLog(errorMessage)
+            print(errorMessage)
+            return 
+		}
+	}
+    // Create the database
+	createDb(dbName, dataSource, merge)
+}

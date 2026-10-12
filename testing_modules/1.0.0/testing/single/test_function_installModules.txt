@@ -1,0 +1,305 @@
+@testing:case = "test_function_installModule_syntax"
+re = syntax(installModule)
+ex = "installModule(moduleName, [serverAddr])"
+assert 1, eqObj(re, ex)
+
+@testing:case = "test_function_installModule_moduleName_int", exception = 1
+installModule(1, "test.dolphindb.cn")
+
+@testing:case = "test_function_installModule_moduleName_double", exception = 1
+installModule(1.1, "test.dolphindb.cn")
+
+@testing:case = "test_function_installModule_moduleName_date", exception = 1
+installModule(2012.01.02, "test.dolphindb.cn")
+
+@testing:case = "test_function_installModule_moduleName_string_vector", exception = 1
+installModule(["test_RiskFactors"], "test.dolphindb.cn")
+
+@testing:case = "test_function_installModule_moduleName_table", exception = 1
+installModule(table(["test_RiskFactors"] as name), "test.dolphindb.cn")
+
+@testing:case = "test_function_installModule_moduleName_dict", exception = 1
+installModule(dict(["test_RiskFactors"],["test_RiskFactors"]), "test.dolphindb.cn")
+
+@testing:case = "test_function_installModule_moduleName_NULL", exception = 1
+installModule(NULL, "test.dolphindb.cn")
+
+@testing:case = "test_function_installModule_moduleName_string()", exception = 1
+installModule(string(), "test.dolphindb.cn")
+
+@testing:case = "test_function_installModule_moduleName_notexist", exception = 1
+installModule("notexist", "test.dolphindb.cn")
+
+@testing:case = "test_function_installModule_serverAddr_int", exception = 1
+installModule("test_RiskFactors", 1)
+
+@testing:case = "test_function_installModule_serverAddr_double", exception = 1
+installModule("test_RiskFactors", 1.1)
+
+@testing:case = "test_function_installModule_serverAddr_date", exception = 1
+installModule("test_RiskFactors", 2012.01.02)
+
+@testing:case = "test_function_installModule_serverAddr_string_vector", exception = 1
+installModule("test_RiskFactors", ["test.dolphindb.cn"])
+
+@testing:case = "test_function_installModule_serverAddr_table", exception = 1
+installModule("test_RiskFactors", table(["test.dolphindb.cn"] as name))
+
+@testing:case = "test_function_installModule_serverAddr_dict", exception = 1
+installModule("test_RiskFactors", dict(["test.dolphindb.cn"],["test.dolphindb.cn"]))
+
+@testing:case = "test_function_installModule_serverAddr_string()", exception = 1
+installModule("test_RiskFactors", string())
+
+@testing:case = "test_function_installModule_serverAddr_NULL", exception = 1
+installModule("test_RiskFactors", NULL)
+
+@testing:case = "test_function_installModule_serverAddr_erroraddr", exception = 1
+installModule("test_RiskFactors", "www.baidu.com")
+
+@testing:case = "test_function_installModule_para_more", syntaxError = 1
+installModule("test_RiskFactors", "test.dolphindb.cn", 1)
+
+@testing:case = "test_function_installModule_para_less", exception = 1
+installModule()
+
+@testing:case = "test_function_installModule_clear_other_file"
+module_path = getHomeDir()+"/modules"
+// 清理付费的模块
+if(exists(module_path+"/nest")){
+	rmdir(module_path+"/nest", true)
+}
+if(exists(module_path+"/PayCatalogDom")){
+	rmdir(module_path+"/PayCatalogDom", true)
+}
+if(exists(module_path+"/PayCatalogDos")){
+	rmdir(module_path+"/PayCatalogDos", true)
+}
+if(exists(module_path+"/PaySingleDom.dom")){
+	rm(module_path+"/PaySingleDom.dom")
+}
+if(exists(module_path+"/PaySingleDos.dos")){
+	rm(module_path+"/PaySingleDos.dos")
+}
+// 清理免费的模块
+if(exists(module_path+"/RiskFactors")){
+	rmdir(module_path+"/RiskFactors", true)
+}
+if(exists(module_path+"/DolphinDBModules")){
+	rmdir(module_path+"/DolphinDBModules", true)
+}
+if(exists(module_path+"/ta.dos")){
+	rm(module_path+"/ta.dos")
+}
+if(exists(module_path+"/LogSearcher.dom")){
+	rm(module_path+"/LogSearcher.dom")
+}
+
+
+@testing:case = "test_function_installModule_payed"
+module_path = getHomeDir()+"/modules"
+installModule("nest", "test.dolphindb.cn")
+assert 1, exists(module_path+"/nest")
+assert 2, !exists(module_path+"/nest.zip")
+
+installModule("PayCatalogDom", "test.dolphindb.cn")
+assert 3, exists(module_path+"/PayCatalogDom")
+assert 4, !exists(module_path+"/PayCatalogDom.zip")
+
+installModule("PaySingleDom", "test.dolphindb.cn")
+assert 7, exists(module_path+"/PaySingleDom.dom")
+assert 8, !exists(module_path+"/PaySingleDom.zip")
+
+@testing:case = "test_function_installModule_free"
+// 单个dom
+installModule("LogSearcher", "test.dolphindb.cn")
+assert 1, exists(module_path+"/LogSearcher.dom")
+assert 2, !exists(module_path+"/LogSearcher.zip")
+// 单个dos
+installModule("ta", "test.dolphindb.cn")
+assert 3, exists(module_path+"/ta.dos")
+assert 4, !exists(module_path+"/ta.zip")
+// 目录dom
+installModule("test_RiskFactors", "test.dolphindb.cn")
+assert 5, exists(module_path+"/RiskFactors")
+assert 6, !exists(module_path+"/RiskFactors.zip")
+// 目录dos
+installModule("DolphinDBModules", "test.dolphindb.cn")
+assert 7, exists(module_path+"/DolphinDBModules")
+assert 8, !exists(module_path+"/DolphinDBModules.zip")
+
+
+@testing:case = "test_function_installModule_payed_install_again"
+module_path = getHomeDir()+"/modules"
+installModule("nest", "test.dolphindb.cn")
+assert 1, exists(module_path+"/nest")
+assert 2, !exists(module_path+"/nest.zip")
+
+installModule("PayCatalogDom", "test.dolphindb.cn")
+assert 3, exists(module_path+"/PayCatalogDom")
+assert 4, !exists(module_path+"/PayCatalogDom.zip")
+
+installModule("PaySingleDom", "test.dolphindb.cn")
+assert 7, exists(module_path+"/PaySingleDom.dom")
+assert 8, !exists(module_path+"/PaySingleDom.zip")
+
+@testing:case = "test_function_installModule_free_install_again"
+// 单个dom
+installModule("LogSearcher", "test.dolphindb.cn")
+assert 1, exists(module_path+"/LogSearcher.dom")
+assert 2, !exists(module_path+"/LogSearcher.zip")
+// 单个dos
+installModule("ta", "test.dolphindb.cn")
+assert 3, exists(module_path+"/ta.dos")
+assert 4, !exists(module_path+"/ta.zip")
+// 目录dom
+installModule("test_RiskFactors", "test.dolphindb.cn")
+assert 5, exists(module_path+"/RiskFactors")
+assert 6, !exists(module_path+"/RiskFactors.zip")
+// 目录dos
+installModule("DolphinDBModules", "test.dolphindb.cn")
+assert 7, exists(module_path+"/DolphinDBModules")
+assert 8, !exists(module_path+"/DolphinDBModules.zip")
+clearCachedModules()
+go
+use ta
+
+@testing:case = "test_function_installModule_then_use_free"
+clearCachedModules()
+go
+// 单文件
+use ta
+go
+use LogSearcher
+go
+re = select * from getLoadedModules() order by moduleName
+modname = ["ta", "LogSearcher"]
+modversion = ["1.0.0", "1.0.0"]
+modisfree = [true, true]
+ex = table(modname, modversion, modisfree)
+ex = select * from ex order by modname
+assert 1, each(eqObj, re.values(), ex.values())
+go
+
+// 目录文件
+use DolphinDBModules::easyTLDataImport::createDbAndTb::createTB
+use RiskFactors::helper::createTB
+go
+re = select * from getLoadedModules() order by moduleName
+modname = ["ta", "LogSearcher", "DolphinDBModules", "RiskFactors"]
+modversion = ["1.0.0", "1.0.0", "1.0.0", ""]
+modisfree = [true, true, true, true]
+ex = table(modname, modversion, modisfree)
+ex = select * from ex order by modname
+assert 2, each(eqObj, re.values(), ex.values())
+
+
+@testing:case = "test_function_installModule_then_use_pay"
+use nest::free
+use PayCatalogDom::easyNSQ
+use PayCatalogDom::PayFile::testPrint2::testPrint::testPrint
+use PaySingleDom
+go
+re = select * from getLoadedModules() order by moduleName
+modname = ["ta", "LogSearcher", "DolphinDBModules", "RiskFactors", "nest", "PayCatalogDom", "PaySingleDom"]
+modversion = ["1.0.0", "1.0.0", "1.0.0", "", "1.1.1", "2.1.0", "1.1.2"]
+modisfree = [true, true, true, true, false, false, false]
+ex = table(modname, modversion, modisfree)
+ex = select * from ex order by modname
+assert 1, each(eqObj, re.values(), ex.values())
+
+
+@testing:case = "test_function_installModule_check_defs"
+re = select * from defs() where name like "%module_info%"
+assert 1, re.size() == 0
+// check free module
+re = select * from defs() where name like "%ta:%" or name like "%LogSearcher:%" or name like "%DolphinDBModules:%"
+assert 2, re.size() == 106
+// check payed module
+re = select * from defs() where name like "%PayCatalogDom:%" or name like "%nest:%"
+assert 3, re.size() == 4
+
+
+@testing:case = "test_function_installModule_multijob"
+def myJob(modname){
+	for(i in 1..100){
+		installModule(modname, "test.dolphindb.cn")
+	}
+}
+
+module_path = getHomeDir()+"/modules"
+if(exists(module_path+"/nest")){
+	rmdir(module_path+"/nest", true)
+}
+if(exists(module_path+"/PayCatalogDom")){
+	rmdir(module_path+"/PayCatalogDom", true)
+}
+if(exists(module_path+"/DolphinDBModules")){
+	rmdir(module_path+"/DolphinDBModules", true)
+}
+if(exists(module_path+"/ta.dos")){
+	rm(module_path+"/ta.dos")
+}
+if(exists(module_path+"/LogSearcher.dom")){
+	rm(module_path+"/LogSearcher.dom")
+}
+assert 1, !exists(module_path+"/nest")
+assert 2, !exists(module_path+"/PayCatalogDom")
+assert 3, !exists(module_path+"/DolphinDBModules")
+assert 4, !exists(module_path+"/ta.dos")
+assert 5, !exists(module_path+"/LogSearcher.dom")
+
+jobids = array(STRING, 0, 1)
+modnamelist = ["nest", "PayCatalogDom", "DolphinDBModules", "ta", "LogSearcher"]
+for(i in 1..5){
+	jobid = submitJob("installModule_job", "installModule job", myJob, modnamelist[i-1])
+	jobids.append!(jobid)
+}
+for(jobid in jobids){
+	getJobReturn(jobid, true)
+}
+assert 6, exists(module_path+"/nest")
+assert 7, exists(module_path+"/PayCatalogDom")
+assert 8, exists(module_path+"/DolphinDBModules")
+assert 9, exists(module_path+"/ta.dos")
+assert 10, exists(module_path+"/LogSearcher.dom")
+
+
+@testing:case = "test_function_installModule_functionview"
+module_path = getHomeDir()+"/modules"
+if(exists(module_path+"/nest")){
+	rmdir(module_path+"/nest", true)
+}
+assert 1, !exists(module_path+"/nest")
+
+def myJob(modname){
+	installModule(modname, "test.dolphindb.cn")
+}
+try{dropFunctionView(`myJob)}catch(exp){print(exp)}
+addFunctionView(myJob)
+undef(`myJob)
+go
+myJob("nest")
+assert 2, exists(module_path+"/nest")
+
+@testing:case = "test_installModule_noAth_pay_use", syntaxError = 1
+module_path = getHomeDir()+"/modules"
+if(exists(module_path+"/PayCatalogDos")){
+	rmdir(module_path+"/PayCatalogDos", true)
+}
+installModule("PayCatalogDos", "test.dolphindb.cn")
+use PayCatalogDos::easyNSQ
+
+@testing:case = "test_installModule_nest_noAth_pay_use", syntaxError = 1
+use useNoAth
+
+@testing:case = "test_getLoadedModules_noAth_pay_use"
+re = select * from getLoadedModules() where moduleName = "PayCatalogDos"
+assert 1, re.size() ==0
+re = select * from defs() where name like "%PayCatalogDos%"
+assert 2, re.size() ==0
+
+
+
+
+

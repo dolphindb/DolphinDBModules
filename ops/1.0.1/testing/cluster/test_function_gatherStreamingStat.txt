@@ -1,0 +1,67 @@
+
+use ops
+
+login("admin", "123456")
+
+@testing:case="test_function_gatherStreamingStat_local"
+if(exists(getHomeDir()+"/tmp")==false){
+	mkdir(getHomeDir()+"/tmp")
+}
+
+share streamTable(10000:0, `timestamp`sym`val, [TIMESTAMP, SYMBOL, INT]) as st
+share streamTable(10000:0, `timestamp`sym`val, [TIMESTAMP, SYMBOL, INT]) as st_slave1
+share streamTable(10000:0, `timestamp`sym`val, [TIMESTAMP, SYMBOL, INT]) as st_slave2
+share streamTable(10000:0, `timestamp`sym`val, [TIMESTAMP, SYMBOL, INT]) as st_slave3
+share streamTable(10000:0, `timestamp`sym`val, [TIMESTAMP, SYMBOL, INT]) as st_slave4
+
+subscribeTable(tableName = "st", actionName = "sub1", handler = append!{st_slave1}, msgAsTable = true)
+subscribeTable(tableName = "st", actionName = "sub2", handler = append!{st_slave2}, msgAsTable = true)
+subscribeTable(tableName = "st", actionName = "sub3", handler = append!{st_slave3}, msgAsTable = true)
+subscribeTable(tableName = "st", actionName = "sub4", handler = append!{st_slave4}, msgAsTable = true)
+
+n = 10000
+data = table(take(now(), n) as timestamp, take("A"+string(1..100), n) as sym, 1..n as val)
+st.append!(data)
+
+ops::gatherStreamingStat(getNodeAlias(), 30, 5, getHomeDir()+"/tmp")
+
+re = loadText(getHomeDir()+"/tmp/sub_worker_statis.csv")
+assert 1, re.size()>=4
+
+unsubscribeTable(tableName = "st", actionName = "sub1")
+unsubscribeTable(tableName = "st", actionName = "sub2")
+unsubscribeTable(tableName = "st", actionName = "sub3")
+unsubscribeTable(tableName = "st", actionName = "sub4")
+
+@testing:case="test_function_gatherStreamingStat_remote"
+if(exists(getHomeDir()+"/tmp")==false){
+	mkdir(getHomeDir()+"/tmp")
+}
+
+share streamTable(10000:0, `timestamp`sym`val, [TIMESTAMP, SYMBOL, INT]) as st
+
+def prepareSubscriber(nodeAlias, tableName){
+	share(streamTable(10000:0, `timestamp`sym`val, [TIMESTAMP, SYMBOL, INT]), tableName)
+	subscribeTable(server=nodeAlias, tableName = "st", actionName = "sub_"+tableName, handler = append!{objByName(tableName)}, msgAsTable = true)
+}
+
+NODE1 = getNodeAlias()
+NODE2 = (exec name from rpc(getControllerAlias(), getClusterPerf) where name!=NODE1 and mode!=1)[0]
+rpc(NODE2, prepareSubscriber, NODE1, "st_slave1")
+rpc(NODE2, prepareSubscriber, NODE1, "st_slave2")
+rpc(NODE2, prepareSubscriber, NODE1, "st_slave3")
+rpc(NODE2, prepareSubscriber, NODE1, "st_slave4")
+
+n = 10000
+data = table(take(now(), n) as timestamp, take("A"+string(1..100), n) as sym, 1..n as val)
+st.append!(data)
+
+ops::gatherStreamingStat(NODE2, 30, 5, getHomeDir()+"/tmp")
+
+re = loadText(getHomeDir()+"/tmp/sub_worker_statis.csv")
+assert 1, re.size()>=4
+
+rpc(NODE2, unsubscribeTable, NODE1, "st", "sub_st_slave1")
+rpc(NODE2, unsubscribeTable, NODE1, "st", "sub_st_slave2")
+rpc(NODE2, unsubscribeTable, NODE1, "st", "sub_st_slave3")
+rpc(NODE2, unsubscribeTable, NODE1, "st", "sub_st_slave4")

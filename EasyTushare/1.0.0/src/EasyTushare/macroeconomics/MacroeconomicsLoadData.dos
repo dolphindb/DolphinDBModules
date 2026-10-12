@@ -1,0 +1,1233 @@
+module EasyTushare::macroeconomics::MacroeconomicsLoadData
+
+/* 
+*  @Brief: 宏观经济数据单个表导入函数模块
+*  @Author: DolphinDB
+*  @Last modification time: 2026.03.31
+*  @DolphinDB server version: 3.00.5 2026.02.06 LINUX x86_64
+*/
+use EasyTushare::TsInit
+/*
+*  @FunctionName: module_info
+*  @Brief: 模块信息,一个相同模块dir下的每个dos都需要有module_info函数,且是相同的
+*  @Param: None
+*  @Return: dict
+*  @SampleUsage: module_info()
+*/
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "EasyTushare"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+
+/*
+ * @Description: Tushare API shibor data import
+ * @DolphinDB server version:
+ * @Last modification time: 2026-04-02 16:00:00
+ * @dev:
+ * @Author: codex
+ */
+def appendShibor(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "shibor"
+    api = "shibor"
+    cols = [
+        "date",
+        "on",
+        "1w",
+        "2w",
+        "1m",
+        "3m",
+        "6m",
+        "9m",
+        "1y"
+    ]
+    ddbCols = [
+        "date",
+        "on",
+        "w1",
+        "w2",
+        "m1",
+        "m3",
+        "m6",
+        "m9",
+        "y1"
+    ]
+    out = loadTable(dbPath, tableName)
+
+    // 处理时间范围，每个股票一年读取一次
+    // start_date = 2026.01.01
+    days = start_date..end_date
+    yearBeginDays = yearBegin(days).distinct().sort!()
+    for (oneDate in yearBeginDays){  
+        // oneDate = yearBeginDays[0]
+        startDateStr =  temporalFormat(max(oneDate, start_date), "yyyyMMdd")
+        endDateStr = temporalFormat(min(yearEnd(oneDate), end_date), "yyyyMMdd")
+        p = {start_date:startDateStr, end_date:endDateStr}
+        logRange = startDateStr + " -> " + endDateStr
+        
+        delete from out where trade_date in  [max(oneDate, start_date), min(yearEnd(oneDate), end_date)]
+
+        res = getApiData(token, api, p, cols, ddbCols)
+        
+        if(!res.isVoid() and res.count() != 0){
+            update res set update_time = now()
+            replaceColumn!(res, "date", temporalParse(string(res["date"]), "yyyyMMdd"))
+            replaceColumn!(res, "on", double(res["on"]))
+            replaceColumn!(res, "w1", double(res["w1"]))
+            replaceColumn!(res, "w2", double(res["w2"]))
+            replaceColumn!(res, "m1", double(res["m1"]))
+            replaceColumn!(res, "m3", double(res["m3"]))
+            replaceColumn!(res, "m6", double(res["m6"]))
+            replaceColumn!(res, "m9", double(res["m9"]))
+            replaceColumn!(res, "y1", double(res["y1"]))
+            replaceColumn!(res, "update_time", timestamp(res["update_time"]))
+            out.append!(res)
+            print("Success append data for Table " + api + " for range: " + logRange)
+        } else {
+            print("no data for Table " + api + " for range: " + logRange)
+        }
+    }
+}
+
+// ===== FILE: appendShiborQuote.dos =====
+/*
+ * @Description: Tushare API shibor_quote data import
+ * @DolphinDB server version:
+ * @Last modification time: 2026-04-02 16:00:00
+ * @dev:
+ * @Author: codex
+ */
+def appendShiborQuote(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "shibor_quote"
+    api = "shibor_quote"
+    cols = [
+        "date",
+        "bank",
+        "on_b",
+        "on_a",
+        "1w_b",
+        "1w_a",
+        "2w_b",
+        "2w_a",
+        "1m_b",
+        "1m_a",
+        "3m_b",
+        "3m_a",
+        "6m_b",
+        "6m_a",
+        "9m_b",
+        "9m_a",
+        "1y_b",
+        "1y_a"
+    ]
+    ddbCols = [
+        "date",
+        "bank",
+        "on_b",
+        "on_a",
+        "w_b1",
+        "w_a1",
+        "w_b2",
+        "w_a2",
+        "m_b1",
+        "m_a1",
+        "m_b3",
+        "m_a3",
+        "m_b6",
+        "m_a6",
+        "m_b9",
+        "m_a9",
+        "y_b1",
+        "y_a1"
+    ]
+    out = loadTable(dbPath, tableName)
+
+     // 处理时间范围，每个股票一年读取一次
+    days = start_date..end_date
+    monthBeginDays = monthBegin(days).distinct().sort!()
+    for (oneDate in days){  
+        // oneDate = monthBeginDays[10]
+        startDateStr =  temporalFormat(max(oneDate, start_date), "yyyyMMdd")
+        endDateStr = temporalFormat(min(yearEnd(oneDate), end_date), "yyyyMMdd")
+        p = {start_date:startDateStr, end_date:endDateStr}
+        logRange = startDateStr + " -> " + endDateStr
+        delete from out where trade_date in  [max(oneDate, start_date), min(yearEnd(oneDate), end_date)]
+
+        res = getApiData(token, api, p, cols, ddbCols)
+        if(res.count()==4000){
+            throw("API " + api + " for range: " + logRange + " reaches the limit of 4000 records, please narrow down the date range and try again.")
+        }
+        if(!res.isVoid() and res.count() != 0){
+            update res set update_time = now()
+            replaceColumn!(res, "date", temporalParse(string(res["date"]), "yyyyMMdd"))
+            replaceColumn!(res, "bank", symbol(string(res["bank"])))
+            replaceColumn!(res, "on_b", double(res["on_b"]))
+            replaceColumn!(res, "on_a", double(res["on_a"]))
+            replaceColumn!(res, "w_b1", double(res["w_b1"]))
+            replaceColumn!(res, "w_a1", double(res["w_a1"]))
+            replaceColumn!(res, "w_b2", double(res["w_b2"]))
+            replaceColumn!(res, "w_a2", double(res["w_a2"]))
+            replaceColumn!(res, "m_b1", double(res["m_b1"]))
+            replaceColumn!(res, "m_a1", double(res["m_a1"]))
+            replaceColumn!(res, "m_b3", double(res["m_b3"]))
+            replaceColumn!(res, "m_a3", double(res["m_a3"]))
+            replaceColumn!(res, "m_b6", double(res["m_b6"]))
+            replaceColumn!(res, "m_a6", double(res["m_a6"]))
+            replaceColumn!(res, "m_b9", double(res["m_b9"]))
+            replaceColumn!(res, "m_a9", double(res["m_a9"]))
+            replaceColumn!(res, "y_b1", double(res["y_b1"]))
+            replaceColumn!(res, "y_a1", double(res["y_a1"]))
+            replaceColumn!(res, "update_time", timestamp(res["update_time"]))
+            out.append!(res)
+            print("Success append data for Table " + api + " for range: " + logRange)
+        } else {
+            print("no data for Table " + api + " for range: " + logRange)
+        }
+    }
+}
+
+/*
+ * @Description: Tushare API shibor_lpr data import
+ * @DolphinDB server version:
+ * @Last modification time: 2026-04-02 16:00:00
+ * @dev:
+ * @Author: codex
+ */
+def appendShiborLpr(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "shibor_lpr"
+    api = "shibor_lpr"
+    cols = [
+        "date",
+        "1y",
+        "5y"
+    ]
+    ddbCols = [
+        "date",
+        "y1",
+        "y5"
+    ]
+    out = loadTable(dbPath, tableName)
+    startDateStr = temporalFormat(start_date, "yyyyMMdd")
+    endDateStr = temporalFormat(end_date, "yyyyMMdd")
+    p = {start_date:startDateStr, end_date:endDateStr}
+    logRange = startDateStr + " -> " + endDateStr
+    delete from out where trade_date in  start_date..end_date
+
+    res = getApiData(token, api, p, cols, ddbCols)
+    if(!res.isVoid() and res.count() != 0){
+        update res set update_time = now()
+        replaceColumn!(res, "date", temporalParse(string(res["date"]), "yyyyMMdd"))
+        replaceColumn!(res, "y1", double(res["y1"]))
+        replaceColumn!(res, "y5", double(res["y5"]))
+        replaceColumn!(res, "update_time", timestamp(res["update_time"]))
+        out.append!(res)
+        print("Success append data for Table " + api + " for range: " + logRange)
+    } else {
+        print("no data for Table " + api + " for range: " + logRange)
+    }
+}
+
+
+/*
+ * @Description: Tushare API libor data import
+ * @DolphinDB server version:
+ * @Last modification time: 2026-04-02 16:00:00
+ * @dev:
+ * @Author: codex
+ */
+def appendLibor(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "libor"
+    api = "libor"
+    cols = [
+        "date",
+        "curr_type",
+        "on",
+        "1w",
+        "1m",
+        "2m",
+        "3m",
+        "6m",
+        "12m"
+    ]
+    ddbCols = [
+        "date",
+        "curr_type",
+        "on",
+        "w1",
+        "m1",
+        "m2",
+        "m3",
+        "m6",
+        "m12"
+    ]
+    out = loadTable(dbPath, tableName)
+    // select count(*) from loadTable(dbPath, tableName) group by trade_date order by trade_date desc 
+    days = start_date..end_date
+    yearBeginDays = yearBegin(days).distinct().sort!()
+    for (oneDate in yearBeginDays){  
+        // oneDate = yearBeginDays[10]
+        delete from out where trade_date in  [max(oneDate, start_date), min(yearEnd(oneDate), end_date)]
+
+        startDateStr =  temporalFormat(max(oneDate, start_date), "yyyyMMdd")
+        endDateStr = temporalFormat(min(yearEnd(oneDate), end_date), "yyyyMMdd")
+
+        p = {start_date:startDateStr, end_date:endDateStr}
+        logRange = startDateStr + " -> " + endDateStr
+        
+        res = getApiData(token, api, p, cols, ddbCols)
+        if(res.count()==4000){
+            throw("API " + api + " for range: " + logRange + " reaches the limit of 4000 records, please narrow down the date range and try again.")
+        }
+        if(!res.isVoid() and res.count() != 0){
+            update res set update_time = now()
+            replaceColumn!(res, "date", temporalParse(string(res["date"]), "yyyyMMdd"))
+            replaceColumn!(res, "curr_type", symbol(string(res["curr_type"])))
+            replaceColumn!(res, "on", double(res["on"]))
+            replaceColumn!(res, "w1", double(res["w1"]))
+            replaceColumn!(res, "m1", double(res["m1"]))
+            replaceColumn!(res, "m2", double(res["m2"]))
+            replaceColumn!(res, "m3", double(res["m3"]))
+            replaceColumn!(res, "m6", double(res["m6"]))
+            replaceColumn!(res, "m12", double(res["m12"]))
+            replaceColumn!(res, "update_time", timestamp(res["update_time"]))
+            out.append!(res)
+            print("Success append data for Table " + api + " for range: " + logRange)
+        } else {
+            print("no data for Table " + api + " for range: " + logRange)
+        }
+    }
+}
+
+/*
+ * @Description: Tushare API hibor data import
+ * @DolphinDB server version:
+ * @Last modification time: 2026-04-02 16:00:00
+ * @dev:
+ * @Author: codex
+ */
+def appendHibor(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "hibor"
+    api = "hibor"
+    cols = [
+        "date",
+        "on",
+        "1w",
+        "2w",
+        "1m",
+        "2m",
+        "3m",
+        "6m",
+        "12m"
+    ]
+    ddbCols = [
+        "date",
+        "on",
+        "w1",
+        "w2",
+        "m1",
+        "m2",
+        "m3",
+        "m6",
+        "m12"
+    ]
+    out = loadTable(dbPath, tableName)
+
+    days = start_date..end_date
+    yearBeginDays = yearBegin(days).distinct().sort!()
+    for (oneDate in yearBeginDays){  
+        // oneDate = yearBeginDays[10]
+        delete from out where trade_date in  [max(oneDate, start_date), min(yearEnd(oneDate), end_date)]
+        startDateStr =  temporalFormat(max(oneDate, start_date), "yyyyMMdd")
+        endDateStr = temporalFormat(min(yearEnd(oneDate), end_date), "yyyyMMdd")
+        p = {start_date:startDateStr, end_date:endDateStr}
+        logRange = startDateStr + " -> " + endDateStr
+
+        res = getApiData(token, api, p, cols, ddbCols)
+
+        if(res.count()==4000){
+            throw("API " + api + " for range: " + logRange + " reaches the limit of 4000 records, please narrow down the date range and try again.")
+        }
+        if(!res.isVoid() and res.count() != 0){
+            update res set update_time = now()
+            replaceColumn!(res, "date", temporalParse(string(res["date"]), "yyyyMMdd"))
+            replaceColumn!(res, "on", double(res["on"]))
+            replaceColumn!(res, "w1", double(res["w1"]))
+            replaceColumn!(res, "w2", double(res["w2"]))
+            replaceColumn!(res, "m1", double(res["m1"]))
+            replaceColumn!(res, "m2", double(res["m2"]))
+            replaceColumn!(res, "m3", double(res["m3"]))
+            replaceColumn!(res, "m6", double(res["m6"]))
+            replaceColumn!(res, "m12", double(res["m12"]))
+            replaceColumn!(res, "update_time", timestamp(res["update_time"]))
+            out.append!(res)
+            print("Success append data for Table " + api + " for range: " + logRange)
+        } else {
+            print("no data for Table " + api + " for range: " + logRange)
+        }
+    }
+}
+
+/*
+ * @Description: Tushare API wz_index data import
+ * @DolphinDB server version:
+ * @Last modification time: 2026-04-02 16:00:00
+ * @dev:
+ * @Author: codex
+ */
+def appendWzIndex(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "wz_index"
+    api = "wz_index"
+    cols = [
+        "date",
+        "comp_rate",
+        "center_rate",
+        "micro_rate",
+        "cm_rate",
+        "sdb_rate",
+        "om_rate",
+        "aa_rate",
+        "m1_rate",
+        "m3_rate",
+        "m6_rate",
+        "m12_rate",
+        "long_rate"
+    ]
+    out = loadTable(dbPath, tableName)
+    p = {}
+    delete from out
+    res = getApiData(token, api, p, cols)
+    if(!res.isVoid() and res.count() != 0){
+        update res set update_time = now()
+        replaceColumn!(res, "date", temporalParse(string(res["date"]), "yyyyMMdd"))
+        replaceColumn!(res, "comp_rate", double(res["comp_rate"]))
+        replaceColumn!(res, "center_rate", double(res["center_rate"]))
+        replaceColumn!(res, "micro_rate", double(res["micro_rate"]))
+        replaceColumn!(res, "cm_rate", double(res["cm_rate"]))
+        replaceColumn!(res, "sdb_rate", double(res["sdb_rate"]))
+        replaceColumn!(res, "om_rate", double(res["om_rate"]))
+        replaceColumn!(res, "aa_rate", double(res["aa_rate"]))
+        replaceColumn!(res, "m1_rate", double(res["m1_rate"]))
+        replaceColumn!(res, "m3_rate", double(res["m3_rate"]))
+        replaceColumn!(res, "m6_rate", double(res["m6_rate"]))
+        replaceColumn!(res, "m12_rate", double(res["m12_rate"]))
+        replaceColumn!(res, "long_rate", double(res["long_rate"]))
+        replaceColumn!(res, "update_time", timestamp(res["update_time"]))
+        out.append!(res)
+        print("Success append data for Table " + api )
+    } else {
+        print("no data for Table " + api )
+    }
+}
+
+/*
+ * @Description: Tushare API gz_index data import
+ * @DolphinDB server version:
+ * @Last modification time: 2026-04-02 16:00:00
+ * @dev:
+ * @Author: codex
+ */
+def appendGzIndex(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "gz_index"
+    api = "gz_index"
+    cols = [
+        "date",
+        "d10_rate",
+        "m1_rate",
+        "m3_rate",
+        "m6_rate",
+        "m12_rate",
+        "long_rate"
+    ]
+    out = loadTable(dbPath, tableName)
+    delete from out 
+    p = {}
+    res = getApiData(token, api, p, cols)
+    if(!res.isVoid() and res.count() != 0){
+        update res set update_time = now()
+        replaceColumn!(res, "date", temporalParse(string(res["date"]), "yyyyMMdd"))
+        replaceColumn!(res, "d10_rate", double(res["d10_rate"]))
+        replaceColumn!(res, "m1_rate", double(res["m1_rate"]))
+        replaceColumn!(res, "m3_rate", double(res["m3_rate"]))
+        replaceColumn!(res, "m6_rate", double(res["m6_rate"]))
+        replaceColumn!(res, "m12_rate", double(res["m12_rate"]))
+        replaceColumn!(res, "long_rate", double(res["long_rate"]))
+        replaceColumn!(res, "update_time", timestamp(res["update_time"]))
+        out.append!(res)
+        print("Success append data for Table " + api )
+    } else {
+        print("no data for Table " + api)
+    }
+}
+
+/*
+ * @Description: Tushare API cn_gdp data import
+ * @DolphinDB server version:
+ * @Last modification time: 2026-04-02 16:00:00
+ * @dev:
+ * @Author: codex
+ */
+def appendCnGdp(token, start_date, end_date){
+    dbPath = "dfs://tushare_basic_db"
+    tableName = "cn_gdp"
+    api = "cn_gdp"
+    cols = [
+        "quarter",
+        "gdp",
+        "gdp_yoy",
+        "pi",
+        "pi_yoy",
+        "si",
+        "si_yoy",
+        "ti",
+        "ti_yoy"
+    ]
+    out = loadTable(dbPath, tableName)
+
+    // 每天全量导入，所以 startYear 固定为2000， 总数据量大致为245条
+    startYear = temporalFormat(2000.01.01, "yyyy")
+    endYear = temporalFormat(end_date, "yyyy")
+    startMonthNum = int(temporalFormat(start_date, "MM"))
+    endMonthNum = int(temporalFormat(end_date, "MM"))
+    startQuarter = startYear + "Q" + string(int((startMonthNum - 1) / 3) + 1)
+    endQuarter = endYear + "Q" + string(int((endMonthNum - 1) / 3) + 1)
+    p = {start_q:startQuarter, end_q:endQuarter}
+    logRange = startQuarter + " -> " + endQuarter
+
+    delete from out 
+
+    res = getApiData(token, api, p, cols)
+    if(!res.isVoid() and res.count() != 0){
+        update res set update_time = now()
+        replaceColumn!(res, "quarter", string(res["quarter"]))
+        replaceColumn!(res, "gdp", double(res["gdp"]))
+        replaceColumn!(res, "gdp_yoy", double(res["gdp_yoy"]))
+        replaceColumn!(res, "pi", double(res["pi"]))
+        replaceColumn!(res, "pi_yoy", double(res["pi_yoy"]))
+        replaceColumn!(res, "si", double(res["si"]))
+        replaceColumn!(res, "si_yoy", double(res["si_yoy"]))
+        replaceColumn!(res, "ti", double(res["ti"]))
+        replaceColumn!(res, "ti_yoy", double(res["ti_yoy"]))
+        replaceColumn!(res, "update_time", timestamp(res["update_time"]))
+        out.append!(res)
+        print("Success append data for Table " + api + " for range: " + logRange)
+    } else {
+        print("no data for Table " + api + " for range: " + logRange)
+    }
+}
+
+/*
+ * @Description: Tushare API cn_cpi data import
+ * @DolphinDB server version:
+ * @Last modification time: 2026-04-02 16:00:00
+ * @dev:
+ * @Author: codex
+ */
+def appendCnCpi(token, start_date, end_date){
+    dbPath = "dfs://tushare_basic_db"
+    tableName = "cn_cpi"
+    api = "cn_cpi"
+    cols = [
+        "month",
+        "nt_val",
+        "nt_yoy",
+        "nt_mom",
+        "nt_accu",
+        "town_val",
+        "town_yoy",
+        "town_mom",
+        "town_accu",
+        "cnt_val",
+        "cnt_yoy",
+        "cnt_mom",
+        "cnt_accu"
+    ]
+    out = loadTable(dbPath, tableName)
+
+    startMonth = temporalFormat(start_date, "yyyyMM")
+    endMonth = temporalFormat(end_date, "yyyyMM")
+    p = {start_m:startMonth, end_m:endMonth}
+    logRange = startMonth + " -> " + endMonth
+    delete from out where trade_month in [month(start_date), month(end_date)]
+
+    res = getApiData(token, api, p, cols)
+    if(!res.isVoid() and res.count() != 0){
+        update res set update_time = now()
+        replaceColumn!(res, "month", month(temporalParse(string(res["month"]), "yyyyMM")))
+        replaceColumn!(res, "nt_val", double(res["nt_val"]))
+        replaceColumn!(res, "nt_yoy", double(res["nt_yoy"]))
+        replaceColumn!(res, "nt_mom", double(res["nt_mom"]))
+        replaceColumn!(res, "nt_accu", double(res["nt_accu"]))
+        replaceColumn!(res, "town_val", double(res["town_val"]))
+        replaceColumn!(res, "town_yoy", double(res["town_yoy"]))
+        replaceColumn!(res, "town_mom", double(res["town_mom"]))
+        replaceColumn!(res, "town_accu", double(res["town_accu"]))
+        replaceColumn!(res, "cnt_val", double(res["cnt_val"]))
+        replaceColumn!(res, "cnt_yoy", double(res["cnt_yoy"]))
+        replaceColumn!(res, "cnt_mom", double(res["cnt_mom"]))
+        replaceColumn!(res, "cnt_accu", double(res["cnt_accu"]))
+        replaceColumn!(res, "update_time", timestamp(res["update_time"]))
+        out.append!(res)
+        print("Success append data for Table " + api + " for range: " + logRange)
+    } else {
+        print("no data for Table " + api + " for range: " + logRange)
+    }
+}
+
+/*
+ * @Description: Tushare API cn_ppi data import
+ * @DolphinDB server version:
+ * @Last modification time: 2026-04-02 16:00:00
+ * @dev:
+ * @Author: codex
+ */
+def appendCnPpi(token, start_date, end_date){
+    dbPath = "dfs://tushare_basic_db"
+    tableName = "cn_ppi"
+    api = "cn_ppi"
+    cols = [
+        "month",
+        "ppi_yoy",
+        "ppi_mp_yoy",
+        "ppi_mp_qm_yoy",
+        "ppi_mp_rm_yoy",
+        "ppi_mp_p_yoy",
+        "ppi_cg_yoy",
+        "ppi_cg_f_yoy",
+        "ppi_cg_c_yoy",
+        "ppi_cg_adu_yoy",
+        "ppi_cg_dcg_yoy",
+        "ppi_mom",
+        "ppi_mp_mom",
+        "ppi_mp_qm_mom",
+        "ppi_mp_rm_mom",
+        "ppi_mp_p_mom",
+        "ppi_cg_mom",
+        "ppi_cg_f_mom",
+        "ppi_cg_c_mom",
+        "ppi_cg_adu_mom",
+        "ppi_cg_dcg_mom",
+        "ppi_accu",
+        "ppi_mp_accu",
+        "ppi_mp_qm_accu",
+        "ppi_mp_rm_accu",
+        "ppi_mp_p_accu",
+        "ppi_cg_accu",
+        "ppi_cg_f_accu",
+        "ppi_cg_c_accu",
+        "ppi_cg_adu_accu",
+        "ppi_cg_dcg_accu"
+    ]
+    out = loadTable(dbPath, tableName)
+
+    startMonth = temporalFormat(start_date, "yyyyMM")
+    endMonth = temporalFormat(end_date, "yyyyMM")
+    p = {start_m:startMonth, end_m:endMonth}
+    logRange = startMonth + " -> " + endMonth
+
+    delete from out where trade_month in [month(start_date), month(end_date)]
+
+    res = getApiData(token, api, p, cols)
+    if(!res.isVoid() and res.count() != 0){
+        update res set update_time = now()
+        replaceColumn!(res, "month", month(temporalParse(string(res["month"]), "yyyyMM")))
+        replaceColumn!(res, "ppi_yoy", double(res["ppi_yoy"]))
+        replaceColumn!(res, "ppi_mp_yoy", double(res["ppi_mp_yoy"]))
+        replaceColumn!(res, "ppi_mp_qm_yoy", double(res["ppi_mp_qm_yoy"]))
+        replaceColumn!(res, "ppi_mp_rm_yoy", double(res["ppi_mp_rm_yoy"]))
+        replaceColumn!(res, "ppi_mp_p_yoy", double(res["ppi_mp_p_yoy"]))
+        replaceColumn!(res, "ppi_cg_yoy", double(res["ppi_cg_yoy"]))
+        replaceColumn!(res, "ppi_cg_f_yoy", double(res["ppi_cg_f_yoy"]))
+        replaceColumn!(res, "ppi_cg_c_yoy", double(res["ppi_cg_c_yoy"]))
+        replaceColumn!(res, "ppi_cg_adu_yoy", double(res["ppi_cg_adu_yoy"]))
+        replaceColumn!(res, "ppi_cg_dcg_yoy", double(res["ppi_cg_dcg_yoy"]))
+        replaceColumn!(res, "ppi_mom", double(res["ppi_mom"]))
+        replaceColumn!(res, "ppi_mp_mom", double(res["ppi_mp_mom"]))
+        replaceColumn!(res, "ppi_mp_qm_mom", double(res["ppi_mp_qm_mom"]))
+        replaceColumn!(res, "ppi_mp_rm_mom", double(res["ppi_mp_rm_mom"]))
+        replaceColumn!(res, "ppi_mp_p_mom", double(res["ppi_mp_p_mom"]))
+        replaceColumn!(res, "ppi_cg_mom", double(res["ppi_cg_mom"]))
+        replaceColumn!(res, "ppi_cg_f_mom", double(res["ppi_cg_f_mom"]))
+        replaceColumn!(res, "ppi_cg_c_mom", double(res["ppi_cg_c_mom"]))
+        replaceColumn!(res, "ppi_cg_adu_mom", double(res["ppi_cg_adu_mom"]))
+        replaceColumn!(res, "ppi_cg_dcg_mom", double(res["ppi_cg_dcg_mom"]))
+        replaceColumn!(res, "ppi_accu", double(res["ppi_accu"]))
+        replaceColumn!(res, "ppi_mp_accu", double(res["ppi_mp_accu"]))
+        replaceColumn!(res, "ppi_mp_qm_accu", double(res["ppi_mp_qm_accu"]))
+        replaceColumn!(res, "ppi_mp_rm_accu", double(res["ppi_mp_rm_accu"]))
+        replaceColumn!(res, "ppi_mp_p_accu", double(res["ppi_mp_p_accu"]))
+        replaceColumn!(res, "ppi_cg_accu", double(res["ppi_cg_accu"]))
+        replaceColumn!(res, "ppi_cg_f_accu", double(res["ppi_cg_f_accu"]))
+        replaceColumn!(res, "ppi_cg_c_accu", double(res["ppi_cg_c_accu"]))
+        replaceColumn!(res, "ppi_cg_adu_accu", double(res["ppi_cg_adu_accu"]))
+        replaceColumn!(res, "ppi_cg_dcg_accu", double(res["ppi_cg_dcg_accu"]))
+        replaceColumn!(res, "update_time", timestamp(res["update_time"]))
+        out.append!(res)
+        print("Success append data for Table " + api + " for range: " + logRange)
+    } else {
+        print("no data for Table " + api + " for range: " + logRange)
+    }
+}
+
+/*
+ * @Description: Tushare API cn_m data import
+ * @DolphinDB server version:
+ * @Last modification time: 2026-04-02 16:00:00
+ * @dev:
+ * @Author: codex
+ */
+def appendCnM(token, start_date, end_date){
+    dbPath = "dfs://tushare_basic_db"
+    tableName = "cn_m"
+    api = "cn_m"
+    cols = [
+        "month",
+        "m0",
+        "m0_yoy",
+        "m0_mom",
+        "m1",
+        "m1_yoy",
+        "m1_mom",
+        "m2",
+        "m2_yoy",
+        "m2_mom"
+    ]
+    out = loadTable(dbPath, tableName)
+
+    startMonth = temporalFormat(start_date, "yyyyMM")
+    endMonth = temporalFormat(end_date, "yyyyMM")
+    p = {start_m:startMonth, end_m:endMonth}
+    logRange = startMonth + " -> " + endMonth
+
+    delete from out where trade_month in [month(start_date), month(end_date)]
+
+    res = getApiData(token, api, p, cols)
+    if(!res.isVoid() and res.count() != 0){
+        update res set update_time = now()
+        replaceColumn!(res, "month", month(temporalParse(string(res["month"]), "yyyyMM")))
+        replaceColumn!(res, "m0", double(res["m0"]))
+        replaceColumn!(res, "m0_yoy", double(res["m0_yoy"]))
+        replaceColumn!(res, "m0_mom", double(res["m0_mom"]))
+        replaceColumn!(res, "m1", double(res["m1"]))
+        replaceColumn!(res, "m1_yoy", double(res["m1_yoy"]))
+        replaceColumn!(res, "m1_mom", double(res["m1_mom"]))
+        replaceColumn!(res, "m2", double(res["m2"]))
+        replaceColumn!(res, "m2_yoy", double(res["m2_yoy"]))
+        replaceColumn!(res, "m2_mom", double(res["m2_mom"]))
+        replaceColumn!(res, "update_time", timestamp(res["update_time"]))
+        out.append!(res)
+        print("Success append data for Table " + api + " for range: " + logRange)
+    } else {
+        print("no data for Table " + api + " for range: " + logRange)
+    }
+}
+
+
+/*
+ * @Description: Tushare API sf_month data import
+ * @DolphinDB server version:
+ * @Last modification time: 2026-04-02 16:00:00
+ * @dev:
+ * @Author: codex
+ */
+def appendSfMonth(token, start_date, end_date){
+    dbPath = "dfs://tushare_basic_db"
+    tableName = "sf_month"
+    api = "sf_month"
+    cols = [
+        "month",
+        "inc_month",
+        "inc_cumval",
+        "stk_endval"
+    ]
+    out = loadTable(dbPath, tableName)
+
+    startMonth = temporalFormat(start_date, "yyyyMM")
+    endMonth = temporalFormat(end_date, "yyyyMM")
+    p = {start_m:startMonth, end_m:endMonth}
+    logRange = startMonth + " -> " + endMonth
+
+    res = getApiData(token, api, p, cols)
+
+    delete from out where trade_month in [month(start_date), month(end_date)]
+
+    if(!res.isVoid() and res.count() != 0){
+        update res set update_time = now()
+        replaceColumn!(res, "month", month(temporalParse(string(res["month"]), "yyyyMM")))
+        // replaceColumn!(res, "inc_month", month(temporalParse(string(res["inc_month"]), "yyyyMM")))
+        replaceColumn!(res, "inc_cumval", double(res["inc_cumval"]))
+        replaceColumn!(res, "stk_endval", double(res["stk_endval"]))
+        replaceColumn!(res, "update_time", timestamp(res["update_time"]))
+        out.append!(res)
+        print("Success append data for Table " + api + " for range: " + logRange)
+    } else {
+        print("no data for Table " + api + " for range: " + logRange)
+    }
+}
+
+/*
+ * @Description: Tushare API cn_pmi data import
+ * @DolphinDB server version:
+ * @Last modification time: 2026-04-02 16:00:00
+ * @dev:
+ * @Author: codex
+ */
+def appendCnPmi(token, start_date, end_date){
+    dbPath = "dfs://tushare_basic_db"
+    tableName = "cn_pmi"
+    api = "cn_pmi"
+    cols = [
+        "month",
+        "pmi010000",
+        "pmi010100",
+        "pmi010200",
+        "pmi010300",
+        "pmi010400",
+        "pmi010401",
+        "pmi010402",
+        "pmi010403",
+        "pmi010500",
+        "pmi010501",
+        "pmi010502",
+        "pmi010503",
+        "pmi010600",
+        "pmi010601",
+        "pmi010602",
+        "pmi010603",
+        "pmi010700",
+        "pmi010701",
+        "pmi010702",
+        "pmi010703",
+        "pmi010800",
+        "pmi010801",
+        "pmi010802",
+        "pmi010803",
+        "pmi010900",
+        "pmi011000",
+        "pmi011100",
+        "pmi011200",
+        "pmi011300",
+        "pmi011400",
+        "pmi011500",
+        "pmi011600",
+        "pmi011700",
+        "pmi011800",
+        "pmi011900",
+        "pmi012000",
+        "pmi020100",
+        "pmi020101",
+        "pmi020102",
+        "pmi020200",
+        "pmi020201",
+        "pmi020202",
+        "pmi020300",
+        "pmi020301",
+        "pmi020302",
+        "pmi020400",
+        "pmi020401",
+        "pmi020402",
+        "pmi020500",
+        "pmi020501",
+        "pmi020502",
+        "pmi020600",
+        "pmi020601",
+        "pmi020602",
+        "pmi020700",
+        "pmi020800",
+        "pmi020900",
+        "pmi021000",
+        "pmi030000"
+    ]
+    out = loadTable(dbPath, tableName)
+
+    startMonth = temporalFormat(start_date, "yyyyMM")
+    endMonth = temporalFormat(end_date, "yyyyMM")
+    p = {start_m:startMonth, end_m:endMonth}
+    logRange = startMonth + " -> " + endMonth
+
+    res = getApiData(token, api, p, cols)
+    
+    delete from out where trade_month in [month(start_date), month(end_date)]
+
+    if(!res.isVoid() and res.count() != 0){
+        update res set update_time = now()
+        replaceColumn!(res, "month", month(temporalParse(string(res["month"]), "yyyyMM")))
+        replaceColumn!(res, "pmi010000", double(res["pmi010000"]))
+        replaceColumn!(res, "pmi010100", double(res["pmi010100"]))
+        replaceColumn!(res, "pmi010200", double(res["pmi010200"]))
+        replaceColumn!(res, "pmi010300", double(res["pmi010300"]))
+        replaceColumn!(res, "pmi010400", double(res["pmi010400"]))
+        replaceColumn!(res, "pmi010401", double(res["pmi010401"]))
+        replaceColumn!(res, "pmi010402", double(res["pmi010402"]))
+        replaceColumn!(res, "pmi010403", double(res["pmi010403"]))
+        replaceColumn!(res, "pmi010500", double(res["pmi010500"]))
+        replaceColumn!(res, "pmi010501", double(res["pmi010501"]))
+        replaceColumn!(res, "pmi010502", double(res["pmi010502"]))
+        replaceColumn!(res, "pmi010503", double(res["pmi010503"]))
+        replaceColumn!(res, "pmi010600", double(res["pmi010600"]))
+        replaceColumn!(res, "pmi010601", double(res["pmi010601"]))
+        replaceColumn!(res, "pmi010602", double(res["pmi010602"]))
+        replaceColumn!(res, "pmi010603", double(res["pmi010603"]))
+        replaceColumn!(res, "pmi010700", double(res["pmi010700"]))
+        replaceColumn!(res, "pmi010701", double(res["pmi010701"]))
+        replaceColumn!(res, "pmi010702", double(res["pmi010702"]))
+        replaceColumn!(res, "pmi010703", double(res["pmi010703"]))
+        replaceColumn!(res, "pmi010800", double(res["pmi010800"]))
+        replaceColumn!(res, "pmi010801", double(res["pmi010801"]))
+        replaceColumn!(res, "pmi010802", double(res["pmi010802"]))
+        replaceColumn!(res, "pmi010803", double(res["pmi010803"]))
+        replaceColumn!(res, "pmi010900", double(res["pmi010900"]))
+        replaceColumn!(res, "pmi011000", double(res["pmi011000"]))
+        replaceColumn!(res, "pmi011100", double(res["pmi011100"]))
+        replaceColumn!(res, "pmi011200", double(res["pmi011200"]))
+        replaceColumn!(res, "pmi011300", double(res["pmi011300"]))
+        replaceColumn!(res, "pmi011400", double(res["pmi011400"]))
+        replaceColumn!(res, "pmi011500", double(res["pmi011500"]))
+        replaceColumn!(res, "pmi011600", double(res["pmi011600"]))
+        replaceColumn!(res, "pmi011700", double(res["pmi011700"]))
+        replaceColumn!(res, "pmi011800", double(res["pmi011800"]))
+        replaceColumn!(res, "pmi011900", double(res["pmi011900"]))
+        replaceColumn!(res, "pmi012000", double(res["pmi012000"]))
+        replaceColumn!(res, "pmi020100", double(res["pmi020100"]))
+        replaceColumn!(res, "pmi020101", double(res["pmi020101"]))
+        replaceColumn!(res, "pmi020102", double(res["pmi020102"]))
+        replaceColumn!(res, "pmi020200", double(res["pmi020200"]))
+        replaceColumn!(res, "pmi020201", double(res["pmi020201"]))
+        replaceColumn!(res, "pmi020202", double(res["pmi020202"]))
+        replaceColumn!(res, "pmi020300", double(res["pmi020300"]))
+        replaceColumn!(res, "pmi020301", double(res["pmi020301"]))
+        replaceColumn!(res, "pmi020302", double(res["pmi020302"]))
+        replaceColumn!(res, "pmi020400", double(res["pmi020400"]))
+        replaceColumn!(res, "pmi020401", double(res["pmi020401"]))
+        replaceColumn!(res, "pmi020402", double(res["pmi020402"]))
+        replaceColumn!(res, "pmi020500", double(res["pmi020500"]))
+        replaceColumn!(res, "pmi020501", double(res["pmi020501"]))
+        replaceColumn!(res, "pmi020502", double(res["pmi020502"]))
+        replaceColumn!(res, "pmi020600", double(res["pmi020600"]))
+        replaceColumn!(res, "pmi020601", double(res["pmi020601"]))
+        replaceColumn!(res, "pmi020602", double(res["pmi020602"]))
+        replaceColumn!(res, "pmi020700", double(res["pmi020700"]))
+        replaceColumn!(res, "pmi020800", double(res["pmi020800"]))
+        replaceColumn!(res, "pmi020900", double(res["pmi020900"]))
+        replaceColumn!(res, "pmi021000", double(res["pmi021000"]))
+        replaceColumn!(res, "pmi030000", double(res["pmi030000"]))
+        replaceColumn!(res, "update_time", timestamp(res["update_time"]))
+        out.append!(res)
+        print("Success append data for Table " + api + " for range: " + logRange)
+    } else {
+        print("no data for Table " + api + " for range: " + logRange)
+    }
+}
+
+
+/*
+ * @Description: Tushare API us_tycr data import
+ * @DolphinDB server version:
+ * @Last modification time: 2026-04-02 16:00:00
+ * @dev:
+ * @Author: codex
+ */
+def appendUsTycr(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "us_tycr"
+    api = "us_tycr"
+    cols = [
+        "date",
+        "m1",
+        "m2",
+        "m3",
+        "m4",
+        "m6",
+        "y1",
+        "y2",
+        "y3",
+        "y5",
+        "y7",
+        "y10",
+        "y20",
+        "y30"
+    ]
+    out = loadTable(dbPath, tableName)
+    // select count(*) from loadTable(dbPath, tableName) group by trade_date order by trade_date desc 
+    days = start_date..end_date
+    yearBeginDays = yearBegin(days).distinct().sort!()
+    for (oneDate in yearBeginDays){ 
+        // oneDate = yearBeginDays[1]
+        delete from out where trade_date in  [max(oneDate, start_date), min(yearEnd(oneDate), end_date)]
+
+        startDateStr =  temporalFormat(max(oneDate, start_date), "yyyyMMdd")
+        endDateStr = temporalFormat(min(yearEnd(oneDate), end_date), "yyyyMMdd")
+        // startDateStr = "20260901"
+        // endDateStr = "20260902"
+        p = {start_date:startDateStr, end_date:endDateStr}
+        logRange = startDateStr + " -> " + endDateStr
+        delete from out where trade_date in  [max(oneDate, start_date), min(yearEnd(oneDate), end_date)]
+        
+        res = getApiData(token, api, p, cols)
+        
+        if(res.count() == 2000){
+            print("Warning: data count reaches 4000 for Table " + api + " for range: " + logRange + ", consider to reduce the date range for more complete data")
+        }
+
+        if(!res.isVoid() and res.count() != 0){
+            update res set update_time = now()
+            replaceColumn!(res, "date", temporalParse(string(res["date"]), "yyyyMMdd"))
+            replaceColumn!(res, "m1", double(res["m1"]))
+            replaceColumn!(res, "m2", double(res["m2"]))
+            replaceColumn!(res, "m3", double(res["m3"]))
+            replaceColumn!(res, "m6", double(res["m6"]))
+            replaceColumn!(res, "y1", double(res["y1"]))
+            replaceColumn!(res, "y2", double(res["y2"]))
+            replaceColumn!(res, "y3", double(res["y3"]))
+            replaceColumn!(res, "y5", double(res["y5"]))
+            replaceColumn!(res, "y7", double(res["y7"]))
+            replaceColumn!(res, "y10", double(res["y10"]))
+            replaceColumn!(res, "y20", double(res["y20"]))
+            replaceColumn!(res, "y30", double(res["y30"]))
+            replaceColumn!(res, "update_time", timestamp(res["update_time"]))
+            if(!in("m4", res.columnNames())){
+                res["m4"] = NULL$double
+            }
+            out.append!(res.reorderColumns!(["date","m1","m2","m3","m4","m6","y1","y2","y3","y5","y7","y10","y20","y30","update_time"]))
+            print("Success append data for Table " + api + " for range: " + logRange)
+        } else {
+            print("no data for Table " + api + " for range: " + logRange)
+        }
+    }
+}
+
+/*
+ * @Description: Tushare API us_trycr data import
+ * @DolphinDB server version:
+ * @Last modification time: 2026-04-02 16:00:00
+ * @dev:
+ * @Author: codex
+ */
+def appendUsTrycr(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "us_trycr"
+    api = "us_trycr"
+    cols = [
+        "date",
+        "y5",
+        "y7",
+        "y10",
+        "y20",
+        "y30"
+    ]
+    out = loadTable(dbPath, tableName)
+    // select count(*) from loadTable(dbPath, tableName) group by trade_date order by trade_date desc 
+    days = start_date..end_date
+    yearBeginDays = yearBegin(days).distinct().sort!()
+    for (oneDate in yearBeginDays){  
+        // oneDate = yearBeginDays[10]
+        delete from out where trade_date in  [max(oneDate, start_date), min(yearEnd(oneDate), end_date)]
+        startDateStr =  temporalFormat(max(oneDate, start_date), "yyyyMMdd")
+        endDateStr = temporalFormat(min(yearEnd(oneDate), end_date), "yyyyMMdd")
+        // startDateStr = "20260901"
+        // endDateStr = "20260902"
+        p = {start_date:startDateStr, end_date:endDateStr}
+        logRange = startDateStr + " -> " + endDateStr
+
+        res = getApiData(token, api, p, cols)
+        if(res.count()==2000){
+            throw("API " + api + " for range: " + logRange + " reaches the limit of 4000 records, please narrow down the date range and try again.")
+        }
+        if(!res.isVoid() and res.count() != 0){
+            update res set update_time = now()
+            replaceColumn!(res, "date", temporalParse(string(res["date"]), "yyyyMMdd"))
+            replaceColumn!(res, "y5", double(res["y5"]))
+            replaceColumn!(res, "y7", double(res["y7"]))
+            replaceColumn!(res, "y10", double(res["y10"]))
+            replaceColumn!(res, "y20", double(res["y20"]))
+            replaceColumn!(res, "y30", double(res["y30"]))
+            replaceColumn!(res, "update_time", timestamp(res["update_time"]))
+            out.append!(res)
+            print("Success append data for Table " + api + " for range: " + logRange)
+        } else {
+            print("no data for Table " + api + " for range: " + logRange)
+        }
+    }
+}
+
+/*
+ * @Description: Tushare API us_tbr data import
+ * @DolphinDB server version:
+ * @Last modification time: 2026-04-02 16:00:00
+ * @dev:
+ * @Author: codex
+ */
+def appendUsTbr(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "us_tbr"
+    api = "us_tbr"
+    cols = [
+        "date",
+        "w4_bd",
+        "w4_ce",
+        "w8_bd",
+        "w8_ce",
+        "w13_bd",
+        "w13_ce",
+        "w17_bd",
+        "w17_ce",
+        "w26_bd",
+        "w26_ce",
+        "w52_bd",
+        "w52_ce"
+    ]
+    out = loadTable(dbPath, tableName)
+    days = start_date..end_date
+    yearBeginDays = yearBegin(days).distinct().sort!()
+    for (oneDate in yearBeginDays){  
+        // oneDate = yearBeginDays[10]
+        delete from out where trade_date in  [max(oneDate, start_date), min(yearEnd(oneDate), end_date)]
+        startDateStr =  temporalFormat(max(oneDate, start_date), "yyyyMMdd")
+        endDateStr = temporalFormat(min(yearEnd(oneDate), end_date), "yyyyMMdd")
+        // startDateStr = "20260901"
+        // endDateStr = "20260902"
+        p = {start_date:startDateStr, end_date:endDateStr}
+        logRange = startDateStr + " -> " + endDateStr
+        delete from out where trade_date in  [max(oneDate, start_date), min(yearEnd(oneDate), end_date)]
+        
+        res = getApiData(token, api, p, cols)
+        if(res.count()==2000){
+            throw("API " + api + " for range: " + logRange + " reaches the limit of 4000 records, please narrow down the date range and try again.")
+        }
+        if(!res.isVoid() and res.count() != 0){
+            update res set update_time = now()
+            replaceColumn!(res, "date", temporalParse(string(res["date"]), "yyyyMMdd"))
+            replaceColumn!(res, "w4_bd", double(res["w4_bd"]))
+            replaceColumn!(res, "w4_ce", double(res["w4_ce"]))
+            replaceColumn!(res, "w8_bd", double(res["w8_bd"]))
+            replaceColumn!(res, "w8_ce", double(res["w8_ce"]))
+            replaceColumn!(res, "w13_bd", double(res["w13_bd"]))
+            replaceColumn!(res, "w13_ce", double(res["w13_ce"]))
+            // replaceColumn!(res, "w17_bd", double(res["w17_bd"]))
+            // replaceColumn!(res, "w17_ce", double(res["w17_ce"]))
+            replaceColumn!(res, "w26_bd", double(res["w26_bd"]))
+            replaceColumn!(res, "w26_ce", double(res["w26_ce"]))
+            replaceColumn!(res, "w52_bd", double(res["w52_bd"]))
+            replaceColumn!(res, "w52_ce", double(res["w52_ce"]))
+            replaceColumn!(res, "update_time", timestamp(res["update_time"]))
+            if(!in("w17_bd", res.columnNames())){
+                res["w17_bd"] = NULL$double
+            }
+            if(!in("w17_ce", res.columnNames())){
+                res["w17_ce"] = NULL$double
+            }
+            out.append!(res.reorderColumns!(["date", "w4_bd", "w4_ce", "w8_bd", "w8_ce", "w13_bd", "w13_ce", "w17_bd", "w17_ce", "w26_bd", "w26_ce", "w52_bd", "w52_ce", "update_time"]))
+            print("Success append data for Table " + api + " for range: " + logRange)
+        } else {
+            print("no data for Table " + api + " for range: " + logRange)
+        }
+    }
+}
+/*
+ * @Description: Tushare API us_tltr data import
+ * @DolphinDB server version:
+ * @Last modification time: 2026-04-02 16:00:00
+ * @dev:
+ * @Author: codex
+ */
+def appendUsTltr(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "us_tltr"
+    api = "us_tltr"
+    cols = [
+        "date",
+        "ltc",
+        "cmt",
+        "e_factor"
+    ]
+    out = loadTable(dbPath, tableName)
+    days = start_date..end_date
+    yearBeginDays = yearBegin(days).distinct().sort!()
+    for (oneDate in yearBeginDays){  
+        // oneDate = yearBeginDays[10]
+        delete from out where trade_date in  [max(oneDate, start_date), min(yearEnd(oneDate), end_date)]
+        startDateStr =  temporalFormat(max(oneDate, start_date), "yyyyMMdd")
+        endDateStr = temporalFormat(min(yearEnd(oneDate), end_date), "yyyyMMdd")
+        // startDateStr = "20260901"
+        // endDateStr = "20260902"
+        p = {start_date:startDateStr, end_date:endDateStr}
+        logRange = startDateStr + " -> " + endDateStr
+
+        res = getApiData(token, api, p, cols)
+        if(res.count()==2000){
+            throw("API " + api + " for range: " + logRange + " reaches the limit of 4000 records, please narrow down the date range and try again.")
+        }
+
+        if(!res.isVoid() and res.count() != 0){
+            update res set update_time = now()
+            replaceColumn!(res, "date", temporalParse(string(res["date"]), "yyyyMMdd"))
+            replaceColumn!(res, "ltc", double(res["ltc"]))
+            replaceColumn!(res, "cmt", double(res["cmt"]))
+            replaceColumn!(res, "e_factor", double(res["e_factor"]))
+            replaceColumn!(res, "update_time", timestamp(res["update_time"]))
+            out.append!(res)
+            print("Success append data for Table " + api + " for range: " + logRange)
+        } else {
+            print("no data for Table " + api + " for range: " + logRange)
+        }
+    }
+}
+
+/*
+ * @Description: Tushare API us_trltr data import
+ * @DolphinDB server version:
+ * @Last modification time: 2026-04-02 16:00:00
+ * @dev:
+ * @Author: codex
+ */
+def appendUsTrltr(token, start_date, end_date){
+    dbPath = "dfs://tushare_daily_db"
+    tableName = "us_trltr"
+    api = "us_trltr"
+    cols = [
+        "date",
+        "ltr_avg"
+    ]
+    out = loadTable(dbPath, tableName)
+     // 处理时间范围，每个股票一年读取一次
+    days = start_date..end_date
+    yearBeginDays = yearBegin(days).distinct().sort!()
+    for (oneDate in yearBeginDays){  
+        // oneDate = yearBeginDays[10]
+
+        delete from out where trade_date in  [max(oneDate, start_date), min(yearEnd(oneDate), end_date)]
+        startDateStr =  temporalFormat(max(oneDate, start_date), "yyyyMMdd")
+        endDateStr = temporalFormat(min(yearEnd(oneDate), end_date), "yyyyMMdd")
+        // startDateStr = "20260901"
+        // endDateStr = "20260902"
+        p = {start_date:startDateStr, end_date:endDateStr}
+        logRange = startDateStr + " -> " + endDateStr
+
+        res = getApiData(token, api, p, cols)
+        if(res.count()==2000){
+            throw("API " + api + " for range: " + logRange + " reaches the limit of 4000 records, please narrow down the date range and try again.")
+        }
+
+        res = getApiData(token, api, p, cols)
+        if(!res.isVoid() and res.count() != 0){
+            update res set update_time = now()
+            replaceColumn!(res, "date", temporalParse(string(res["date"]), "yyyyMMdd"))
+            replaceColumn!(res, "ltr_avg", double(res["ltr_avg"]))
+            replaceColumn!(res, "update_time", timestamp(res["update_time"]))
+            out.append!(res)
+            print("Success append data for Table " + api + " for range: " + logRange)
+        } else {
+            print("no data for Table " + api + " for range: " + logRange)
+        }
+
+        sleep(200)
+    }
+}

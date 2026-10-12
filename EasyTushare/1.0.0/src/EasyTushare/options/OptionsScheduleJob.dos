@@ -1,0 +1,101 @@
+module EasyTushare::options::OptionsScheduleJob
+use EasyTushare::TsInit
+/* 
+*  @Brief: 期权每日增量数据导入函数模块
+*  @Author: DolphinDB
+*  @Last modification time: 2026.03.31
+*  @DolphinDB server version: 3.00.5 2026.02.06 LINUX x86_64
+*/
+use EasyTushare::options::OptionsLoadData
+
+/*
+*  @FunctionName: module_info
+*  @Brief: 模块信息,一个相同模块dir下的每个dos都需要有module_info函数,且是相同的
+*  @Param: None
+*  @Return: dict
+*  @SampleUsage: module_info()
+*/
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "EasyTushare"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+
+use EasyTushare::options::OptionsInit
+/*
+*  @FunctionName: loadOptionsDataDaily
+*  @Brief: 期权每日增量数据导入函数
+*  @Param: token 期权数据导入任务token
+*  @Return: none
+*  @SampleUsage: loadOptionsDataDaily(token)
+*/
+def loadOptionsDataDaily(token, table_names, funcDef) { 
+    // 公共变量
+    start_date = today()
+    end_date = today()
+
+    print("[INFO] " + now().format("yyyy.MM.dd HH:mm:ss") + " 开始执行tushare-期权数据导入任务...")
+
+    mink_table_name = []
+    for (table_name in table_names){
+        if (table_name in ["opt_1min_k","opt_5min_k" ,"opt_10min_k" ,"opt_30min_k" ,"opt_60min_k"]){
+            mink_table_name.append!(table_name)
+        } else {
+            print("[INFO] " + now().format("yyyy.MM.dd HH:mm:ss") + " 开始导入" + table_name + "表...")
+            func = funcDef[table_name]
+            func(token, start_date, end_date)
+            print("[INFO] " + now().format("yyyy.MM.dd HH:mm:ss") + " 结束导入" + table_name + "表")
+        }
+    }
+    for (one_mink_table in mink_table_name){
+        print("[INFO] " + now().format("yyyy.MM.dd HH:mm:ss") + " 开始导入" + one_mink_table + "表...")
+        func = funcDef[one_mink_table]
+        func(token, start_date, end_date)
+        print("[INFO] " + now().format("yyyy.MM.dd HH:mm:ss") + " 结束导入" + one_mink_table + "表")
+    }
+
+    print("[INFO] " + now().format("yyyy.MM.dd HH:mm:ss") + " 期权数据导入任务完成")
+}
+
+
+/**
+ * @FunctionName: getTablesFuncDefs
+ * @Brief: 获取每个函数的函数引用
+ * @Param: table_names 表名
+ * @Return: none
+ * @SampleUsage: getTablesFuncDefs()
+ */
+def optionsGetTablesFuncDefs(table_names=[]) {
+    all_table_names = []
+    if (size(table_names) == 0){
+        all_table_names = optionsGetAllTableNames()
+    } else {
+        all_table_names = table_names
+    }
+    // 构造函数引用字典，传递给scheduleJob
+    funcDef = dict(STRING,ANY)
+    for (table_name in all_table_names){
+        funcDef[table_name] = funcByName("EasyTushare::options::OptionsLoadData::append" + snakeToUpperCamel(table_name))
+    }
+    return funcDef
+}
+/**
+ * @FunctionName: scheduleJobOptionsDataDaily
+ * @Brief: 期权每日增量数据导入任务
+ * @Param: token 期权数据导入任务token
+ * @Return: none
+ * @SampleUsage: scheduleJobOptionsDataDaily(token)
+ */
+def scheduleJobOptionsDataDaily(token,table_names = [],onCompleteFunc = NULL){
+    // 构造函数引用字典，传递给scheduleJob
+    funcDef = optionsGetTablesFuncDefs(table_names)
+    try{deleteScheduledJob(`loadOptionsDataDaily)} catch(ex) {print(ex)}
+    if (onCompleteFunc == NULL) {
+        scheduleJob("loadOptionsDataDaily","loadOptionsDataDaily",loadOptionsDataDaily{token,funcDef.keys(),funcDef},20:00m,today(),2099.01.01,"D")
+    } else {
+        scheduleJob("loadOptionsDataDaily","loadOptionsDataDaily",loadOptionsDataDaily{token,funcDef.keys(),funcDef},20:00m,today(),2099.01.01,"D",,onCompleteFunc)
+    }
+    
+}

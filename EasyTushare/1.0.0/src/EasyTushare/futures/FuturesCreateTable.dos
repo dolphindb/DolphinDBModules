@@ -1,0 +1,916 @@
+module EasyTushare::futures::FuturesCreateTable
+/* 
+*  @Brief: 期货数据表创建函数模块
+*  @Author: DolphinDB
+*  @Last modification time: 2026.03.31
+*  @DolphinDB server version: 3.00.5 2026.02.06 LINUX x86_64
+ */
+
+/*
+*  @FunctionName: module_info
+*  @Brief: 模块信息,一个相同模块dir下的每个dos都需要有module_info函数,且是相同的
+*  @Param: None
+*  @Return: dict
+*  @SampleUsage: module_info()
+*/
+def module_info(){
+    res = dict(STRING,ANY)
+    res["moduleName"] = "EasyTushare"
+    res["moduleVersion"] = "1.0.0"
+    res["isFree"] = true
+    return res
+}
+
+/*
+*  @FunctionName: createTableFtLimit
+*  @Brief: Create a DFS table for futures price limits
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableFtLimit()
+*/
+def createTableFtLimit(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "ft_limit"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(DATE, 0) as trade_date,            // 交易日期
+            array(SYMBOL, 0) as security_id,               // TS股票代码 (原ts_code)
+            array(STRING, 0) as name,                // 合约名称
+            array(DOUBLE, 0) as up_limit,            // 涨停价
+            array(DOUBLE, 0) as down_limit,          // 跌停价
+            array(DOUBLE, 0) as m_ratio,             // 最低交易保证金率（%）
+            array(SYMBOL, 0) as cont,                // 合约代码
+            array(SYMBOL, 0) as exchange,            // 交易所代码
+            array(TIMESTAMP, 0) as update_time       // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["trade_date"] = "交易日期"
+        columnComments["security_id"] = "TS股票代码"
+        columnComments["name"] = "合约名称"
+        columnComments["up_limit"] = "涨停价"
+        columnComments["down_limit"] = "跌停价"
+        columnComments["m_ratio"] = "最低交易保证金率（%）"
+        columnComments["cont"] = "合约代码"
+        columnComments["exchange"] = "交易所代码"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableFt1minK
+*  @Brief: Create a DFS table for futures 1 minute k data
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableFt1minK()
+*/
+def createTableFt1minK(){
+    dbName = "dfs://tushare_minute_db"
+    tbName = "fut_1min_k"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,               // 股票代码 (原ts_code)
+            array(TIMESTAMP, 0) as trade_time,       // 交易时间
+            array(DOUBLE, 0) as open,               // 开盘价（元）
+            array(DOUBLE, 0) as close,              // 收盘价（元）
+            array(DOUBLE, 0) as high,               // 最高价（元）
+            array(DOUBLE, 0) as low,                // 最低价（元）
+            array(INT, 0) as vol,                   // 成交量（手）
+            array(DOUBLE, 0) as amount,             // 成交金额（元）
+            array(DOUBLE, 0) as oi,                 // 持仓量（手）
+            array(TIMESTAMP, 0) as update_time      // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_time"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "股票代码"
+        columnComments["trade_time"] = "交易时间"
+        columnComments["open"] = "开盘价（元）"
+        columnComments["close"] = "收盘价（元）"
+        columnComments["high"] = "最高价（元）"
+        columnComments["low"] = "最低价（元）"
+        columnComments["vol"] = "成交量（手）"
+        columnComments["amount"] = "成交金额（元）"
+        columnComments["oi"] = "持仓量（手）"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableFt5minK
+*  @Brief: Create a DFS table for futures 5 minute k data
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableFt5minK()
+*/
+def createTableFt5minK(){
+    dbName = "dfs://tushare_minute_db"
+    tbName = "fut_5min_k"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,               // 股票代码 (原ts_code)
+            array(TIMESTAMP, 0) as trade_time,       // 交易时间
+            array(DOUBLE, 0) as open,               // 开盘价（元）
+            array(DOUBLE, 0) as close,              // 收盘价（元）
+            array(DOUBLE, 0) as high,               // 最高价（元）
+            array(DOUBLE, 0) as low,                // 最低价（元）
+            array(INT, 0) as vol,                   // 成交量（手）
+            array(DOUBLE, 0) as amount,             // 成交金额（元）
+            array(DOUBLE, 0) as oi,                 // 持仓量（手）
+            array(TIMESTAMP, 0) as update_time      // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_time"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "股票代码"
+        columnComments["trade_time"] = "交易时间"
+        columnComments["open"] = "开盘价（元）"
+        columnComments["close"] = "收盘价（元）"
+        columnComments["high"] = "最高价（元）"
+        columnComments["low"] = "最低价（元）"
+        columnComments["vol"] = "成交量（手）"
+        columnComments["amount"] = "成交金额（元）"
+        columnComments["oi"] = "持仓量（手）"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableFt15minK
+*  @Brief: Create a DFS table for futures 15 minute k data
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableFt15minK()
+*/
+def createTableFt15minK(){
+    dbName = "dfs://tushare_minute_db"
+    tbName = "fut_15min_k"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,               // 股票代码 (原ts_code)
+            array(TIMESTAMP, 0) as trade_time,       // 交易时间
+            array(DOUBLE, 0) as open,               // 开盘价（元）
+            array(DOUBLE, 0) as close,              // 收盘价（元）
+            array(DOUBLE, 0) as high,               // 最高价（元）
+            array(DOUBLE, 0) as low,                // 最低价（元）
+            array(INT, 0) as vol,                   // 成交量（手）
+            array(DOUBLE, 0) as amount,             // 成交金额（元）
+            array(DOUBLE, 0) as oi,                 // 持仓量（手）
+            array(TIMESTAMP, 0) as update_time      // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_time"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "股票代码"
+        columnComments["trade_time"] = "交易时间"
+        columnComments["open"] = "开盘价（元）"
+        columnComments["close"] = "收盘价（元）"
+        columnComments["high"] = "最高价（元）"
+        columnComments["low"] = "最低价（元）"
+        columnComments["vol"] = "成交量（手）"
+        columnComments["amount"] = "成交金额（元）"
+        columnComments["oi"] = "持仓量（手）"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+
+/*
+*  @FunctionName: createTableFt30minK
+*  @Brief: Create a DFS table for futures 30 minute k data
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableFt30minK()
+*/
+def createTableFt30minK(){
+    dbName = "dfs://tushare_minute_db"
+    tbName = "fut_30min_k"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,               // 股票代码 (原ts_code)
+            array(TIMESTAMP, 0) as trade_time,       // 交易时间
+            array(DOUBLE, 0) as open,               // 开盘价（元）
+            array(DOUBLE, 0) as close,              // 收盘价（元）
+            array(DOUBLE, 0) as high,               // 最高价（元）
+            array(DOUBLE, 0) as low,                // 最低价（元）
+            array(INT, 0) as vol,                   // 成交量（手）
+            array(DOUBLE, 0) as amount,             // 成交金额（元）
+            array(DOUBLE, 0) as oi,                 // 持仓量（手）
+            array(TIMESTAMP, 0) as update_time      // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_time"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "股票代码"
+        columnComments["trade_time"] = "交易时间"
+        columnComments["open"] = "开盘价（元）"
+        columnComments["close"] = "收盘价（元）"
+        columnComments["high"] = "最高价（元）"
+        columnComments["low"] = "最低价（元）"
+        columnComments["vol"] = "成交量（手）"
+        columnComments["amount"] = "成交金额（元）"
+        columnComments["oi"] = "持仓量（手）"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableFt60minK
+*  @Brief: Create a DFS table for futures 60 minute k data
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableFt60minK()
+*/
+def createTableFt60minK(){
+    dbName = "dfs://tushare_minute_db"
+    tbName = "fut_60min_k"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,               // 股票代码 (原ts_code)
+            array(TIMESTAMP, 0) as trade_time,       // 交易时间
+            array(DOUBLE, 0) as open,               // 开盘价（元）
+            array(DOUBLE, 0) as close,              // 收盘价（元）
+            array(DOUBLE, 0) as high,               // 最高价（元）
+            array(DOUBLE, 0) as low,                // 最低价（元）
+            array(INT, 0) as vol,                   // 成交量（手）
+            array(DOUBLE, 0) as amount,             // 成交金额（元）
+            array(DOUBLE, 0) as oi,                 // 持仓量（手）
+            array(TIMESTAMP, 0) as update_time      // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_time"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "股票代码"
+        columnComments["trade_time"] = "交易时间"
+        columnComments["open"] = "开盘价（元）"
+        columnComments["close"] = "收盘价（元）"
+        columnComments["high"] = "最高价（元）"
+        columnComments["low"] = "最低价（元）"
+        columnComments["vol"] = "成交量（手）"
+        columnComments["amount"] = "成交金额（元）"
+        columnComments["oi"] = "持仓量（手）"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableFutBasic
+*  @Brief: Create a DFS table for futures contract information
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableFutBasic()
+*/
+def createTableFutBasic(){
+    dbName = "dfs://tushare_basic_db"
+    tbName = "fut_basic"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,               // 合约代码 (原ts_code)
+            array(SYMBOL, 0) as base_code,             // 交易标识
+            array(SYMBOL, 0) as exchange,            // 交易市场
+            array(STRING, 0) as name,                // 中文简称
+            array(SYMBOL, 0) as fut_code,            // 合约产品代码
+            array(DOUBLE, 0) as multiplier,          // 合约乘数
+            array(STRING, 0) as trade_unit,          // 交易计量单位
+            array(DOUBLE, 0) as per_unit,            // 交易单位(每手)
+            array(STRING, 0) as quote_unit,          // 报价单位
+            array(STRING, 0) as quote_unit_desc,     // 最小报价单位说明
+            array(STRING, 0) as d_mode_desc,         // 交割方式说明
+            array(DATE, 0) as list_date,             // 上市日期
+            array(DATE, 0) as delist_date,           // 最后交易日期
+            array(STRING, 0) as d_month,             // 交割月份
+            array(DATE, 0) as last_ddate,            // 最后交割日
+            array(STRING, 0) as trade_time_desc,     // 交易时间说明
+            array(TIMESTAMP, 0) as update_time       // 更新时间
+        )
+        db.createTable(
+            table = schemaTB,
+            tableName = tbName
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "合约代码"
+        columnComments["base_code"] = "交易标识"
+        columnComments["exchange"] = "交易市场"
+        columnComments["name"] = "中文简称"
+        columnComments["fut_code"] = "合约产品代码"
+        columnComments["multiplier"] = "合约乘数"
+        columnComments["trade_unit"] = "交易计量单位"
+        columnComments["per_unit"] = "交易单位(每手)"
+        columnComments["quote_unit"] = "报价单位"
+        columnComments["quote_unit_desc"] = "最小报价单位说明"
+        columnComments["d_mode_desc"] = "交割方式说明"
+        columnComments["list_date"] = "上市日期"
+        columnComments["delist_date"] = "最后交易日期"
+        columnComments["d_month"] = "交割月份"
+        columnComments["last_ddate"] = "最后交割日"
+        columnComments["trade_time_desc"] = "交易时间说明"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableFutDaily
+*  @Brief: Create a DFS table for futures daily data
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableFutDaily()
+*/
+def createTableFutDaily(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "fut_daily"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,               // TS合约代码 (原ts_code)
+            array(DATE, 0) as trade_date,            // 交易日期
+            array(DOUBLE, 0) as pre_close,          // 昨收盘价
+            array(DOUBLE, 0) as pre_settle,         // 昨结算价
+            array(DOUBLE, 0) as open,               // 开盘价
+            array(DOUBLE, 0) as high,               // 最高价
+            array(DOUBLE, 0) as low,                // 最低价
+            array(DOUBLE, 0) as close,              // 收盘价
+            array(DOUBLE, 0) as settle,             // 结算价
+            array(DOUBLE, 0) as change1,            // 涨跌1 收盘价-昨结算价
+            array(DOUBLE, 0) as change2,            // 涨跌2 结算价-昨结算价
+            array(DOUBLE, 0) as vol,                // 成交量(手)
+            array(DOUBLE, 0) as amount,             // 成交金额(万元)
+            array(DOUBLE, 0) as oi,                 // 持仓量(手)
+            array(DOUBLE, 0) as oi_chg,             // 持仓量变化
+            array(DOUBLE, 0) as delv_settle,        // 交割结算价
+            array(TIMESTAMP, 0) as update_time      // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "TS合约代码"
+        columnComments["trade_date"] = "交易日期"
+        columnComments["pre_close"] = "昨收盘价"
+        columnComments["pre_settle"] = "昨结算价"
+        columnComments["open"] = "开盘价"
+        columnComments["high"] = "最高价"
+        columnComments["low"] = "最低价"
+        columnComments["close"] = "收盘价"
+        columnComments["settle"] = "结算价"
+        columnComments["change1"] = "涨跌1 收盘价-昨结算价"
+        columnComments["change2"] = "涨跌2 结算价-昨结算价"
+        columnComments["vol"] = "成交量(手)"
+        columnComments["amount"] = "成交金额(万元)"
+        columnComments["oi"] = "持仓量(手)"
+        columnComments["oi_chg"] = "持仓量变化"
+        columnComments["delv_settle"] = "交割结算价"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableFutHolding
+*  @Brief: Create a DFS table for daily trading and holding rankings
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableFutHolding()
+*/
+def createTableFutHolding(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "fut_holding"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(DATE, 0) as trade_date,            // 交易日期
+            array(SYMBOL, 0) as security_id,              // 合约代码或类型
+            array(STRING, 0) as broker,              // 期货公司会员简称
+            array(INT, 0) as vol,                    // 成交量
+            array(INT, 0) as vol_chg,                // 成交量变化
+            array(INT, 0) as long_hld,               // 持买仓量
+            array(INT, 0) as long_chg,               // 持买仓量变化
+            array(INT, 0) as short_hld,              // 持卖仓量
+            array(INT, 0) as short_chg,              // 持卖仓量变化
+            array(SYMBOL, 0) as exchange,            // 交易所
+            array(TIMESTAMP, 0) as update_time       // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["trade_date"] = "交易日期"
+        columnComments["security_id"] = "合约代码或类型"
+        columnComments["broker"] = "期货公司会员简称"
+        columnComments["vol"] = "成交量"
+        columnComments["vol_chg"] = "成交量变化"
+        columnComments["long_hld"] = "持买仓量"
+        columnComments["long_chg"] = "持买仓量变化"
+        columnComments["short_hld"] = "持卖仓量"
+        columnComments["short_chg"] = "持卖仓量变化"
+        columnComments["exchange"] = "交易所"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableFutMapping
+*  @Brief: Create a DFS table for futures main and continuous contracts mapping
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableFutMapping()
+*/
+def createTableFutMapping(){
+    dbName = "dfs://tushare_basic_db"
+    tbName = "fut_mapping"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,               // 连续合约代码 (原ts_code)
+            array(DATE, 0) as trade_date,            // 起始日期
+            array(SYMBOL, 0) as mapping_ts_code,     // 期货合约代码
+            array(TIMESTAMP, 0) as update_time       // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "连续合约代码"
+        columnComments["trade_date"] = "起始日期"
+        columnComments["mapping_ts_code"] = "期货合约代码"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableFutWeeklyDetail
+*  @Brief: Create a DFS table for futures weekly trading details
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableFutWeeklyDetail()
+*/
+def createTableFutWeeklyDetail(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "fut_weekly_detail"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as exchange,            // 交易所代码
+            array(SYMBOL, 0) as prd,                 // 期货品种代码
+            array(STRING, 0) as name,                // 品种名称
+            array(INT, 0) as vol,                    // 成交量（手）
+            array(DOUBLE, 0) as vol_yoy,             // 同比增减（%）
+            array(DOUBLE, 0) as amount,              // 成交金额（亿元）
+            array(DOUBLE, 0) as amout_yoy,           // 同比增减（%）
+            array(INT, 0) as cumvol,                 // 年累计成交总量（手）
+            array(DOUBLE, 0) as cumvol_yoy,          // 同比增减（%）
+            array(DOUBLE, 0) as cumamt,              // 年累计成交金额（亿元）
+            array(DOUBLE, 0) as cumamt_yoy,          // 同比增减（%）
+            array(INT, 0) as open_interest,          // 持仓量（手）
+            array(DOUBLE, 0) as interest_wow,        // 环比增减（%）
+            array(DOUBLE, 0) as mc_close,            // 本周主力合约收盘价
+            array(DOUBLE, 0) as close_wow,           // 环比涨跌（%）
+            array(STRING, 0) as week,                // 周期
+            array(DATE, 0) as week_date,           // 周日期
+            array(TIMESTAMP, 0) as update_time       // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "week_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["exchange"] = "交易所代码"
+        columnComments["prd"] = "期货品种代码"
+        columnComments["name"] = "品种名称"
+        columnComments["vol"] = "成交量（手）"
+        columnComments["vol_yoy"] = "同比增减（%）"
+        columnComments["amount"] = "成交金额（亿元）"
+        columnComments["amout_yoy"] = "同比增减（%）"
+        columnComments["cumvol"] = "年累计成交总量（手）"
+        columnComments["cumvol_yoy"] = "同比增减（%）"
+        columnComments["cumamt"] = "年累计成交金额（亿元）"
+        columnComments["cumamt_yoy"] = "同比增减（%）"
+        columnComments["open_interest"] = "持仓量（手）"
+        columnComments["interest_wow"] = "环比增减（%）"
+        columnComments["mc_close"] = "本周主力合约收盘价"
+        columnComments["close_wow"] = "环比涨跌（%）"
+        columnComments["week"] = "周期"
+        columnComments["week_date"] = "周日期"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableFutWeekly
+*  @Brief: Create a DFS table for futures weekly data
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableFutWeekly()
+*/
+def createTableFutWeekly(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "fut_weekly"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,               // 期货代码 (原ts_code)
+            array(DATE, 0) as trade_date,            // 交易日期
+            array(DATE, 0) as end_date,              // 计算截至日期
+            array(SYMBOL, 0) as freq,                // 频率(周week,月month)
+            array(DOUBLE, 0) as open,               // (周/月)开盘价
+            array(DOUBLE, 0) as high,               // (周/月)最高价
+            array(DOUBLE, 0) as low,                // (周/月)最低价
+            array(DOUBLE, 0) as close,              // (周/月)收盘价
+            array(DOUBLE, 0) as pre_close,          // 前一(周/月)收盘价
+            array(DOUBLE, 0) as settle,             // (周/月)结算价
+            array(DOUBLE, 0) as pre_settle,         // 前一(周/月)结算价
+            array(DOUBLE, 0) as vol,                // (周/月)成交量(手)
+            array(DOUBLE, 0) as amount,             // (周/月)成交金额(万元)
+            array(DOUBLE, 0) as oi,                 // (周/月)持仓量(手)
+            array(DOUBLE, 0) as oi_chg,             // (周/月)持仓量变化
+            array(SYMBOL, 0) as exchange,            // 交易所
+            array(DOUBLE, 0) as change1,            // (周/月)涨跌1 收盘价-昨结算价
+            array(DOUBLE, 0) as change2,            // (周/月)涨跌2 结算价-昨结算价
+            array(TIMESTAMP, 0) as update_time      // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "期货代码"
+        columnComments["trade_date"] = "交易日期（每周五或者月末日期）"
+        columnComments["end_date"] = "计算截至日期"
+        columnComments["freq"] = "频率(周week,月month)"
+        columnComments["open"] = "(周/月)开盘价"
+        columnComments["high"] = "(周/月)最高价"
+        columnComments["low"] = "(周/月)最低价"
+        columnComments["close"] = "(周/月)收盘价"
+        columnComments["pre_close"] = "前一(周/月)收盘价"
+        columnComments["settle"] = "(周/月)结算价"
+        columnComments["pre_settle"] = "前一(周/月)结算价"
+        columnComments["vol"] = "(周/月)成交量(手)"
+        columnComments["amount"] = "(周/月)成交金额(万元)"
+        columnComments["oi"] = "(周/月)持仓量(手)"
+        columnComments["oi_chg"] = "(周/月)持仓量变化"
+        columnComments["exchange"] = "交易所"
+        columnComments["change1"] = "(周/月)涨跌1 收盘价-昨结算价"
+        columnComments["change2"] = "(周/月)涨跌2 结算价-昨结算价"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableFutMonthly
+*  @Brief: Create a DFS table for futures monthly data
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableFutMonthly()
+*/
+def createTableFutMonthly(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "fut_monthly"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,               // 期货代码 (原ts_code)
+            array(DATE, 0) as trade_date,            // 交易日期
+            array(DATE, 0) as end_date,              // 计算截至日期
+            array(SYMBOL, 0) as freq,                // 频率(周week,月month)
+            array(DOUBLE, 0) as open,               // (周/月)开盘价
+            array(DOUBLE, 0) as high,               // (周/月)最高价
+            array(DOUBLE, 0) as low,                // (周/月)最低价
+            array(DOUBLE, 0) as close,              // (周/月)收盘价
+            array(DOUBLE, 0) as pre_close,          // 前一(周/月)收盘价
+            array(DOUBLE, 0) as settle,             // (周/月)结算价
+            array(DOUBLE, 0) as pre_settle,         // 前一(周/月)结算价
+            array(DOUBLE, 0) as vol,                // (周/月)成交量(手)
+            array(DOUBLE, 0) as amount,             // (周/月)成交金额(万元)
+            array(DOUBLE, 0) as oi,                 // (周/月)持仓量(手)
+            array(DOUBLE, 0) as oi_chg,             // (周/月)持仓量变化
+            array(SYMBOL, 0) as exchange,            // 交易所
+            array(DOUBLE, 0) as change1,            // (周/月)涨跌1 收盘价-昨结算价
+            array(DOUBLE, 0) as change2,            // (周/月)涨跌2 结算价-昨结算价
+            array(TIMESTAMP, 0) as update_time      // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "期货代码"
+        columnComments["trade_date"] = "交易日期（每周五或者月末日期）"
+        columnComments["end_date"] = "计算截至日期"
+        columnComments["freq"] = "频率(周week,月month)"
+        columnComments["open"] = "(周/月)开盘价"
+        columnComments["high"] = "(周/月)最高价"
+        columnComments["low"] = "(周/月)最低价"
+        columnComments["close"] = "(周/月)收盘价"
+        columnComments["pre_close"] = "前一(周/月)收盘价"
+        columnComments["settle"] = "(周/月)结算价"
+        columnComments["pre_settle"] = "前一(周/月)结算价"
+        columnComments["vol"] = "(周/月)成交量(手)"
+        columnComments["amount"] = "(周/月)成交金额(万元)"
+        columnComments["oi"] = "(周/月)持仓量(手)"
+        columnComments["oi_chg"] = "(周/月)持仓量变化"
+        columnComments["exchange"] = "交易所"
+        columnComments["change1"] = "(周/月)涨跌1 收盘价-昨结算价"
+        columnComments["change2"] = "(周/月)涨跌2 结算价-昨结算价"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableFutWsr
+*  @Brief: Create a DFS table for warehouse stock report
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableFutWsr()
+*/
+def createTableFutWsr(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "fut_wsr"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(DATE, 0) as trade_date,            // 交易日期
+            array(SYMBOL, 0) as symbol,              // 产品代码
+            array(STRING, 0) as fut_name,            // 产品名称
+            array(STRING, 0) as warehouse,           // 仓库名称
+            array(STRING, 0) as wh_id,               // 仓库编号
+            array(INT, 0) as pre_vol,                // 昨日仓单量
+            array(INT, 0) as vol,                    // 今日仓单量
+            array(INT, 0) as vol_chg,                // 增减量
+            array(STRING, 0) as area_name,                // 地区
+            array(STRING, 0) as year,                // 年度
+            array(STRING, 0) as grade,               // 等级
+            array(STRING, 0) as brand,               // 品牌
+            array(STRING, 0) as place,               // 产地
+            array(INT, 0) as pd,                     // 升贴水
+            array(STRING, 0) as is_ct,               // 是否折算仓单
+            array(STRING, 0) as unit,                // 单位
+            array(SYMBOL, 0) as exchange,            // 交易所
+            array(TIMESTAMP, 0) as update_time       // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["trade_date"] = "交易日期"
+        columnComments["symbol"] = "产品代码"
+        columnComments["fut_name"] = "产品名称"
+        columnComments["warehouse"] = "仓库名称"
+        columnComments["wh_id"] = "仓库编号"
+        columnComments["pre_vol"] = "昨日仓单量"
+        columnComments["vol"] = "今日仓单量"
+        columnComments["vol_chg"] = "增减量"
+        columnComments["area_name"] = "地区"
+        columnComments["year"] = "年度"
+        columnComments["grade"] = "等级"
+        columnComments["brand"] = "品牌"
+        columnComments["place"] = "产地"
+        columnComments["pd"] = "升贴水"
+        columnComments["is_ct"] = "是否折算仓单"
+        columnComments["unit"] = "单位"
+        columnComments["exchange"] = "交易所"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableIndexDaily
+*  @Brief: Create a DFS table for Nanhua index daily data
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableIndexDaily()
+*/
+def createTableFutIndexDaily(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "fut_index_daily"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,               // TS指数代码 (原ts_code)
+            array(DATE, 0) as trade_date,            // 交易日
+            array(DOUBLE, 0) as close,              // 收盘点位
+            array(DOUBLE, 0) as open,               // 开盘点位
+            array(DOUBLE, 0) as high,               // 最高点位
+            array(DOUBLE, 0) as low,                // 最低点位
+            array(DOUBLE, 0) as pre_close,          // 昨日收盘点
+            array(DOUBLE, 0) as change,             // 涨跌点
+            array(DOUBLE, 0) as pct_chg,            // 涨跌幅
+            array(DOUBLE, 0) as vol,                // 成交量（手）
+            array(DOUBLE, 0) as amount,             // 成交额（千元）
+            array(TIMESTAMP, 0) as update_time      // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "TS指数代码"
+        columnComments["trade_date"] = "交易日"
+        columnComments["close"] = "收盘点位"
+        columnComments["open"] = "开盘点位"
+        columnComments["high"] = "最高点位"
+        columnComments["low"] = "最低点位"
+        columnComments["pre_close"] = "昨日收盘点"
+        columnComments["change"] = "涨跌点"
+        columnComments["pct_chg"] = "涨跌幅"
+        columnComments["vol"] = "成交量（手）"
+        columnComments["amount"] = "成交额（千元）"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}
+
+/*
+*  @FunctionName: createTableFutSettle
+*  @Brief: Create a DFS table for futures settlementtle parameters
+*  @Param: None
+*  @Return: None
+*  @SampleUsage: createTableFutSettle()
+*/
+def createTableFutSettle(){
+    dbName = "dfs://tushare_daily_db"
+    tbName = "fut_settle"
+    if(existsDatabase(dbName)){
+        db = database(dbName)
+        if(!existsTable(dbName, tbName)){
+        schemaTB = table(
+            array(SYMBOL, 0) as security_id,                     // 合约代码
+            array(DATE, 0) as trade_date,               // 交易日期
+            array(DOUBLE, 0) as settle,                     // 结算价
+            array(DOUBLE, 0) as trading_fee_rate,         // 交易手续费率
+            array(DOUBLE, 0) as trading_fee,      // 交易手续费
+            array(DOUBLE, 0) as delivery_fee,        // 交割手续费
+            array(DOUBLE, 0) as b_hedging_margin_rate,         // 买套保交易保证金率
+            array(DOUBLE, 0) as s_hedging_margin_rate,      // 卖套保交易保证金率
+            array(DOUBLE, 0) as long_margin_rate,        // 买投机交易保证金率
+            array(DOUBLE, 0) as short_margin_rate,         // 卖投机交易保证金率
+            array(DOUBLE, 0) as offset_today_fee,      // 平今仓手续率
+            array(SYMBOL, 0) as exchange,      // 交易所
+            array(TIMESTAMP, 0) as update_time       // 更新时间
+        )
+        db.createPartitionedTable(
+            table = schemaTB,
+            tableName = tbName,
+            partitionColumns = "trade_date"
+        )
+        go
+        columnComments = dict(STRING, STRING)
+        columnComments["security_id"] = "合约代码"
+        columnComments["trade_date"] = "交易日期"
+        columnComments["settle"] = "结算价"
+        columnComments["trading_fee_rate"] = "交易手续费率"
+        columnComments["trading_fee"] = "交易手续费"
+        columnComments["delivery_fee"] = "交割手续费"
+        columnComments["b_hedging_margin_rate"] = "买套保交易保证金率"
+        columnComments["s_hedging_margin_rate"] = "卖套保交易保证金率"
+        columnComments["long_margin_rate"] = "买投机交易保证金率"
+        columnComments["short_margin_rate"] = "卖投机交易保证金率"
+        columnComments["offset_today_fee"] = "平今仓手续率"
+        columnComments["exchange"] = "交易所"
+        columnComments["update_time"] = "更新时间"
+        setColumnComment(loadTable(dbName, tbName), columnComments)
+        print("Table of " + tbName + " created successfully!")
+        }
+    }else{
+        print("Database of " + dbName + " does not exist, please create database first!")
+    }
+}

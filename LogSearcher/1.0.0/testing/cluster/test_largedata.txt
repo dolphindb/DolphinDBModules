@@ -1,0 +1,261 @@
+@testing:case = "prepare"
+use LogSearcher
+go
+
+def LoadSaveLog(relog, eachpath){
+	if(eachpath like "%job.log"){
+		// job
+		excontent = select content from relog where logType = "job"
+		eachcontent = loadText(eachpath, delimiter = "\\n", containHeader = false)
+	}else if(eachpath like "%hardware.log"){
+		// hardware
+		size_num = split(eachpath, "/").size()
+		filename = split(eachpath, "/")[size_num-1]
+		datanodeinfile = split(filename, "_")[0]
+		excontent = select content from relog where logType = "hardware" and node = datanodeinfile
+		eachcontent = loadText(eachpath, delimiter = "\\n", containHeader = false)
+	}else if(eachpath like "%aclAudit.log"){
+		// aclAudit
+		size_num = split(eachpath, "/").size()
+		filename = split(eachpath, "/")[size_num-1]
+		excontent = select content from relog where logType = "aclAudit" and like(logFile, "%/"+filename+"%")
+		eachcontent = loadText(eachpath, delimiter = "\\n", containHeader = false)
+	}else if(eachpath like "%query.log"){
+		// query
+		size_num = split(eachpath, "/").size()
+		filename = split(eachpath, "/")[size_num-1]
+		excontent = select content from relog where logType = "query" and like(logFile, "%/"+filename+"%")
+		eachcontent = loadText(eachpath, delimiter = "\\n", containHeader = false)
+	}else if(eachpath like "%audit.log"){
+		// audit
+		size_num = split(eachpath, "/").size()
+		filename = split(eachpath, "/")[size_num-1]
+		excontent = select content from relog where logType = "audit" and like(logFile, "%/"+filename+"%")
+		eachcontent = loadText(eachpath, delimiter = "\\n", containHeader = false)
+	}else if(regexFind(eachpath, "datanode[0-9].log") != -1 or regexFind(eachpath, "computenode[0-9].log") != -1 or regexFind(eachpath, "controller.log") != -1){
+		// running
+		size_num = split(eachpath, "/").size()
+		filename = split(eachpath, "/")[size_num-1]
+		excontent = select content from relog where logType = "running" and like(logFile, "%/"+filename+"%")
+		eachcontent = loadText(eachpath, delimiter = "\\n", containHeader = false)
+	}else if(eachpath like "%access.log"){
+		// access
+		size_num = split(eachpath, "/").size()
+		filename = split(eachpath, "/")[size_num-1]
+		datanodeinfile = split(filename, "_")[0]
+		excontent = select content from relog where logType = "access" and node = datanodeinfile
+		eachcontent = loadText(eachpath, delimiter = "\\n", containHeader = false)
+	}else if(eachpath like "%dmesg.log"){
+		// access
+		excontent = select content from relog where logType = "dmesg"
+		eachcontent = loadText(eachpath, delimiter = "\\n", containHeader = false)
+	}else if(eachpath like "%core%"){
+		// coredump
+		size_num = split(eachpath, "/").size()
+		filename = split(eachpath, "/")[size_num-1]
+		size_num2 = split(filename, ".").size()
+		filename2 = concat(split(filename, ".")[0:(size_num2-2)], ".")
+		excontent = select content from relog where logType = "coredump" and like(logFile, "%"+filename2+"%")
+		fin = file(eachpath, "r")
+		eachcontent = ""
+		eachcontent = readLines(fin)
+		fin.close()
+		eachcontent = table(concat(eachcontent, "\n") as col0)
+	}else{
+		throw "no this type log"
+	}
+	return excontent, eachcontent
+}
+
+// 以下case需要手动跑
+// 可以将数据文件中的largedata放到和server同一个目录下
+@testing:case = "test_function_largedata_searchLog"
+// 大数据量的log文件可以用如下方式生成
+/*
+def createtable_26col(n){
+	id = rand(100, n)
+	valuep = take(`A`B`C`D,n)
+	boolv = rand([true, false], n)
+	charv = char(rand(rand(100, 10) join take(00i, 4), n))
+	intv = rand(rand(-100..100, 10) join take(00i, 4), n)
+	longv = long(rand(rand(-100..100, 10) join take(00i, 4), n))
+	shortv = short(rand(rand(-100..100, 10) join take(00i, 4), n))
+	doublev = double(rand(rand(-100..100, 10)*0.125 join take(00i, 4), n))
+	floatv = float(rand(rand(-100..100, 10)*0.125 join take(00i, 4), n))
+	datev = date(rand(rand(1969.12.01..1970.05.06, 100) join take(date(), 30), n))
+	timestampv = timestamp(1969.12.31T23:59:59.979+rand(rand(100, 100) join take(int(), 30), n))
+	datetimev = datetime(1969.12.31T23:59:30+rand(rand(100, 100) join take(int(), 30), n))
+	nanotimestampv = nanotimestamp(1969.12.31T23:59:31.999999976+rand(rand(100, 100) join take(int(), 30), n))
+	timev = time(12:23:56.968+rand(rand(100, 100) join take(int(), 30), n))
+	secondv = second(12:23:56+rand(rand(100, 100) join take(int(), 30), n))
+	minutev = minute(12:23:59+rand(rand(1000, 100) join take(int(), 30), n))
+	nanotimev = nanotime(12:23:59.459879125+rand(rand(1000, 100) join take(int(), 30), n))
+	dateHourv = datehour(1969.12.31T23:59:10+rand(rand(100, 100) join take(int(), 30), n))
+	stringv = string(rand(("APL.S/AN"+string(rand(100, 10))) join take(string(), 10), n))
+	sym = symbol(rand(("sym"+string(rand(100, 10))) join take(string(), 10), n))
+	uuidv = uuid(rand(rand(uuid(), 10) join NULL, n))
+	ipaddrv = ipaddr(rand(rand(ipaddr(), 10) join NULL, n))
+	int128v = int128(rand(rand(int128(), 10) join NULL, n))
+	pointv = rand([point(2, 4), point(1, 4), point(10, 10)], n)
+	decimal32v = decimal32(rand(rand(-100..100, 10)*0.125 join take(00i, 4), n), 4)
+	decimal64v = decimal64(rand(rand(-100..100, 10)*0.125 join take(00i, 4), n), 4)
+	
+	data = table(id, valuep, boolv, charv, intv, longv, shortv, doublev, floatv, datev, timestampv, datetimev, nanotimestampv, timev, secondv, minutev, nanotimev, dateHourv, stringv, sym, uuidv, ipaddrv, int128v, pointv, decimal32v, decimal64v)
+	return data
+}
+def operate(dbName, t, atomic = "TRANS"){
+	if(existsDatabase(dbName)) {
+		dropDatabase(dbName)
+	}
+	dbvalue = database(,VALUE, `A`B`C`D)
+	dbrange = database(,RANGE, 0 30 60 90 120)
+	db = database(dbName, COMPO, [dbvalue, dbrange], atomic = atomic)
+	// createPartitionedTable
+	pt1 = db.createPartitionedTable(t, `pt1, `valuep`id).append!(t)
+	pt2 = db.createPartitionedTable(t, `pt2, `valuep`id).append!(t)
+	tsize = t.size()
+	// createDimensionTable
+	dt = db.createTable(t, `dt).append!(t)
+	// dropPartition
+	dropPartition(db, [`A, 0], `pt2)
+	// renameTable
+	renameTable(db, `pt2, `pt2_new)
+	// delete
+	del_cnt = count(select * from loadTable(dbName, `pt2_new) where id > 90)
+	delete from loadTable(dbName, `pt2_new) where id > 90
+	// update
+	update loadTable(dbName, `pt2_new) set intv = intv+1
+	// select
+	pt2_new = select * from loadTable(dbName, `pt2_new)
+	// addColumn
+	addColumn(pt1, `col1, INT)
+	addColumn(dt, `col1, DOUBLE)
+	pnodeRun(purgeCacheEngine)
+	// upsert
+	newt = createtable_26col(1)
+	newpt = table(newt, 1 as col1)
+	newdt = table(newt, double(-2.4) as col1)
+	// setColComment
+	setColumnComment(pt1, {id:"id"})
+	// replaceColumn
+	newcol = int(double(exec doublev from pt2_new))
+	replaceColumn!(loadTable(dbName, `pt2_new), `doublev, newcol)
+	// renameColumn
+	rename!(pt1, `shortv, `new_shortv)
+	// addrangePartition
+	addRangePartitions(db, 120 150 180, 1)
+	// addvaluePartition
+	addValuePartitions(db, `E, 0)
+	// dropColumn
+	dropColumns!(loadTable(dbName, `pt2_new), `longv)
+	// truncate
+	truncate(dbName, `pt2_new)
+	// dropTable
+	dropTable(db, `dt)
+	// dropDatabase
+	dropDatabase(dbName)
+	return 0
+}
+def write_audit_log(){
+	dbpath = "dfs://test_audit"
+	tbname="tb";
+	if(existsDatabase(dbpath))
+		dropDatabase(dbpath);
+	db=database(dbpath,VALUE,1..10)
+	
+	n = 100
+	strCol = "a" + string(1..n)
+	dumyTable=table(strCol as str, 1..n as val);
+	tb=createPartitionedTable(db,dumyTable,"tb", "val");
+	tb.append!(dumyTable)
+	
+	longStr = concat(take("awedsedsgr", 100))
+	
+	for(i in 1..1000) {
+		update tb set str = longStr where val = 1
+		go
+		writeLogLevel(INFO,i,"write my test info log:", longStr)
+		writeLogLevel(DEBUG,i,"write my test debug log:", longStr)
+		writeLogLevel(WARNING,i,"write my test warning log:", longStr)
+		writeLogLevel(ERROR,i,"write my test error log:", longStr)
+	}
+	
+	if(existsDatabase(dbpath))
+		dropDatabase(dbpath);
+	return 0
+}
+
+for(i in 1..100){
+	// 1m2s
+writeLogLevel(INFO,i, "start dfs operate")
+n = 100
+t = createtable_26col(n)
+dbName = "dfs://test_getAuditLog"
+operate(dbName, t)
+go
+writeLogLevel(DEBUG,i, "finish dfs operate")
+writeLogLevel(WARNING,i, "this is a warning log for test")
+writeLogLevel(ERROR,i, "this is a error log for test")
+}
+for(i in 1..10){
+	// 3min3s
+	write_audit_log()
+	go
+}
+for(i in 1..100){
+	longStr = concat(take("你好awedsedsgr", 10000))
+	writeLogLevel(INFO,i,"write my test info log:", longStr)
+	writeLogLevel(DEBUG,i,"write my test debug log:", longStr)
+	writeLogLevel(WARNING,i,"write my test warning log:", longStr)
+	writeLogLevel(ERROR,i,"write my test error log:", longStr)
+}
+*/
+
+/*
+tnow = now()
+tstart = 2025.06.09 00:00:00.000
+tend = temporalAdd(tnow, 1, "d")
+para = dict(STRING, ANY)
+para["startTime"] = tstart
+para["endTime"] = tend
+para["cacheSize"] = 1024
+re = LogSearcher::searchLog(para)
+re_cache = select * from getRecentJobs() where receivedTime >= tnow
+assert 1, re.size() > 0
+assert 2, re_cache.size() == 0
+memsize = (exec bytes\1024\1024 from objs() where name = "re")[0]
+assert 3, memsize > 1024
+
+tstart = 2025.06.09 00:00:00.000
+tend = temporalAdd(tnow, 1, "d")
+para = dict(STRING, ANY)
+para["startTime"] = tstart
+para["endTime"] = tend
+para["cacheSize"] = 2048
+re = LogSearcher::searchLog(para)
+re_cache = select * from getRecentJobs() where receivedTime >= tnow
+assert 4, re.size() > 0
+assert 5, re_cache.size() > 0
+memsize = (exec bytes\1024\1024 from objs() where name = "re")[0]
+assert 6, memsize < 3000
+
+@testing:case = "test_function_largedata_saveLog_cacheSize>1024"
+// setMaxMemSize(32)
+tnow = now()
+tstart = 2025.06.09 00:00:00.000
+tend = temporalAdd(tnow, 1, "d")
+para = dict(STRING, ANY)
+para["startTime"] = tstart
+para["endTime"] = tend
+para["cacheSize"] = 10000
+timer re = LogSearcher::searchLog(para)
+timer re = LogSearcher::searchLog(para)
+assert 1, re.size() > 0
+timer logpath = LogSearcher::saveLog(re, para)
+// clear
+try{
+	rmdir(logpath, true)
+}catch(exp){print(exp)}
+*/
+
+ 

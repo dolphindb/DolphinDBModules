@@ -1,0 +1,10 @@
+
+use ops
+
+login("admin", "123456")
+
+@testing:case="test_function_getAllLicenses"
+re = ops::getAllLicenses()
+nodes = exec name from rpc(getControllerAlias(), getClusterPerf{true})
+nodes = set(nodes.append!(getControllerAlias())).keys()
+assert 1, re[`node].sort() == nodes.sort()

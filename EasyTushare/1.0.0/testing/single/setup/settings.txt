@@ -1,0 +1,3 @@
+// Required by test_function_historyDataLoad.txt.  Use a Tushare token with
+// access to every API covered by the history import tests.
+token = ""
